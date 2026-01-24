@@ -179,16 +179,17 @@ export default function CustomerDetailPage() {
         return <div className="flex items-center justify-center min-h-screen"><p className="text-gray-500">Mijoz topilmadi</p></div>
     }
 
-    const calculatedDebt = debts.reduce((sum, d) => sum + (parseFloat(d.remaining_amount) || 0), 0)
-    // Priority: 1. Manual sum of list, 2. API fields
-    const totalDebt = calculatedDebt > 0
-        ? calculatedDebt
+    const sumRemaining = debts.reduce((sum, d) => sum + (parseFloat(d.remaining_amount) || 0), 0)
+
+    // Priority: 1. Sum of debts in timeline (if loaded), 2. Explicit remaining amount, 3. Fallbacks
+    const totalDebt = debts.length > 0
+        ? sumRemaining
         : parseFloat(
             customer.remaining_amount ??
-            customer.total_debt ??
             customer.remaining_debts ??
             customer.debt_sum ??
-            customer.balance ?? 0
+            customer.balance ??
+            customer.total_debt ?? 0
         )
 
     return (

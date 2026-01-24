@@ -50,13 +50,13 @@ export default function CustomersPage() {
 
         if (filter === 'debtors') {
             result = result.filter(c => {
-                const debt = parseFloat(c.total_debt) || parseFloat(c.remaining_amount) || 0
+                const debt = parseFloat(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.balance ?? c.total_debt ?? 0)
                 return debt > 0
             })
         } else if (filter === 'paid') {
             result = result.filter(c => {
-                const debt = parseFloat(c.total_debt) || parseFloat(c.remaining_amount) || 0
-                return debt === 0 || debt <= 0
+                const debt = parseFloat(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.balance ?? c.total_debt ?? 0)
+                return debt <= 0
             })
         }
 
@@ -229,12 +229,25 @@ export default function CustomersPage() {
                                 </p>
                             </div>
                             <div className="text-right">
-                                <div className={`text-[15px] font-bold ${parseFloat(customer.remaining_amount || customer.total_debt || 0) > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                    {formatCurrency(customer.remaining_amount ?? customer.total_debt ?? customer.remaining_debts ?? 0)} so'm
-                                </div>
-                                <span className={`badge text-[11px] ${parseFloat(customer.remaining_amount || customer.total_debt || 0) > 0 ? 'badge-debtor' : 'badge-paid'}`}>
-                                    {parseFloat(customer.remaining_amount || customer.total_debt || 0) > 0 ? 'Qarzdor' : 'To\'langan'}
-                                </span>
+                                {(() => {
+                                    const currentDebt = parseFloat(
+                                        customer.remaining_amount ??
+                                        customer.remaining_debts ??
+                                        customer.debt_sum ??
+                                        customer.balance ??
+                                        customer.total_debt ?? 0
+                                    );
+                                    return (
+                                        <>
+                                            <div className={`text-[15px] font-bold ${currentDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                {formatCurrency(currentDebt)} so'm
+                                            </div>
+                                            <span className={`badge text-[11px] ${currentDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
+                                                {currentDebt > 0 ? 'Qarzdor' : 'To\'langan'}
+                                            </span>
+                                        </>
+                                    );
+                                })()}
                             </div>
                             <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
                         </Link>

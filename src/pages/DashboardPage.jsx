@@ -36,8 +36,9 @@ export default function DashboardPage() {
 
     // Qolgan qarz (Remaining Debt)
     const totalDebt = parseFloat(
-        stats?.remaining_debts ?? stats?.remaining_debt ?? stats?.total_debt ??
-        stats?.total_remaining ?? stats?.remaining_amount ?? 0
+        stats?.remaining_debts ?? stats?.remaining_debt ??
+        stats?.total_remaining ?? stats?.remaining_amount ??
+        stats?.total_debt ?? 0
     )
 
     // To'langan summa (Total Paid)
