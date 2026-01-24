@@ -40,7 +40,7 @@ export default defineConfig({
                 globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
                 runtimeCaching: [
                     {
-                        urlPattern: /^https:\/\/daftaron\.devxurshidbek\.uz\/api/,
+                        urlPattern: ({ url }) => url.pathname.startsWith('/api'),
                         handler: 'NetworkFirst',
                         options: {
                             cacheName: 'api-cache',
