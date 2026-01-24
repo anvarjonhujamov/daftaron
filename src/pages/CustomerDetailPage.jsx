@@ -10,10 +10,10 @@ import {
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 
+
 export default function CustomerDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
-
     const [customer, setCustomer] = useState(null)
     const [debts, setDebts] = useState([])
     const [loading, setLoading] = useState(true)
