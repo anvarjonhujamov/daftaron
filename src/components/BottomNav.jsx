@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Users, BarChart3, Settings } from 'lucide-react'
+import { Home, Users, BarChart3, Settings, History } from 'lucide-react'
 
 export default function BottomNav() {
     const navItems = [
         { to: '/', icon: Home, label: 'Bosh sahifa' },
         { to: '/customers', icon: Users, label: 'Mijozlar' },
+        { to: '/payments', icon: History, label: 'Tarix' },
         { to: '/debts', icon: BarChart3, label: 'Xisobotlar' },
         { to: '/profile', icon: Settings, label: 'Sozlamalar' }
     ]
@@ -29,7 +30,7 @@ export default function BottomNav() {
                             {({ isActive }) => (
                                 <>
                                     {isActive ? (
-                                        <div className="bg-blue-100 dark:bg-blue-900/30 px-4 py-1.5 rounded-full mb-1">
+                                        <div className="bg-blue-100 dark:bg-blue-900/30 px-3 py-1.5 rounded-full mb-1">
                                             <Icon size={20} strokeWidth={2} />
                                         </div>
                                     ) : (

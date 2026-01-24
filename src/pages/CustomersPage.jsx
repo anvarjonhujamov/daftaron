@@ -18,17 +18,26 @@ export default function CustomersPage() {
 
     useEffect(() => {
         loadCustomers()
+
+        // Handle URL search params (e.g. ?filter=debtors)
+        const params = new URLSearchParams(location.search)
+        const filterParam = params.get('filter')
+        if (filterParam) {
+            setFilter(filterParam)
+        }
+
         if (location.state?.openAddDrawer) {
             setShowAddDrawer(true)
             window.history.replaceState({}, document.title)
         }
-    }, [])
+    }, [location.search])
 
     const loadCustomers = async () => {
         setLoading(true)
         try {
-            const data = await customersApi.getCustomers({ per_page: 100 })
-            setCustomers(data.data || [])
+            const data = await customersApi.getCustomers()
+            // Handle both paginated (data.data) and non-paginated (simple array) responses
+            setCustomers(Array.isArray(data) ? data : (data.data || []))
         } catch (err) {
             console.error('Failed to load customers:', err)
         } finally {
@@ -220,11 +229,11 @@ export default function CustomersPage() {
                                 </p>
                             </div>
                             <div className="text-right">
-                                <div className={`text-[15px] font-bold ${customer.total_debt > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                    {formatCurrency(customer.total_debt)} so'm
+                                <div className={`text-[15px] font-bold ${parseFloat(customer.remaining_amount || customer.total_debt || 0) > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                    {formatCurrency(customer.remaining_amount ?? customer.total_debt ?? customer.remaining_debts ?? 0)} so'm
                                 </div>
-                                <span className={`badge text-[11px] ${customer.total_debt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
-                                    {customer.total_debt > 0 ? 'Qarzdor' : 'To\'langan'}
+                                <span className={`badge text-[11px] ${parseFloat(customer.remaining_amount || customer.total_debt || 0) > 0 ? 'badge-debtor' : 'badge-paid'}`}>
+                                    {parseFloat(customer.remaining_amount || customer.total_debt || 0) > 0 ? 'Qarzdor' : 'To\'langan'}
                                 </span>
                             </div>
                             <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />

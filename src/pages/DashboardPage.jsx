@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { dashboardApi } from '../api/dashboard.api'
 import {
     TrendingUp, Users, ChevronRight,
-    UserPlus, Activity, CheckCircle2
+    UserPlus, Activity, CheckCircle2, History
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 
@@ -85,6 +85,13 @@ export default function DashboardPage() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Daftaron</h1>
+                <Link
+                    to="/payments"
+                    className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
+                    title="To'lovlar tarixi"
+                >
+                    <History size={22} />
+                </Link>
             </div>
 
             {/* Main Stats Grid */}
@@ -146,46 +153,60 @@ export default function DashboardPage() {
             <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-[18px] font-semibold text-gray-900 dark:text-white">Qarzdorlar</h2>
-                    <Link to="/customers" className="text-blue-500 text-[14px] font-medium">Barchasi</Link>
                 </div>
 
                 {topDebtors?.length > 0 ? (
-                    <div className="space-y-3">
-                        {topDebtors.slice(0, 3).map((customer) => (
-                            <Link
-                                key={customer.id}
-                                to={`/customers/${customer.id}`}
-                                className="card flex items-center gap-3 active:scale-[0.98] transition-transform"
-                            >
-                                <div className="avatar avatar-md bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
-                                    {customer.name?.charAt(0)?.toUpperCase()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">
-                                        {customer.name}
-                                    </h3>
-                                    <p className="text-[12px] text-gray-400 truncate">{customer.phone}</p>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-[14px] font-bold text-red-500">
-                                        {formatCurrency(customer.total_debt || customer.remaining_amount)}
-                                    </div>
-                                    <span className="text-[11px] text-gray-400">so'm</span>
-                                </div>
-                                <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
-                            </Link>
-                        ))}
+                    <div className="relative">
+                        <div className="space-y-2">
+                            {topDebtors
+                                .filter(customer => parseFloat(customer.remaining_amount || customer.total_debt || customer.remaining_debts || 0) > 0)
+                                .slice(0, 3)
+                                .map((customer, index, arr) => (
+                                    <Link
+                                        key={customer.id}
+                                        to={`/customers/${customer.id}`}
+                                        className={`card flex items-center gap-3 active:scale-[0.98] transition-transform !p-3 ${index === 2 && arr.length >= 3 ? 'opacity-60 [mask-image:linear-gradient(to_bottom,black_50%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_50%,transparent_100%)]' : ''
+                                            }`}
+                                    >
+                                        <div className="avatar avatar-sm bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                                            {customer.name?.charAt(0)?.toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
+                                                {customer.name}
+                                            </h3>
+                                            <p className="text-[11px] text-gray-400 truncate">{customer.phone}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`text-[13px] font-bold ${parseFloat(customer.remaining_amount || customer.total_debt || 0) > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                {formatCurrency(customer.remaining_amount ?? customer.total_debt ?? customer.remaining_debts ?? 0)}
+                                            </div>
+                                            <span className="text-[10px] text-gray-400">so'm</span>
+                                        </div>
+                                        <ChevronRight size={16} className="text-gray-300 dark:text-gray-600" />
+                                    </Link>
+                                ))}
+                        </div>
+
+                        <Link
+                            to="/customers?filter=debtors"
+                            className="flex items-center justify-center gap-2 py-3 mt-1 text-[14px] font-semibold text-blue-500 active:opacity-60 transition-opacity"
+                        >
+                            Barchasini ko'rish
+                            <ChevronRight size={16} />
+                        </Link>
                     </div>
                 ) : (
                     <div className="text-center py-8 text-gray-400 flex flex-col items-center gap-2">
                         <Users size={32} strokeWidth={1.5} />
                         <p className="text-[14px]">Qarzdorlar yo'q</p>
                     </div>
-                )}
-            </div>
+                )
+                }
+            </div >
 
             {/* Action Button - Fixed at bottom */}
-            <div className="fixed bottom-20 left-0 right-0 p-4 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md z-40 border-t border-gray-100 dark:border-gray-700 max-w-lg mx-auto">
+            < div className="fixed bottom-20 left-0 right-0 p-4 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md z-40 border-t border-gray-100 dark:border-gray-700 max-w-lg mx-auto" >
                 <Link
                     to="/customers"
                     state={{ openAddDrawer: true }}
@@ -194,10 +215,10 @@ export default function DashboardPage() {
                     <UserPlus size={20} />
                     Yangi mijoz qo'shish
                 </Link>
-            </div>
+            </div >
 
             {/* Spacing for fixed button */}
-            <div className="h-24" />
-        </div>
+            < div className="h-24" />
+        </div >
     )
 }

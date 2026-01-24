@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../api/auth.api'
+import { Eye, EyeOff } from 'lucide-react'
 import LocationSelector from '../components/LocationSelector'
 import LoadingSpinner from '../components/LoadingSpinner'
 
@@ -18,6 +19,8 @@ export default function RegisterPage() {
         street_id: null
     })
     const [loading, setLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const [error, setError] = useState('')
     const [errors, setErrors] = useState({})
 
@@ -133,27 +136,45 @@ export default function RegisterPage() {
 
                         <div>
                             <label className="label">Parol</label>
-                            <input
-                                type="password"
-                                className="input"
-                                placeholder="Kamida 8 belgi"
-                                value={form.password}
-                                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                                required
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    className="input pr-12"
+                                    placeholder="Kamida 8 belgi"
+                                    value={form.password}
+                                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password[0]}</p>}
                         </div>
 
                         <div>
                             <label className="label">Parolni tasdiqlang</label>
-                            <input
-                                type="password"
-                                className="input"
-                                placeholder="Parolni qaytaring"
-                                value={form.password_confirmation}
-                                onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
-                                required
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    className="input pr-12"
+                                    placeholder="Parolni qaytaring"
+                                    value={form.password_confirmation}
+                                    onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                >
+                                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                         </div>
 
                         <button

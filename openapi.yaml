@@ -203,18 +203,18 @@ paths:
       - $ref: "#/components/parameters/ContentTypeJson"
     post:
       tags: [Auth]
-      summary: Login (telefon yoki email)
+      summary: Login (telefon)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [login, password]
+              required: [phone, password]
               properties:
-                login:
+                phone:
                   type: string
-                  description: Telefon raqam yoki email
+                  description: Telefon raqam
                 password: { type: string }
                 device_name: { type: string }
       responses:
@@ -233,7 +233,7 @@ paths:
       - $ref: "#/components/parameters/ContentTypeJson"
     post:
       tags: [Auth]
-      summary: Register (starts SMS verification)
+      summary: Register (create user and return token)
       requestBody:
         required: true
         content:
@@ -244,49 +244,21 @@ paths:
               properties:
                 name: { type: string }
                 phone: { type: string }
-                email: { type: string }
                 password: { type: string }
                 password_confirmation: { type: string }
                 shop_name: { type: string }
                 region_id: { type: integer }
                 district_id: { type: integer }
                 street_id: { type: integer }
-      responses:
-        "201":
-          description: Verification sent
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message: { type: string }
-  /auth/verify:
-    parameters:
-      - $ref: "#/components/parameters/AcceptJson"
-      - $ref: "#/components/parameters/ContentTypeJson"
-    post:
-      tags: [Auth]
-      summary: Verify SMS code and create account
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [phone, code]
-              properties:
-                phone: { type: string }
-                code: { type: string }
                 device_name: { type: string }
       responses:
-        "200":
+        "201":
           description: Token and user
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message: { type: string }
                   token: { type: string, description: Sanctum bearer token }
                   user: { $ref: "#/components/schemas/User" }
   /auth/me:
@@ -352,7 +324,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PaginatedCustomers"
+                type: array
+                items: 
+                  $ref: "#/components/schemas/CustomerListItem"
     post:
       tags: [Customers]
       security: [{ bearerAuth: [] }]
@@ -445,7 +419,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PaginatedDebts"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Debt"
     post:
       tags: [Debts]
       security: [{ bearerAuth: [] }]

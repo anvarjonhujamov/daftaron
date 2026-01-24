@@ -3,8 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { debtsApi } from '../api/debts.api'
 import { paymentsApi } from '../api/payments.api'
 import {
-    Clock, CheckCircle2, Trash2, Plus, ArrowLeft,
-    FileText, CreditCard, Calendar, ChevronRight
+    Clock, CheckCircle2, Trash2, ArrowLeft,
+    FileText, Calendar, ChevronRight, CreditCard
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
@@ -15,8 +15,6 @@ export default function DebtDetailPage() {
     const [debt, setDebt] = useState(null)
     const [payments, setPayments] = useState([])
     const [loading, setLoading] = useState(true)
-    const [showPaymentForm, setShowPaymentForm] = useState(false)
-    const [paymentAmount, setPaymentAmount] = useState('')
     const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
@@ -41,25 +39,6 @@ export default function DebtDetailPage() {
         }
     }
 
-    const handleAddPayment = async (e) => {
-        e.preventDefault()
-        if (!paymentAmount || isNaN(parseFloat(paymentAmount))) return
-
-        setSubmitting(true)
-        try {
-            await paymentsApi.createPayment({
-                debt_id: parseInt(id),
-                amount: parseFloat(paymentAmount)
-            })
-            setPaymentAmount('')
-            setShowPaymentForm(false)
-            loadData()
-        } catch (err) {
-            alert(err.response?.data?.message || 'Xatolik yuz berdi')
-        } finally {
-            setSubmitting(false)
-        }
-    }
 
     const handleCloseDebt = async () => {
         if (!confirm('Bu nasiyani yopmoqchimisiz?')) return
@@ -95,13 +74,13 @@ export default function DebtDetailPage() {
 
     const formatDate = (dateString) => {
         if (!dateString) return ''
-        return new Date(dateString).toLocaleDateString('uz-UZ', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        })
+        const date = new Date(dateString)
+        const mm = String(date.getMonth() + 1).padStart(2, '0')
+        const dd = String(date.getDate()).padStart(2, '0')
+        const yyyy = date.getFullYear()
+        const hh = String(date.getHours()).padStart(2, '0')
+        const min = String(date.getMinutes()).padStart(2, '0')
+        return `${mm}/${dd}/${yyyy} ${hh}:${min}`
     }
 
     if (loading) {
@@ -119,9 +98,9 @@ export default function DebtDetailPage() {
                     <Trash2 size={32} className="text-red-500" />
                 </div>
                 <h2 className="text-[20px] font-bold text-gray-900 dark:text-white mb-2">Nasiya topilmadi</h2>
-                <Link to="/debts" className="btn btn-primary inline-flex">
-                    Nasiyalarga qaytish
-                </Link>
+                <button onClick={() => navigate(-1)} className="btn btn-primary inline-flex">
+                    Orqaga qaytish
+                </button>
             </div>
         )
     }
@@ -134,10 +113,13 @@ export default function DebtDetailPage() {
     return (
         <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
             {/* Header */}
-            <div className="flex items-center gap-2 mb-6 text-blue-500 font-medium translate-x-[-4px]">
+            <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 mb-6 text-blue-500 font-medium active:opacity-60 transition-opacity"
+            >
                 <ArrowLeft size={18} />
-                <Link to="/debts" className="text-[15px]">Nasiyalar</Link>
-            </div>
+                <span className="text-[16px] font-semibold">Orqaga</span>
+            </button>
 
             {/* Debt Card Detail */}
             <div className="card dark:bg-gray-800 p-5 mb-6 shadow-sm border border-gray-100 dark:border-gray-700">
@@ -213,82 +195,19 @@ export default function DebtDetailPage() {
                 )}
             </div>
 
-            {/* Add Payment Action */}
-            {debt.status === 'open' && (
-                <button
-                    onClick={() => setShowPaymentForm(true)}
-                    className="btn btn-primary w-full py-4 text-[16px] shadow-lg shadow-blue-500/20 mb-8"
-                >
-                    <Plus size={20} />
-                    To'lov qo'shish
-                </button>
-            )}
-
-            {/* Payment Modal/Inline Form */}
-            {showPaymentForm && (
-                <div className="card dark:bg-gray-800 p-5 mb-8 border-2 border-blue-500/20 shadow-xl">
-                    <div className="flex items-center gap-2 mb-4">
-                        <CreditCard size={18} className="text-blue-500" />
-                        <h3 className="font-bold text-gray-900 dark:text-white">Yangi to'lov</h3>
-                    </div>
-                    <form onSubmit={handleAddPayment} className="space-y-4">
-                        <div>
-                            <label className="label">Summa (so'm)</label>
-                            <input
-                                type="number"
-                                className="input text-[18px] font-bold text-blue-500"
-                                placeholder="0"
-                                value={paymentAmount}
-                                onChange={(e) => setPaymentAmount(e.target.value)}
-                                min="1"
-                                max={debt.remaining_amount}
-                                required
-                                autoFocus
-                            />
-                            <p className="text-[11px] text-gray-400 mt-1">Kiriting: max {formatCurrency(debt.remaining_amount)} so'm</p>
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setShowPaymentForm(false)}
-                                className="btn bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex-1"
-                            >
-                                Bekor
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="btn btn-primary flex-1"
-                            >
-                                {submitting ? <LoadingSpinner size="sm" /> : 'Saqlash'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            )}
 
             {/* History List */}
-            <div>
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-[18px] font-bold text-gray-900 dark:text-white">
-                        To'lovlar tarixi
-                    </h2>
-                    <span className="badge bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                        {payments.length}
-                    </span>
-                </div>
-
-                {payments.length === 0 ? (
-                    <div className="py-20 flex flex-col items-center justify-center text-gray-400 gap-4">
-                        <div className="w-20 h-20 rounded-full bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center">
-                            <CreditCard size={40} strokeWidth={1} />
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[16px] font-semibold">To'lovlar yo'q</p>
-                            <p className="text-[14px]">Hali bu nasiyaga to'lov qilinmagan</p>
-                        </div>
+            {payments.length > 0 && (
+                <div>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-[18px] font-bold text-gray-900 dark:text-white">
+                            To'lovlar tarixi
+                        </h2>
+                        <span className="badge bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                            {payments.length}
+                        </span>
                     </div>
-                ) : (
+
                     <div className="space-y-3">
                         {payments.map(payment => (
                             <div
@@ -313,8 +232,8 @@ export default function DebtDetailPage() {
                             </div>
                         ))}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     )
 }

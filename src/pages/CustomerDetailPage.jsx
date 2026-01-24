@@ -38,7 +38,7 @@ export default function CustomerDetailPage() {
             ])
             setCustomer(customerData.data || customerData)
             // Filter debts to only show this customer's debts
-            const allDebts = debtsData.data || []
+            const allDebts = Array.isArray(debtsData) ? debtsData : (debtsData.data || [])
             const customerDebts = allDebts.filter(d =>
                 d.customer_id === customerId ||
                 d.customer?.id === customerId
@@ -74,22 +74,50 @@ export default function CustomerDetailPage() {
 
     const handleAddPayment = async (e) => {
         e.preventDefault()
-        if (!paymentForm.amount) return
+        let remainingPayment = parseFloat(paymentForm.amount)
+        if (!remainingPayment || remainingPayment <= 0) return
 
-        // Use specified debt_id or find first open one
-        const targetDebtId = paymentForm.debt_id || debts.find(d => d.status === 'open')?.id
+        // Identify all open debts, sorted by ID (usually oldest first) or date
+        const openDebts = debts
+            .filter(d => d.status === 'open')
+            .sort((a, b) => a.id - b.id)
 
-        if (!targetDebtId) {
+        if (openDebts.length === 0) {
             alert('Faol nasiya topilmadi')
             return
         }
 
+        // If a specific debt was selected via "To'lov qilish" on a card, move it to the front
+        if (paymentForm.debt_id) {
+            const targetIdx = openDebts.findIndex(d => d.id === paymentForm.debt_id)
+            if (targetIdx > -1) {
+                const [target] = openDebts.splice(targetIdx, 1)
+                openDebts.unshift(target)
+            }
+        }
+
         setSubmitting(true)
         try {
-            await paymentsApi.createPayment({
-                debt_id: targetDebtId,
-                amount: parseFloat(paymentForm.amount)
-            })
+            // Process payments sequentially
+            for (const debt of openDebts) {
+                if (remainingPayment <= 0) break
+
+                const debtBalance = parseFloat(debt.remaining_amount) || 0
+                const paymentForThisDebt = Math.min(remainingPayment, debtBalance)
+
+                if (paymentForThisDebt > 0) {
+                    await paymentsApi.createPayment({
+                        debt_id: debt.id,
+                        amount: paymentForThisDebt
+                    })
+                    remainingPayment -= paymentForThisDebt
+                }
+            }
+
+            // If there's STILL money left after paying all open debts, 
+            // we could potentially apply it to a "credit" or just inform user.
+            // For now, we've paid off everything we could.
+
             setPaymentForm({ amount: '', description: '', debt_id: null })
             setShowPaymentDrawer(false)
             loadData()
@@ -134,9 +162,13 @@ export default function CustomerDetailPage() {
 
     const formatDate = (dateString) => {
         if (!dateString) return ''
-        return new Date(dateString).toLocaleDateString('uz-UZ', {
-            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-        })
+        const date = new Date(dateString)
+        const mm = String(date.getMonth() + 1).padStart(2, '0')
+        const dd = String(date.getDate()).padStart(2, '0')
+        const yyyy = date.getFullYear()
+        const hh = String(date.getHours()).padStart(2, '0')
+        const min = String(date.getMinutes()).padStart(2, '0')
+        return `${mm}/${dd}/${yyyy} ${hh}:${min}`
     }
 
     if (loading) {
@@ -147,7 +179,17 @@ export default function CustomerDetailPage() {
         return <div className="flex items-center justify-center min-h-screen"><p className="text-gray-500">Mijoz topilmadi</p></div>
     }
 
-    const totalDebt = customer.total_debt || debts.reduce((sum, d) => sum + (d.remaining_amount || 0), 0)
+    const calculatedDebt = debts.reduce((sum, d) => sum + (parseFloat(d.remaining_amount) || 0), 0)
+    // Priority: 1. Manual sum of list, 2. API fields
+    const totalDebt = calculatedDebt > 0
+        ? calculatedDebt
+        : parseFloat(
+            customer.remaining_amount ??
+            customer.total_debt ??
+            customer.remaining_debts ??
+            customer.debt_sum ??
+            customer.balance ?? 0
+        )
 
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors">
@@ -172,14 +214,15 @@ export default function CustomerDetailPage() {
 
             {/* Balance Card */}
             <div className="px-4 -mt-4">
-                <div className="card text-center py-4">
-                    <p className="text-gray-500 dark:text-gray-400 text-[13px] mb-1">Joriy balans</p>
-                    <div className={`text-[24px] font-bold mb-2 ${totalDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                <div className="card text-center py-6">
+                    <div className={`text-[32px] font-bold mb-2 ${totalDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
                         {formatCurrency(totalDebt)} so'm
                     </div>
-                    <span className={`badge ${totalDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
-                        {totalDebt > 0 ? 'Qarzdor' : 'To\'langan'}
-                    </span>
+                    <div>
+                        <span className={`badge px-4 py-1 ${totalDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
+                            {totalDebt > 0 ? 'Qarzdor' : 'To\'langan'}
+                        </span>
+                    </div>
                 </div>
             </div>
 

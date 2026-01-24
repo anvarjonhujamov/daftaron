@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { debtsApi } from '../api/debts.api'
 import { customersApi } from '../api/customers.api'
+import { ArrowLeft } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 
 export default function DebtFormPage() {
@@ -61,9 +62,13 @@ export default function DebtFormPage() {
     return (
         <div className="px-4 py-6">
             <div className="mb-4">
-                <Link to="/debts" className="text-primary-600 text-sm">
-                    ← Nasiyalar
-                </Link>
+                <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-1 text-blue-500 text-sm font-medium active:opacity-60 transition-opacity"
+                >
+                    <ArrowLeft size={16} />
+                    Orqaga
+                </button>
             </div>
 
             <h1 className="text-2xl font-bold text-slate-900 mb-6">Yangi nasiya</h1>

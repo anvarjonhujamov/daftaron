@@ -38,11 +38,10 @@ export default function NotificationsPage() {
         if (diffHours < 24) return `${diffHours} soat oldin`
         if (diffDays < 7) return `${diffDays} kun oldin`
 
-        return date.toLocaleDateString('uz-UZ', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        })
+        const mm = String(date.getMonth() + 1).padStart(2, '0')
+        const dd = String(date.getDate()).padStart(2, '0')
+        const yyyy = date.getFullYear()
+        return `${mm}/${dd}/${yyyy}`
     }
 
     if (loading) {

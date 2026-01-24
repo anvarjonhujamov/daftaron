@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../api/auth.api'
-import { Loader2, Phone, Lock, ArrowRight } from 'lucide-react'
+import { Loader2, Phone, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
     const navigate = useNavigate()
     const [form, setForm] = useState({ phone: '', password: '' })
     const [loading, setLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState('')
 
     useEffect(() => {
@@ -84,13 +85,20 @@ export default function LoginPage() {
                             <div className="relative">
                                 <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
-                                    type="password"
-                                    className="input pl-11"
+                                    type={showPassword ? "text" : "password"}
+                                    className="input pl-11 pr-12"
                                     placeholder="••••••••"
                                     value={form.password}
                                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                                     required
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                         </div>
 
