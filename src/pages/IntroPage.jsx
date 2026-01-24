@@ -27,6 +27,15 @@ export default function IntroPage() {
     const [currentSlide, setCurrentSlide] = useState(0)
     const navigate = useNavigate()
 
+    useState(() => {
+        // One-time check on mount (using useState initializer for early run, 
+        // or useEffect if you prefer, but this is even faster)
+        const hasSeen = localStorage.getItem('hasSeenIntro') === 'true'
+        if (hasSeen) {
+            navigate('/login', { replace: true })
+        }
+    })
+
     const handleFinish = () => {
         localStorage.setItem('hasSeenIntro', 'true')
         navigate('/login')
@@ -61,8 +70,6 @@ export default function IntroPage() {
                     O'tkazib yuborish
                 </button>
             </div>
-
-// Content Slider
             <div className="flex-1 flex flex-col items-center justify-center px-10 text-center text-white">
                 <div className="w-40 h-40 bg-white rounded-[40px] flex items-center justify-center mb-12 animate-bounce shadow-xl">
                     <img src="/logo.png" alt="Daftaron Logo" className="w-24 h-24 object-contain" />

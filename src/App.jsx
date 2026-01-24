@@ -16,8 +16,6 @@ import DebtDetailPage from './pages/DebtDetailPage'
 import ProfilePage from './pages/ProfilePage'
 
 export default function App() {
-    const hasSeenIntro = localStorage.getItem('hasSeenIntro') === 'true'
-    const token = localStorage.getItem('token')
 
     return (
         <Routes>
@@ -25,13 +23,17 @@ export default function App() {
             <Route
                 path="/login"
                 element={
-                    !hasSeenIntro ? <Navigate to="/intro" replace /> : <LoginPage />
+                    localStorage.getItem('hasSeenIntro') !== 'true'
+                        ? <Navigate to="/intro" replace />
+                        : <LoginPage />
                 }
             />
             <Route
                 path="/register"
                 element={
-                    !hasSeenIntro ? <Navigate to="/intro" replace /> : <RegisterPage />
+                    localStorage.getItem('hasSeenIntro') !== 'true'
+                        ? <Navigate to="/intro" replace />
+                        : <RegisterPage />
                 }
             />
             <Route path="/intro" element={<IntroPage />} />
@@ -47,7 +49,9 @@ export default function App() {
                 <Route
                     path="/"
                     element={
-                        !hasSeenIntro && !token ? <Navigate to="/intro" replace /> : <DashboardPage />
+                        localStorage.getItem('hasSeenIntro') !== 'true' && !localStorage.getItem('token')
+                            ? <Navigate to="/intro" replace />
+                            : <DashboardPage />
                     }
                 />
                 <Route path="/customers" element={<CustomersPage />} />
