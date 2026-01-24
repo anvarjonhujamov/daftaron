@@ -1,0 +1,753 @@
+openapi: 3.0.3
+info:
+  title: Daftaron API
+  version: 1.0.0
+  description: ERP/CRM tenant API
+servers:
+  - url: /api/v1
+tags:
+  - name: Auth
+  - name: Dashboard
+  - name: Customers
+  - name: Debts
+  - name: Payments
+  - name: Profile
+  - name: Notifications
+  - name: Locations
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+  parameters:
+    AcceptJson:
+      name: Accept
+      in: header
+      required: true
+      description: Always set to application/json
+      schema:
+        type: string
+        example: application/json
+    ContentTypeJson:
+      name: Content-Type
+      in: header
+      required: true
+      description: Send JSON request bodies
+      schema:
+        type: string
+        example: application/json
+  schemas:
+    User:
+      type: object
+      description: Authenticated user
+      properties:
+        id: { type: integer, description: User ID }
+        name: { type: string, description: Full name }
+        phone: { type: string, description: Phone number in international format }
+        email: { type: string, nullable: true, description: Optional email }
+        tenant_id: { type: integer, nullable: true, description: Tenant/organization ID }
+        status:
+          type: integer
+          description: "Account status: 1=active, 0=inactive"
+        trial_ends_at:
+          type: string
+          nullable: true
+          format: date-time
+          description: Trial end datetime (nullable)
+    CustomerListItem:
+      type: object
+      description: Customer list item with location names and total debt
+      properties:
+        id: { type: integer, description: Customer ID }
+        tenant_id: { type: integer, description: Tenant ID }
+        manager_id: { type: integer, nullable: true, description: Manager user ID }
+        region_id: { type: integer, nullable: true, description: Region ID }
+        district_id: { type: integer, nullable: true, description: District ID }
+        street_id: { type: integer, nullable: true, description: Street ID }
+        name: { type: string, description: Customer name }
+        phone: { type: string, description: Customer phone number }
+        address: { type: string, nullable: true, description: Full address text }
+        note: { type: string, nullable: true, description: Internal note }
+        total_debt:
+          type: number
+          description: Sum of remaining_amount across all debts
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        region: { type: string, nullable: true, description: Region name }
+        district: { type: string, nullable: true, description: District name }
+        street: { type: string, nullable: true, description: Street name }
+    Customer:
+      type: object
+      description: Customer create/update payload
+      properties:
+        id: { type: integer, description: Customer ID }
+        tenant_id: { type: integer, description: Tenant ID }
+        manager_id: { type: integer, nullable: true, description: Manager user ID }
+        region_id: { type: integer, nullable: true, description: Region ID }
+        district_id: { type: integer, nullable: true, description: District ID }
+        street_id: { type: integer, nullable: true, description: Street ID }
+        name: { type: string, description: Customer name }
+        phone: { type: string, description: Customer phone number }
+        address: { type: string, nullable: true, description: Full address text }
+        note: { type: string, nullable: true, description: Internal note }
+    Debt:
+      type: object
+      description: Debt (nasiya) record
+      properties:
+        id: { type: integer, description: Debt ID }
+        customer_id: { type: integer, description: Related customer ID }
+        total_amount: { type: number, description: Total debt amount }
+        remaining_amount: { type: number, description: Remaining unpaid amount }
+        status:
+          type: string
+          description: "Debt status: open or closed"
+          enum: [open, closed]
+        description: { type: string, nullable: true, description: Optional note }
+    Payment:
+      type: object
+      description: Payment for a debt
+      properties:
+        id: { type: integer, description: Payment ID }
+        debt_id: { type: integer, description: Related debt ID }
+        amount: { type: number, description: Payment amount }
+        paid_at: { type: string, format: date-time, description: Payment datetime }
+    PaginationLinks:
+      type: object
+      properties:
+        first: { type: string, nullable: true }
+        last: { type: string, nullable: true }
+        prev: { type: string, nullable: true }
+        next: { type: string, nullable: true }
+    PaginationMetaLink:
+      type: object
+      properties:
+        url: { type: string, nullable: true }
+        label: { type: string }
+        active: { type: boolean }
+    PaginationMeta:
+      type: object
+      properties:
+        current_page: { type: integer }
+        from: { type: integer, nullable: true }
+        last_page: { type: integer }
+        path: { type: string }
+        per_page: { type: integer }
+        to: { type: integer, nullable: true }
+        total: { type: integer }
+        links:
+          type: array
+          items: { $ref: "#/components/schemas/PaginationMetaLink" }
+    PaginatedCustomers:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerListItem" }
+        links: { $ref: "#/components/schemas/PaginationLinks" }
+        meta: { $ref: "#/components/schemas/PaginationMeta" }
+    PaginatedDebts:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Debt" }
+        links: { $ref: "#/components/schemas/PaginationLinks" }
+        meta: { $ref: "#/components/schemas/PaginationMeta" }
+    PaginatedPayments:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Payment" }
+        links: { $ref: "#/components/schemas/PaginationLinks" }
+        meta: { $ref: "#/components/schemas/PaginationMeta" }
+    Notification:
+      type: object
+      description: User notification
+      properties:
+        id: { type: string, description: Notification UUID }
+        type: { type: string, description: Notification class/type }
+        data: { type: object, description: Notification payload }
+        read_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    PaginatedNotifications:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+        links: { $ref: "#/components/schemas/PaginationLinks" }
+        meta: { $ref: "#/components/schemas/PaginationMeta" }
+    Region:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    District:
+      type: object
+      properties:
+        id: { type: integer }
+        region_id: { type: integer }
+        name: { type: string }
+    Street:
+      type: object
+      properties:
+        id: { type: integer }
+        district_id: { type: integer }
+        name: { type: string }
+paths:
+  /auth/login:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      summary: Login (telefon yoki email)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login:
+                  type: string
+                  description: Telefon raqam yoki email
+                password: { type: string }
+                device_name: { type: string }
+      responses:
+        "200":
+          description: Token and user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, description: Sanctum bearer token }
+                  user: { $ref: "#/components/schemas/User" }
+  /auth/register:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      summary: Register (starts SMS verification)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, password, password_confirmation, shop_name, region_id, district_id, street_id]
+              properties:
+                name: { type: string }
+                phone: { type: string }
+                email: { type: string }
+                password: { type: string }
+                password_confirmation: { type: string }
+                shop_name: { type: string }
+                region_id: { type: integer }
+                district_id: { type: integer }
+                street_id: { type: integer }
+      responses:
+        "201":
+          description: Verification sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+  /auth/verify:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      summary: Verify SMS code and create account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code]
+              properties:
+                phone: { type: string }
+                code: { type: string }
+                device_name: { type: string }
+      responses:
+        "200":
+          description: Token and user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  token: { type: string, description: Sanctum bearer token }
+                  user: { $ref: "#/components/schemas/User" }
+  /auth/me:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Auth]
+      security: [{ bearerAuth: [] }]
+      summary: Current user
+      responses:
+        "200":
+          description: User object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+  /auth/logout:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      security: [{ bearerAuth: [] }]
+      summary: Revoke token
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+  /dashboard:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Dashboard]
+      security: [{ bearerAuth: [] }]
+      summary: Tenant dashboard stats
+      responses:
+        "200":
+          description: Stats payload
+  /customers:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Customers]
+      security: [{ bearerAuth: [] }]
+      summary: List customers
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+      responses:
+        "200":
+          description: Paginated customers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCustomers"
+    post:
+      tags: [Customers]
+      security: [{ bearerAuth: [] }]
+      summary: Create customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Customer"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+  /customers/{id}:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Customers]
+      security: [{ bearerAuth: [] }]
+      summary: Customer detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    put:
+      tags: [Customers]
+      security: [{ bearerAuth: [] }]
+      summary: Update customer
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    delete:
+      tags: [Customers]
+      security: [{ bearerAuth: [] }]
+      summary: Delete customer
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+  /debts:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Debts]
+      security: [{ bearerAuth: [] }]
+      summary: List debts
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [open, closed]
+          description: Filter by status
+      responses:
+        "200":
+          description: Paginated debts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedDebts"
+    post:
+      tags: [Debts]
+      security: [{ bearerAuth: [] }]
+      summary: Create debt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id, total_amount]
+              properties:
+                customer_id: { type: integer, description: Customer ID }
+                total_amount: { type: number, description: Total debt amount }
+                description: { type: string, nullable: true }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Debt"
+  /debts/{id}:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Debts]
+      security: [{ bearerAuth: [] }]
+      summary: Debt detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Debt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Debt"
+    put:
+      tags: [Debts]
+      security: [{ bearerAuth: [] }]
+      summary: Update debt
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Debt"
+    delete:
+      tags: [Debts]
+      security: [{ bearerAuth: [] }]
+      summary: Delete debt
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+  /debts/{id}/close:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    patch:
+      tags: [Debts]
+      security: [{ bearerAuth: [] }]
+      summary: Close debt
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Closed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+  /payments:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Payments]
+      security: [{ bearerAuth: [] }]
+      summary: List payments
+      parameters:
+        - in: query
+          name: debt_id
+          schema: { type: integer }
+          description: Filter by debt ID
+      responses:
+        "200":
+          description: Paginated payments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedPayments"
+    post:
+      tags: [Payments]
+      security: [{ bearerAuth: [] }]
+      summary: Create payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [debt_id, amount]
+              properties:
+                debt_id: { type: integer, description: Debt ID }
+                amount: { type: number, description: Payment amount }
+                paid_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Optional payment datetime
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+  /profile:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Profile]
+      security: [{ bearerAuth: [] }]
+      summary: Profile
+      responses:
+        "200":
+          description: User + tenant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+    put:
+      tags: [Profile]
+      security: [{ bearerAuth: [] }]
+      summary: Update profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone]
+              properties:
+                name: { type: string }
+                phone: { type: string }
+                email: { type: string, nullable: true }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+  /profile/password:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    put:
+      tags: [Profile]
+      security: [{ bearerAuth: [] }]
+      summary: Update password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, password, password_confirmation]
+              properties:
+                current_password: { type: string }
+                password: { type: string }
+                password_confirmation: { type: string }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+  /notifications:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Notifications]
+      security: [{ bearerAuth: [] }]
+      summary: List notifications
+      responses:
+        "200":
+          description: Paginated notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedNotifications"
+  /notifications/{id}:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Notifications]
+      security: [{ bearerAuth: [] }]
+      summary: Notification detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+  /locations/regions:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Locations]
+      summary: Regions
+      responses:
+        "200":
+          description: List regions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Region" }
+  /locations/districts/{regionId}:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Locations]
+      summary: Districts by region
+      parameters:
+        - in: path
+          name: regionId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List districts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/District" }
+  /locations/streets/{districtId}:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Locations]
+      summary: Streets by district
+      parameters:
+        - in: path
+          name: districtId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List streets
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Street" }

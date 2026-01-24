@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply antialiased bg-gray-50 text-gray-900;
+    @apply dark:bg-gray-900 dark:text-white;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+}
+
+@layer components {
+
+  /* Buttons */
+  .btn {
+    @apply px-5 py-3.5 rounded-2xl font-semibold text-[15px] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+  }
+
+  .btn-primary {
+    @apply bg-blue-500 text-white;
+  }
+
+  .btn-primary:hover {
+    @apply bg-blue-600;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-gray-700 border border-gray-200;
+    @apply dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 text-white;
+  }
+
+  .btn-success {
+    @apply bg-green-500 text-white;
+  }
+
+  .btn-orange {
+    @apply bg-orange-500 text-white;
+  }
+
+  .btn-outline {
+    @apply bg-white text-gray-600 border border-gray-200;
+    @apply dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700;
+  }
+
+  .btn-outline-danger {
+    @apply bg-white text-red-500 border border-red-200;
+    @apply dark:bg-gray-800 dark:border-red-800;
+  }
+
+  .btn-outline-success {
+    @apply bg-white text-green-500 border border-green-200;
+    @apply dark:bg-gray-800 dark:border-green-800;
+  }
+
+  /* Input */
+  .input {
+    @apply w-full px-4 py-3.5 bg-white rounded-2xl text-[16px] border border-gray-200 placeholder:text-gray-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all duration-200;
+    @apply dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-900/50;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-2xl p-4 shadow-sm;
+    @apply dark:bg-gray-800 dark:shadow-none;
+  }
+
+  /* Labels */
+  .label {
+    @apply block text-[13px] font-medium text-gray-500 mb-2;
+    @apply dark:text-gray-400;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-[12px] font-semibold;
+  }
+
+  .badge-debtor {
+    @apply bg-red-50 text-red-500;
+    @apply dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  .badge-paid {
+    @apply bg-green-50 text-green-500;
+    @apply dark:bg-green-900/30 dark:text-green-400;
+  }
+
+  /* Filter Pills */
+  .pill {
+    @apply px-5 py-2.5 rounded-full text-[14px] font-medium transition-all duration-200;
+  }
+
+  .pill-active {
+    @apply bg-blue-500 text-white;
+  }
+
+  .pill-inactive {
+    @apply bg-white text-gray-600 border border-gray-200;
+    @apply dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700;
+  }
+
+  /* Avatar */
+  .avatar {
+    @apply rounded-full bg-green-500 flex items-center justify-center text-white font-semibold;
+  }
+
+  .avatar-sm {
+    @apply w-10 h-10 text-[14px];
+  }
+
+  .avatar-md {
+    @apply w-12 h-12 text-[16px];
+  }
+
+  .avatar-lg {
+    @apply w-20 h-20 text-[28px];
+  }
+
+  /* Gradient Card */
+  .gradient-card {
+    @apply rounded-2xl p-5 text-white;
+    background: linear-gradient(135deg, #4F8EF7 0%, #3B7AE4 100%);
+  }
+
+  /* Stat Card */
+  .stat-card {
+    @apply bg-white rounded-2xl p-4 flex-1;
+    @apply dark:bg-gray-800;
+  }
+
+  /* Section Title */
+  .section-title {
+    @apply text-[12px] font-semibold text-gray-500 uppercase tracking-wider mb-3;
+    @apply dark:text-gray-400;
+  }
+}
+
+/* Safe area padding */
+.pb-safe {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+  padding-top: max(16px, env(safe-area-inset-top));
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
