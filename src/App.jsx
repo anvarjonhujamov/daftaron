@@ -5,6 +5,7 @@ import PrivateRoute from './components/PrivateRoute'
 // Auth pages
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import IntroPage from './pages/IntroPage'
 
 // App pages
 import DashboardPage from './pages/DashboardPage'
@@ -15,11 +16,25 @@ import DebtDetailPage from './pages/DebtDetailPage'
 import ProfilePage from './pages/ProfilePage'
 
 export default function App() {
+    const hasSeenIntro = localStorage.getItem('hasSeenIntro') === 'true'
+    const token = localStorage.getItem('token')
+
     return (
         <Routes>
             {/* Public routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route
+                path="/login"
+                element={
+                    !hasSeenIntro ? <Navigate to="/intro" replace /> : <LoginPage />
+                }
+            />
+            <Route
+                path="/register"
+                element={
+                    !hasSeenIntro ? <Navigate to="/intro" replace /> : <RegisterPage />
+                }
+            />
+            <Route path="/intro" element={<IntroPage />} />
 
             {/* Protected routes */}
             <Route
@@ -29,7 +44,12 @@ export default function App() {
                     </PrivateRoute>
                 }
             >
-                <Route path="/" element={<DashboardPage />} />
+                <Route
+                    path="/"
+                    element={
+                        !hasSeenIntro && !token ? <Navigate to="/intro" replace /> : <DashboardPage />
+                    }
+                />
                 <Route path="/customers" element={<CustomersPage />} />
                 <Route path="/customers/new" element={<Navigate to="/customers" replace />} />
                 <Route path="/customers/:id" element={<CustomerDetailPage />} />

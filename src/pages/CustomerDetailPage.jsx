@@ -6,7 +6,7 @@ import { debtsApi } from '../api/debts.api'
 import { paymentsApi } from '../api/payments.api'
 import {
     ChevronLeft, MoreVertical, Phone as PhoneIcon, MessageSquare,
-    Plus, CreditCard, Loader2, FileText, X
+    Plus, CreditCard, Loader2, FileText, X, Trash2
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 
@@ -18,6 +18,8 @@ export default function CustomerDetailPage() {
     const [loading, setLoading] = useState(true)
     const [showDebtDrawer, setShowDebtDrawer] = useState(false)
     const [showPaymentDrawer, setShowPaymentDrawer] = useState(false)
+    const [showOptionsDrawer, setShowOptionsDrawer] = useState(false)
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [debtForm, setDebtForm] = useState({ amount: '', description: '' })
     const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null })
@@ -105,6 +107,19 @@ export default function CustomerDetailPage() {
         if (customer?.phone) window.location.href = `sms:${customer.phone}`
     }
 
+    const handleDelete = async () => {
+        setSubmitting(true)
+        try {
+            await customersApi.deleteCustomer(id)
+            navigate('/customers')
+        } catch (err) {
+            alert(err.response?.data?.message || 'Xatolik yuz berdi')
+        } finally {
+            setSubmitting(false)
+            setShowDeleteConfirm(false)
+        }
+    }
+
     const formatCurrency = (amount) => new Intl.NumberFormat('uz-UZ').format(amount || 0)
 
     const formatPhone = (phone) => {
@@ -135,28 +150,30 @@ export default function CustomerDetailPage() {
 
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-4 bg-white dark:bg-gray-800">
-                <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                    <ChevronLeft size={22} className="text-gray-600 dark:text-gray-300" />
-                </button>
-                <button className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                    <MoreVertical size={20} className="text-gray-600 dark:text-gray-300" />
-                </button>
-            </div>
-
-            {/* Profile Section */}
-            <div className="flex flex-col items-center py-6 bg-white dark:bg-gray-800">
-                <div className="avatar avatar-lg mb-4">{customer.name?.charAt(0)?.toUpperCase()}</div>
-                <h1 className="text-[22px] font-bold text-gray-900 dark:text-white mb-1">{customer.name}</h1>
-                <p className="text-gray-400 text-[15px]">{formatPhone(customer.phone)}</p>
+            {/* Header & Profile */}
+            <div className="bg-white dark:bg-gray-800 pb-4">
+                <div className="flex items-center justify-between px-4 py-4">
+                    <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                        <ChevronLeft size={22} className="text-gray-600 dark:text-gray-300" />
+                    </button>
+                    <div className="flex flex-col items-center">
+                        <h1 className="text-[18px] font-bold text-gray-900 dark:text-white leading-tight">{customer.name}</h1>
+                        <p className="text-gray-400 text-[13px]">{formatPhone(customer.phone)}</p>
+                    </div>
+                    <button
+                        onClick={() => setShowOptionsDrawer(true)}
+                        className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center"
+                    >
+                        <MoreVertical size={20} className="text-gray-600 dark:text-gray-300" />
+                    </button>
+                </div>
             </div>
 
             {/* Balance Card */}
-            <div className="px-4 -mt-2">
-                <div className="card text-center py-6">
-                    <p className="text-gray-500 dark:text-gray-400 text-[14px] mb-2">Joriy balans</p>
-                    <div className={`text-[28px] font-bold mb-3 ${totalDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
+            <div className="px-4 -mt-4">
+                <div className="card text-center py-4">
+                    <p className="text-gray-500 dark:text-gray-400 text-[13px] mb-1">Joriy balans</p>
+                    <div className={`text-[24px] font-bold mb-2 ${totalDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
                         {formatCurrency(totalDebt)} so'm
                     </div>
                     <span className={`badge ${totalDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
@@ -166,20 +183,20 @@ export default function CustomerDetailPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="px-4 mt-4">
-                <div className="flex gap-3 mb-4">
-                    <button onClick={handleCall} className="btn btn-outline flex-1"><PhoneIcon size={18} />Qo'ng'iroq</button>
-                    <button onClick={handleMessage} className="btn btn-outline flex-1"><MessageSquare size={18} />Xabar</button>
+            <div className="px-4 mt-3">
+                <div className="flex gap-2 mb-3">
+                    <button onClick={handleCall} className="btn btn-outline flex-1 py-3"><PhoneIcon size={18} />Qo'ng'iroq</button>
+                    <button onClick={handleMessage} className="btn btn-outline flex-1 py-3"><MessageSquare size={18} />Xabar</button>
                 </div>
-                <div className="flex gap-3">
-                    <button onClick={() => setShowDebtDrawer(true)} className="btn btn-outline-danger flex-1"><Plus size={18} />Nasiya qo'shish</button>
-                    <button onClick={() => setShowPaymentDrawer(true)} className="btn btn-outline-success flex-1"><Plus size={18} />To'lov qo'shish</button>
+                <div className="flex gap-2">
+                    <button onClick={() => setShowDebtDrawer(true)} className="btn btn-outline-danger flex-1 py-3"><Plus size={18} />Nasiya qo'shish</button>
+                    <button onClick={() => setShowPaymentDrawer(true)} className="btn btn-outline-success flex-1 py-3"><Plus size={18} />To'lov qo'shish</button>
                 </div>
             </div>
 
             {/* Timeline */}
-            <div className="px-4 mt-6">
-                <h2 className="text-[18px] font-semibold text-gray-900 dark:text-white mb-4">Timeline tarixi</h2>
+            <div className="px-4 mt-4">
+                <h2 className="text-[17px] font-semibold text-gray-900 dark:text-white mb-3">Timeline tarixi</h2>
                 {debts.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">Hali nasiya yo'q</div>
                 ) : (
@@ -320,6 +337,71 @@ export default function CustomerDetailPage() {
                                     {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}
                                 </button>
                             </form>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
+
+            {/* Options Drawer */}
+            <Drawer.Root open={showOptionsDrawer} onOpenChange={setShowOptionsDrawer}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 pb-safe">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => {
+                                        setShowOptionsDrawer(false)
+                                        setShowDeleteConfirm(true)
+                                    }}
+                                    className="w-full flex items-center gap-3 p-4 text-red-500 font-medium active:bg-gray-50 dark:active:bg-gray-700/50 rounded-2xl transition-colors"
+                                >
+                                    <Trash2 size={20} />
+                                    <span>Mijozni o'chirish</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowOptionsDrawer(false)}
+                                    className="w-full p-4 text-gray-500 font-medium active:bg-gray-50 dark:active:bg-gray-700/50 rounded-2xl transition-colors"
+                                >
+                                    Bekor qilish
+                                </button>
+                            </div>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
+
+            {/* Delete Confirmation Drawer */}
+            <Drawer.Root open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 pb-safe">
+                        <div className="p-6 text-center">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-6" />
+                            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Trash2 size={32} className="text-red-500" />
+                            </div>
+                            <h3 className="text-[20px] font-bold text-gray-900 dark:text-white mb-2">Mijozni o'chirish</h3>
+                            <p className="text-gray-500 dark:text-gray-400 mb-8">
+                                Haqiqatan ham <b>{customer.name}</b>ni o'chirmoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="btn btn-outline flex-1 px-4"
+                                    disabled={submitting}
+                                >
+                                    Yo'q
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="btn btn-danger flex-1 px-4"
+                                    disabled={submitting}
+                                >
+                                    {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Ha'}
+                                </button>
+                            </div>
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>

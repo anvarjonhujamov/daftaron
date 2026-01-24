@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardApi } from '../api/dashboard.api'
 import {
-    TrendingUp, TrendingDown, Users, ChevronRight,
-    UserPlus, PieChart
+    TrendingUp, Users, ChevronRight,
+    UserPlus, Activity, CheckCircle2
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 
@@ -18,7 +18,7 @@ export default function DashboardPage() {
     const loadStats = async () => {
         try {
             const data = await dashboardApi.getStats()
-            console.log('Dashboard stats mapping check:', data) // Debug for user console
+            console.log("Dashboard statistika ma'lumotlari:", data) // Debug for user console
             setStats(data)
         } catch (err) {
             console.error('Failed to load dashboard stats:', err)
@@ -84,38 +84,61 @@ export default function DashboardPage() {
         <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-                <div>
-                    <p className="text-gray-500 dark:text-gray-400 text-[14px] mb-1">Xush kelibsiz</p>
-                    <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Dashboard</h1>
-                </div>
-                <button className="text-[13px] text-blue-500 font-medium">Do'kon statistikasi</button>
+                <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Daftaron</h1>
             </div>
 
             {/* Main Stats Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="card dark:bg-gray-800 p-4 flex flex-col justify-between h-[100px]">
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">Jami mijozlar</p>
-                    <p className="text-[24px] font-bold text-gray-900 dark:text-white">
-                        {totalCustomers}
-                    </p>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* Jami mijozlar */}
+                <div className="relative overflow-hidden rounded-[24px] p-5 h-[120px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-transform">
+                    <div className="relative z-10 flex flex-col justify-between h-full text-white">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[13px] font-medium opacity-90">Jami mijozlar</span>
+                            <div className="p-2 bg-white/20 rounded-xl">
+                                <Users size={18} className="text-white" />
+                            </div>
+                        </div>
+                        <p className="text-[28px] font-bold leading-none">{totalCustomers}</p>
+                    </div>
                 </div>
-                <div className="card dark:bg-gray-800 p-4 flex flex-col justify-between h-[100px]">
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">Umumiy nasiya</p>
-                    <p className="text-[20px] font-bold text-gray-900 dark:text-white truncate">
-                        {formatCurrency(totalGiven)}
-                    </p>
+
+                {/* Umumiy nasiya */}
+                <div className="relative overflow-hidden rounded-[24px] p-5 h-[120px] bg-gradient-to-br from-orange-400 to-rose-500 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-transform">
+                    <div className="relative z-10 flex flex-col justify-between h-full text-white">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[13px] font-medium opacity-90">Umumiy nasiya</span>
+                            <div className="p-2 bg-white/20 rounded-xl">
+                                <TrendingUp size={18} className="text-white" />
+                            </div>
+                        </div>
+                        <p className="text-[22px] font-bold leading-none truncate">{formatCurrency(totalGiven)}</p>
+                    </div>
                 </div>
-                <div className="card dark:bg-gray-800 p-4 flex flex-col justify-between h-[100px]">
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">Qolgan qarz</p>
-                    <p className="text-[20px] font-bold text-red-500 truncate">
-                        {formatCurrency(totalDebt)}
-                    </p>
+
+                {/* Qolgan qarz */}
+                <div className="relative overflow-hidden rounded-[24px] p-5 h-[120px] bg-gradient-to-br from-rose-500 to-red-700 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-transform">
+                    <div className="relative z-10 flex flex-col justify-between h-full text-white">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[13px] font-medium opacity-90">Qolgan qarz</span>
+                            <div className="p-2 bg-white/20 rounded-xl">
+                                <Activity size={18} className="text-white" />
+                            </div>
+                        </div>
+                        <p className="text-[22px] font-bold leading-none truncate">{formatCurrency(totalDebt)}</p>
+                    </div>
                 </div>
-                <div className="card dark:bg-gray-800 p-4 flex flex-col justify-between h-[100px]">
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">To'langan summa</p>
-                    <p className="text-[20px] font-bold text-green-500 truncate">
-                        {formatCurrency(totalPaid)}
-                    </p>
+
+                {/* To'langan summa */}
+                <div className="relative overflow-hidden rounded-[24px] p-5 h-[120px] bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-transform">
+                    <div className="relative z-10 flex flex-col justify-between h-full text-white">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[13px] font-medium opacity-90">To'langan summa</span>
+                            <div className="p-2 bg-white/20 rounded-xl">
+                                <CheckCircle2 size={18} className="text-white" />
+                            </div>
+                        </div>
+                        <p className="text-[22px] font-bold leading-none truncate">{formatCurrency(totalPaid)}</p>
+                    </div>
                 </div>
             </div>
 

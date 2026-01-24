@@ -162,9 +162,9 @@ export default function CustomersPage() {
             {/* Filter Pills */}
             <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
                 {[
-                    { value: '', label: 'Барчаси' },
-                    { value: 'debtors', label: 'Қарздорлар' },
-                    { value: 'paid', label: 'Тўланган' }
+                    { value: '', label: 'Barchasi' },
+                    { value: 'debtors', label: 'Qarzdorlar' },
+                    { value: 'paid', label: 'To\'langan' }
                 ].map(tab => (
                     <button
                         key={tab.value}
