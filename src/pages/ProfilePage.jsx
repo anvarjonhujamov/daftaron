@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 
 export default function ProfilePage() {
     const navigate = useNavigate()
@@ -49,7 +50,7 @@ export default function ProfilePage() {
             setUser(userData)
             setProfileForm({
                 name: userData.name || '',
-                phone: userData.phone || '',
+                phone: formatPhoneNumber(userData.phone || ''),
                 email: userData.email || ''
             })
         } catch (err) {
@@ -76,7 +77,8 @@ export default function ProfilePage() {
         setMessage({ type: '', text: '' })
 
         try {
-            const data = await profileApi.updateProfile(profileForm)
+            const submitData = { ...profileForm, phone: getRawPhoneNumber(profileForm.phone) }
+            const data = await profileApi.updateProfile(submitData)
             const updatedUser = data.user || data
             setUser(updatedUser)
             localStorage.setItem('user', JSON.stringify(updatedUser))
@@ -293,10 +295,14 @@ export default function ProfilePage() {
                                     <div className="relative">
                                         <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                         <input
-                                            type="tel"
+                                            type="text"
                                             className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11"
+                                            placeholder="+998 XX XXX XX XX"
                                             value={profileForm.phone}
-                                            onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                                            onChange={(e) => {
+                                                const formatted = formatPhoneNumber(e.target.value)
+                                                setProfileForm({ ...profileForm, phone: formatted })
+                                            }}
                                             required
                                         />
                                     </div>

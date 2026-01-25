@@ -4,12 +4,13 @@ import { authApi } from '../api/auth.api'
 import { Eye, EyeOff } from 'lucide-react'
 import LocationSelector from '../components/LocationSelector'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 
 export default function RegisterPage() {
     const navigate = useNavigate()
     const [form, setForm] = useState({
         name: '',
-        phone: '',
+        phone: PHONE_PREFIX,
         email: '',
         password: '',
         password_confirmation: '',
@@ -35,7 +36,8 @@ export default function RegisterPage() {
         setErrors({})
 
         try {
-            const data = await authApi.register(form)
+            const submitData = { ...form, phone: getRawPhoneNumber(form.phone) }
+            const data = await authApi.register(submitData)
             // Register returns token directly
             if (data.token) {
                 localStorage.setItem('token', data.token)
@@ -90,11 +92,14 @@ export default function RegisterPage() {
                         <div>
                             <label className="label">Telefon raqam</label>
                             <input
-                                type="tel"
+                                type="text"
                                 className="input"
-                                placeholder="+998901234567"
+                                placeholder="+998 XX XXX XX XX"
                                 value={form.phone}
-                                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                                onChange={(e) => {
+                                    const formatted = formatPhoneNumber(e.target.value)
+                                    setForm({ ...form, phone: formatted })
+                                }}
                                 required
                             />
                             {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone[0]}</p>}

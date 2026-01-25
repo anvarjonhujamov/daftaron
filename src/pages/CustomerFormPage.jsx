@@ -3,12 +3,13 @@ import { useNavigate, Link } from 'react-router-dom'
 import { customersApi } from '../api/customers.api'
 import LocationSelector from '../components/LocationSelector'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 
 export default function CustomerFormPage() {
     const navigate = useNavigate()
     const [form, setForm] = useState({
         name: '',
-        phone: '',
+        phone: PHONE_PREFIX,
         address: '',
         note: '',
         region_id: null,
@@ -30,7 +31,8 @@ export default function CustomerFormPage() {
         setErrors({})
 
         try {
-            await customersApi.createCustomer(form)
+            const submitData = { ...form, phone: getRawPhoneNumber(form.phone) }
+            await customersApi.createCustomer(submitData)
             navigate('/customers')
         } catch (err) {
             if (err.response?.status === 422) {
@@ -78,11 +80,14 @@ export default function CustomerFormPage() {
                     <div>
                         <label className="label">Telefon raqam *</label>
                         <input
-                            type="tel"
+                            type="text"
                             className="input"
-                            placeholder="+998901234567"
+                            placeholder="+998 XX XXX XX XX"
                             value={form.phone}
-                            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                            onChange={(e) => {
+                                const formatted = formatPhoneNumber(e.target.value)
+                                setForm({ ...form, phone: formatted })
+                            }}
                             required
                         />
                         {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone[0]}</p>}

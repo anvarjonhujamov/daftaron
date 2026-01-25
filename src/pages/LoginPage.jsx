@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../api/auth.api'
 import { Loader2, Phone, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 
 export default function LoginPage() {
     const navigate = useNavigate()
-    const [form, setForm] = useState({ phone: '', password: '' })
+    const [form, setForm] = useState({ phone: PHONE_PREFIX, password: '' })
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState('')
@@ -26,7 +27,8 @@ export default function LoginPage() {
         setError('')
 
         try {
-            const data = await authApi.login(form.phone, form.password)
+            const rawPhone = getRawPhoneNumber(form.phone)
+            const data = await authApi.login(rawPhone, form.password)
             localStorage.setItem('token', data.token)
             localStorage.setItem('user', JSON.stringify(data.user))
             navigate('/')
@@ -72,9 +74,12 @@ export default function LoginPage() {
                                 <input
                                     type="text"
                                     className="input pl-11"
-                                    placeholder="+998901234567"
+                                    placeholder="+998 XX XXX XX XX"
                                     value={form.phone}
-                                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                                    onChange={(e) => {
+                                        const formatted = formatPhoneNumber(e.target.value)
+                                        setForm({ ...form, phone: formatted })
+                                    }}
                                     required
                                 />
                             </div>

@@ -1,0 +1,747 @@
+# DAFTARON - React Native Mobile App Conversion Prompt
+# Complete Technical Specification for Converting PWA to React Native APK
+
+## 🎯 PROJECT OVERVIEW
+
+**App Name:** Daftaron
+**App Purpose:** Credit Sales (Nasiya) Management System for Small Business Owners
+**Language:** Uzbek (Latin) - All UI text must be in Uzbek
+**Target Platform:** Android APK (React Native with Expo)
+**Design Style:** Modern iOS-style with dark mode support
+
+### What This App Does:
+Daftaron replaces traditional paper notebooks for small business owners who sell goods on credit. It allows shopkeepers to:
+- Track customers and their credit balances
+- Record new debts (nasiya) when customers buy on credit
+- Record payments when customers pay their debts
+- View reports and history of all transactions
+- Manage their profile and business settings
+
+---
+
+## 🔌 API CONFIGURATION
+
+**Base URL:** `https://daftaron.devxurshidbek.uz/api/v1`
+
+**Authentication:** Bearer Token (Sanctum)
+- Store token securely using `@react-native-async-storage/async-storage`
+- Token stored with key: `token`
+- User data stored with key: `user`
+
+### API Endpoints:
+
+#### Authentication
+```
+POST /auth/login
+Body: { phone, password, device_name }
+Response: { token, user }
+
+POST /auth/register  
+Body: { name, phone, email?, password, password_confirmation, shop_name, region_id, district_id, street_id }
+Response: { token, user }
+
+GET /auth/me
+Headers: Authorization: Bearer {token}
+Response: { user }
+
+POST /auth/logout
+Headers: Authorization: Bearer {token}
+```
+
+#### Dashboard
+```
+GET /dashboard
+Response: { total_customers, total_debts, remaining_debts, total_payments, payments_this_month, debts_this_month, recent_customers[] }
+```
+
+#### Customers
+```
+GET /customers
+GET /customers/{id}
+POST /customers
+Body: { name, phone, address?, note?, region_id?, district_id?, street_id? }
+
+PUT /customers/{id}
+DELETE /customers/{id}
+```
+
+#### Debts
+```
+GET /debts
+Params: status=open|closed, per_page
+
+GET /debts/{id}
+POST /debts
+Body: { customer_id, total_amount, description? }
+
+PUT /debts/{id}
+DELETE /debts/{id}
+PATCH /debts/{id}/close
+```
+
+#### Payments
+```
+GET /payments
+Params: debt_id, per_page
+
+POST /payments
+Body: { debt_id, amount, paid_at? }
+```
+
+#### Profile
+```
+GET /profile
+PUT /profile
+Body: { name, phone, email? }
+
+PUT /profile/password
+Body: { current_password, password, password_confirmation }
+```
+
+#### Locations (for registration)
+```
+GET /locations/regions
+GET /locations/districts/{regionId}
+GET /locations/streets/{districtId}
+```
+
+---
+
+## 📱 SCREENS & NAVIGATION
+
+### Navigation Structure:
+```
+Root Navigator (Stack):
+├── LoginScreen
+├── RegisterScreen
+└── MainTabs (Tab Navigator)
+    ├── DashboardScreen (Home icon, label: "Bosh sahifa")
+    ├── CustomersScreen (Users icon, label: "Mijozlar")
+    ├── HistoryScreen (History icon, label: "Tarix")  
+    ├── ReportsScreen (BarChart icon, label: "Xisobotlar")
+    └── ProfileScreen (Settings icon, label: "Sozlamalar")
+
+Stack Screens (accessible from tabs):
+├── CustomerDetailScreen
+├── DebtDetailScreen
+```
+
+---
+
+## 📄 DETAILED SCREEN SPECIFICATIONS
+
+### 1. LOGIN SCREEN (LoginPage)
+**Route:** `/login` (initial if no token)
+
+**UI Elements:**
+- Logo: Daftaron logo (centered, 96x96px with rounded corners)
+- Title: "Daftaron" (28px bold)
+- Subtitle: "Nasiya boshqaruvi tizimi" (15px gray)
+- Card with:
+  - Heading: "Kirish" (20px semibold)
+  - Phone input with Phone icon (placeholder: "+998901234567")
+  - Password input with Lock icon and show/hide toggle
+  - Error message area (red background when error)
+  - Submit button: "Kirish" with ArrowRight icon
+- Link: "Hisobingiz yo'qmi? Ro'yxatdan o'tish"
+
+**Logic:**
+- Call `authApi.login(phone, password, 'mobile')`
+- Store token and user in AsyncStorage
+- Navigate to Dashboard on success
+- Show error message on failure
+
+---
+
+### 2. REGISTER SCREEN (RegisterPage)
+**Route:** `/register`
+
+**UI Elements:**
+- Back link: "← Kirish"
+- Title: "Ro'yxatdan o'tish"
+- Form fields:
+  - To'liq ism (name) - required
+  - Telefon raqam (phone) - required
+  - Email (optional)
+  - Do'kon nomi (shop_name) - required
+  - LocationSelector component:
+    - Viloyat (region) dropdown
+    - Tuman (district) dropdown
+    - Ko'cha/MFY (street) dropdown
+  - Parol with show/hide toggle
+  - Parolni tasdiqlang with show/hide toggle
+- Submit button: "Ro'yxatdan o'tish"
+- Link: "Hisobingiz bormi? Kirish"
+
+**Logic:**
+- Cascading dropdowns: region → district → street
+- Password validation
+- Call `authApi.register(data)`
+- Auto-login on success
+
+---
+
+### 3. DASHBOARD SCREEN (DashboardPage)
+**Route:** `/` (main tab)
+
+**UI Elements:**
+- Header: "Daftaron" title + History icon button (→ HistoryScreen)
+- 4 Stat Cards in 2x2 grid:
+  1. "Jami mijozlar" - Blue gradient, Users icon
+  2. "Umumiy nasiya" - Orange gradient, TrendingUp icon  
+  3. "Qolgan qarz" - Red gradient, Activity icon
+  4. "To'langan summa" - Green gradient, CheckCircle icon
+- "Qarzdorlar" section:
+  - List of top 3 customers with debt > 0
+  - Each shows: name, phone, debt amount, avatar
+  - "Barchasini ko'rish" link
+- Fixed bottom button: "Yangi mijoz qo'shish" with UserPlus icon
+
+**Data Mapping (from dashboardApi.getStats()):**
+```javascript
+totalCustomers = stats.total_customers
+totalGiven = stats.total_debts
+totalDebt = stats.remaining_debts  
+totalPaid = stats.total_payments
+recentCustomers = stats.recent_customers
+```
+
+---
+
+### 4. CUSTOMERS SCREEN (CustomersPage)
+**Route:** `/customers` (tab)
+
+**UI Elements:**
+- Header: "Mijozlar" + Add button (blue, Plus icon)
+- Search input with Search icon, X clear button
+- Filter pills: "Barchasi" | "Qarzdorlar" | "To'langan"
+- Count: "{count} ta mijoz"
+- Customer list:
+  - Avatar with first letter
+  - Name (highlight search match)
+  - Phone (highlight search match if numeric)
+  - Debt amount (red if > 0, green if 0)
+  - Status badge: "Qarzdor" (red) or "To'langan" (green)
+  - ChevronRight icon
+- Empty state when no customers
+- Add Customer Bottom Sheet:
+  - Title: "Mijoz qo'shish"
+  - Name input (required)
+  - Phone input (optional)
+  - Submit button: "Mijoz qo'shish"
+
+**Logic:**
+- Filter by debtors/paid
+- Search by name or phone (last 4 digits)
+- Navigate to CustomerDetail on tap
+
+---
+
+### 5. CUSTOMER DETAIL SCREEN (CustomerDetailPage)
+**Route:** `/customers/:id`
+
+**UI Elements:**
+- Header: Back button, Customer name & phone (centered), Options menu (3 dots)
+- Balance Card:
+  - Large debt amount (red/green based on balance)
+  - Status badge
+- Action Buttons (2 rows):
+  - Row 1: "Qo'ng'iroq" (Linking.openURL tel:), "Xabar" (Linking.openURL sms:)
+  - Row 2: "Nasiya qo'shish" (red outline), "To'lov qo'shish" (green outline)
+- Timeline section: "Timeline tarixi"
+  - Debt cards showing:
+    - Status badge (Faol/Yopilgan)
+    - Date
+    - Total amount, Remaining amount
+    - Description (if exists)
+    - "To'lov qilish" button (if open)
+    - "Batafsil ko'rish" link
+
+**Bottom Sheets:**
+1. Add Debt Sheet:
+   - Summa input with CreditCard icon
+   - Izoh textarea (optional)
+   - "Saqlash" button (orange)
+
+2. Add Payment Sheet:
+   - Summa input
+   - "Saqlash" button
+
+3. Options Sheet:
+   - "Mijozni o'chirish" (red, Trash icon)
+   - "Bekor qilish"
+
+4. Delete Confirmation Sheet:
+   - Warning icon
+   - Title: "Mijozni o'chirish"
+   - Message with customer name
+   - "Yo'q" / "Ha" buttons
+
+**Payment Logic:**
+- When paying, distribute payment across all open debts starting from oldest
+- If specific debt selected, pay that first then overflow to others
+
+---
+
+### 6. DEBTS/REPORTS SCREEN (DebtsPage)
+**Route:** `/debts` (tab)
+
+**UI Elements:**
+- Header: "Hisobotlar" title
+- Subtitle: "Biznes tahlili va ko'rsatkichlar"
+- Date Picker Card:
+  - Calendar icon
+  - "Hisobot davri" label
+  - Selected month name (e.g., "Yanvar 2026")
+- Monthly Report Section:
+  - "Berilgan nasiyalar" with amount (red)
+  - "Qabul qilingan to'lovlar" with amount (green)
+- "So'nggi faoliyat" Section:
+  - Last 5 activities (debts + payments combined)
+  - Each shows: customer name, date/time, amount
+  - "Barchasi" link to History
+
+**Month Picker Bottom Sheet:**
+- Year selector with left/right arrows
+- 3x4 grid of month names (Uzbek):
+  ```
+  Yanvar, Fevral, Mart, Aprel, May, Iyun,
+  Iyul, Avgust, Sentyabr, Oktyabr, Noyabr, Dekabr
+  ```
+- Selected month highlighted blue
+
+---
+
+### 7. DEBT DETAIL SCREEN (DebtDetailPage)
+**Route:** `/debts/:id`
+
+**UI Elements:**
+- Back button: "Orqaga"
+- Debt Card:
+  - Status + action buttons:
+    - If open: "Yopish" button (CheckCircle icon)
+    - Delete button (Trash icon, red)
+  - Progress section:
+    - "To'landi" label
+    - Percentage
+    - Progress bar (blue fill)
+  - Metrics row (3 columns):
+    - "Jami" (total amount)
+    - "To'landi" (paid amount, green)
+    - "Qoldi" (remaining, red)
+  - Description (if exists)
+- Payment History:
+  - Title: "To'lovlar tarixi" with count badge
+  - List of payments:
+    - Amount, date/time
+    - Green checkmark icon
+
+---
+
+### 8. HISTORY SCREEN (HistoryPage)
+**Route:** `/payments` (tab)
+
+**UI Elements:**
+- Header: Back button + "To'lovlar tarixi" / "Nasiyalar tarixi"
+- Subtitle: "Barcha qabul qilingan to'lovlar" / "Barcha berilgan nasiyalar"
+- Mode Toggle (pill switch):
+  - "To'lovlar tarixi" (green when active)
+  - "Nasiyalar tarixi" (red when active)
+- Search input
+- Grouped by date:
+  - Date header (MM/DD/YYYY)
+  - List items with:
+    - Icon (TrendingDown green or TrendingUp red)
+    - Customer name
+    - Date/time
+    - Amount
+    - Phone number
+- "Yana 50 tasini ko'rish" load more button (when > displayLimit)
+
+**Logic:**
+- Initial display limit: 50
+- Load more adds 50
+- Search across: customer name, phone, amount, description
+- Sort by date descending
+
+---
+
+### 9. PROFILE SCREEN (ProfilePage)  
+**Route:** `/profile` (tab)
+
+**UI Elements:**
+- Header: "Sozlamalar"
+- User Card:
+  - Avatar with initial
+  - Name, phone
+  - Edit button (Edit3 icon)
+- Trial Period Card (if trial_ends_at):
+  - Clock icon, orange theme
+  - "Sinov rejimi" + end date
+- Settings Menu:
+  - Dark Mode Toggle:
+    - Moon/Sun icon
+    - "Tungi rejim" / "Kunduzgi rejim"
+    - Toggle switch
+  - "Parolni o'zgartirish" (Lock icon)
+- Logout Button: "Chiqish" (red, LogOut icon)
+
+**Bottom Sheets:**
+1. Edit Profile:
+   - Name, Phone, Email inputs
+   - "Saqlash" button
+
+2. Change Password:
+   - Current password
+   - New password  
+   - Confirm password
+   - "O'zgartirish" button
+
+**Dark Mode:**
+- Store preference in AsyncStorage key: `darkMode`
+- Apply theme on app load
+
+---
+
+## 🎨 DESIGN SYSTEM
+
+### Colors:
+```javascript
+const colors = {
+  // Primary
+  blue: '#3B82F6',
+  blueLight: '#93C5FD',
+  
+  // Status
+  green: '#22C55E',
+  greenLight: '#BBF7D0',
+  red: '#EF4444',
+  redLight: '#FEE2E2',
+  orange: '#F97316',
+  orangeLight: '#FFEDD5',
+  
+  // Grays
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray400: '#9CA3AF',
+  gray500: '#6B7280',
+  gray600: '#4B5563',
+  gray700: '#374151',
+  gray800: '#1F2937',
+  gray900: '#111827',
+  
+  // Dark mode
+  dark: {
+    background: '#111827',
+    card: '#1F2937',
+    border: '#374151'
+  }
+}
+```
+
+### Typography:
+```javascript
+const typography = {
+  h1: { fontSize: 28, fontWeight: '700' },
+  h2: { fontSize: 20, fontWeight: '600' },
+  h3: { fontSize: 17, fontWeight: '600' },
+  body: { fontSize: 15 },
+  small: { fontSize: 13 },
+  tiny: { fontSize: 11 },
+}
+```
+
+### Components:
+
+**Button Styles:**
+```javascript
+btn: { paddingHorizontal: 20, paddingVertical: 14, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }
+btnPrimary: { backgroundColor: colors.blue }
+btnSecondary: { backgroundColor: 'white', borderWidth: 1, borderColor: colors.gray200 }
+btnDanger: { backgroundColor: colors.red }
+btnOutline: { backgroundColor: 'white', borderWidth: 1, borderColor: colors.gray200 }
+btnOutlineDanger: { backgroundColor: 'white', borderWidth: 1, borderColor: colors.red }
+btnOutlineSuccess: { backgroundColor: 'white', borderWidth: 1, borderColor: colors.green }
+```
+
+**Input Styles:**
+```javascript
+input: { 
+  width: '100%', 
+  paddingHorizontal: 16, 
+  paddingVertical: 14, 
+  backgroundColor: 'white', 
+  borderRadius: 16, 
+  fontSize: 16, 
+  borderWidth: 1, 
+  borderColor: colors.gray200 
+}
+```
+
+**Card Styles:**
+```javascript
+card: { backgroundColor: 'white', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }
+```
+
+**Badge Styles:**
+```javascript
+badge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, fontSize: 12, fontWeight: '600' }
+badgeDebtor: { backgroundColor: colors.redLight, color: colors.red }
+badgePaid: { backgroundColor: colors.greenLight, color: colors.green }
+```
+
+### Icons:
+Use `lucide-react-native` package:
+```javascript
+import { 
+  Home, Users, BarChart3, Settings, History,
+  Search, Plus, ChevronRight, ChevronLeft, X,
+  Phone, Lock, Mail, User, Eye, EyeOff, ArrowRight,
+  TrendingUp, TrendingDown, Activity, CheckCircle2,
+  CreditCard, FileText, Calendar, Clock,
+  Edit3, Trash2, MoreVertical, MessageSquare,
+  LogOut, Moon, Sun, ArrowLeft, ArrowUpRight, ArrowDownRight,
+  Receipt, Loader2, UserPlus
+} from 'lucide-react-native'
+```
+
+---
+
+## 📦 REQUIRED PACKAGES
+
+```json
+{
+  "dependencies": {
+    "expo": "~50.0.0",
+    "expo-status-bar": "~1.11.1",
+    "react-native": "0.73.0",
+    "@react-navigation/native": "^6.1.0",
+    "@react-navigation/bottom-tabs": "^6.5.0",
+    "@react-navigation/native-stack": "^6.9.0",
+    "react-native-screens": "~3.29.0",
+    "react-native-safe-area-context": "4.8.2",
+    "@react-native-async-storage/async-storage": "1.21.0",
+    "axios": "^1.6.0",
+    "lucide-react-native": "^0.300.0",
+    "react-native-svg": "14.1.0",
+    "react-native-gesture-handler": "~2.14.0",
+    "react-native-reanimated": "~3.6.0",
+    "@gorhom/bottom-sheet": "^4.6.0"
+  }
+}
+```
+
+---
+
+## 📁 RECOMMENDED PROJECT STRUCTURE
+
+```
+src/
+├── api/
+│   ├── axios.js          # Axios instance with interceptors
+│   ├── auth.api.js       # Login, register, logout, me
+│   ├── customers.api.js  # Customer CRUD
+│   ├── debts.api.js      # Debt CRUD + close
+│   ├── payments.api.js   # Payments
+│   ├── dashboard.api.js  # Dashboard stats
+│   ├── locations.api.js  # Regions, districts, streets
+│   ├── profile.api.js    # Profile + password
+│   └── notifications.api.js
+├── components/
+│   ├── BottomSheet.jsx   # Reusable bottom sheet
+│   ├── LoadingSpinner.jsx
+│   ├── EmptyState.jsx
+│   ├── StatusBadge.jsx
+│   ├── LocationSelector.jsx
+│   └── Avatar.jsx
+├── screens/
+│   ├── auth/
+│   │   ├── LoginScreen.jsx
+│   │   └── RegisterScreen.jsx
+│   ├── DashboardScreen.jsx
+│   ├── CustomersScreen.jsx
+│   ├── CustomerDetailScreen.jsx
+│   ├── DebtsScreen.jsx
+│   ├── DebtDetailScreen.jsx
+│   ├── HistoryScreen.jsx
+│   └── ProfileScreen.jsx
+├── navigation/
+│   ├── RootNavigator.jsx
+│   ├── TabNavigator.jsx
+│   └── AuthNavigator.jsx
+├── context/
+│   ├── AuthContext.jsx   # Auth state & token management
+│   └── ThemeContext.jsx  # Dark mode state
+├── hooks/
+│   ├── useAuth.js
+│   └── useTheme.js
+├── theme/
+│   ├── colors.js
+│   ├── typography.js
+│   └── styles.js
+└── utils/
+    ├── formatCurrency.js
+    ├── formatDate.js
+    └── formatPhone.js
+```
+
+---
+
+## 🔧 UTILITY FUNCTIONS
+
+```javascript
+// Format currency (Uzbek style)
+export const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('uz-UZ').format(amount || 0)
+}
+
+// Format date: MM/DD/YYYY HH:mm
+export const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const yyyy = date.getFullYear()
+  const hh = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  return `${mm}/${dd}/${yyyy} ${hh}:${min}`
+}
+
+// Format phone: +998 90 123 45 67
+export const formatPhone = (phone) => {
+  if (!phone) return ''
+  const cleaned = phone.replace(/\D/g, '')
+  if (cleaned.length === 12) {
+    return `+${cleaned.slice(0,3)} ${cleaned.slice(3,5)} ${cleaned.slice(5,8)} ${cleaned.slice(8,10)} ${cleaned.slice(10,12)}`
+  }
+  return phone
+}
+```
+
+---
+
+## ⚙️ AXIOS CONFIGURATION
+
+```javascript
+import axios from 'axios'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
+const api = axios.create({
+  baseURL: 'https://daftaron.devxurshidbek.uz/api/v1',
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  }
+})
+
+// Request interceptor
+api.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+// Response interceptor - handle 401
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      await AsyncStorage.removeItem('token')
+      await AsyncStorage.removeItem('user')
+      // Navigate to login (handle via navigation ref)
+    }
+    return Promise.reject(error)
+  }
+)
+
+export default api
+```
+
+---
+
+## 📲 BUILD APK INSTRUCTIONS
+
+1. Install EAS CLI: `npm install -g eas-cli`
+2. Login to Expo: `eas login`
+3. Configure: `eas build:configure`
+4. Build APK: `eas build -p android --profile preview`
+
+**app.json configuration:**
+```json
+{
+  "expo": {
+    "name": "Daftaron",
+    "slug": "daftaron",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#3B82F6"
+    },
+    "android": {
+      "package": "uz.daftaron.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#3B82F6"
+      }
+    }
+  }
+}
+```
+
+---
+
+## 🎯 KEY IMPLEMENTATION NOTES
+
+1. **Bottom Sheets:** Use `@gorhom/bottom-sheet` to replicate the vaul drawer behavior
+2. **Safe Areas:** All screens must use SafeAreaView for proper insets
+3. **Dark Mode:** Implement using React Context + AsyncStorage persistence
+4. **Pull to Refresh:** Add to list screens (Customers, History)
+5. **Loading States:** Show LoadingSpinner during API calls
+6. **Error Handling:** Show toast/alert on API errors
+7. **Navigation:** Use React Navigation with stack and tab navigators
+8. **Gestures:** Implement swipe-to-dismiss for bottom sheets
+9. **Animations:** Use Reanimated for smooth transitions
+10. **Keyboard Handling:** Use KeyboardAvoidingView in forms
+
+---
+
+## 📝 UZBEK MONTH NAMES
+
+```javascript
+export const MONTH_NAMES = [
+  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+  'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'
+]
+```
+
+---
+
+## ✅ COMPLETE CHECKLIST
+
+- [ ] Setup Expo project with all dependencies
+- [ ] Configure Axios with token interceptors
+- [ ] Implement AuthContext for login state
+- [ ] Implement ThemeContext for dark mode
+- [ ] Create all API service modules
+- [ ] Build reusable components (Button, Input, Card, Badge, etc.)
+- [ ] Implement all 9 screens
+- [ ] Setup navigation structure
+- [ ] Add pull-to-refresh to list screens
+- [ ] Implement bottom sheets for all forms
+- [ ] Add loading and error states
+- [ ] Test all API integrations
+- [ ] Build and test APK
+- [ ] Polish animations and transitions
+
+---
+
+This prompt contains everything needed to build the complete Daftaron mobile app in React Native. The API endpoints, data structures, UI components, and business logic are all documented based on the existing working PWA codebase.

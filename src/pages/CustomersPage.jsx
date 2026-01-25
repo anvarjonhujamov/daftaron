@@ -5,6 +5,7 @@ import { customersApi } from '../api/customers.api'
 import { Search, Plus, ChevronRight, Users, User, Phone, X, Loader2 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 
 export default function CustomersPage() {
     const location = useLocation()
@@ -14,7 +15,7 @@ export default function CustomersPage() {
     const [filter, setFilter] = useState('')
     const [showAddDrawer, setShowAddDrawer] = useState(false)
     const [submitting, setSubmitting] = useState(false)
-    const [form, setForm] = useState({ name: '', phone: '' })
+    const [form, setForm] = useState({ name: '', phone: PHONE_PREFIX })
 
     useEffect(() => {
         loadCustomers()
@@ -80,11 +81,12 @@ export default function CustomersPage() {
 
         setSubmitting(true)
         try {
+            const rawPhone = getRawPhoneNumber(form.phone)
             await customersApi.createCustomer({
                 name: form.name.trim(),
-                phone: form.phone.trim() || null
+                phone: rawPhone !== '+998' ? rawPhone : null
             })
-            setForm({ name: '', phone: '' })
+            setForm({ name: '', phone: PHONE_PREFIX })
             setShowAddDrawer(false)
             loadCustomers()
         } catch (err) {
@@ -287,7 +289,7 @@ export default function CustomersPage() {
                                     <label className="label">Telefon raqami (ixtiyoriy)</label>
                                     <div className="relative">
                                         <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                        <input type="tel" className="input pl-11" placeholder="+998901234567" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                                        <input type="text" className="input pl-11" placeholder="+998 XX XXX XX XX" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneNumber(e.target.value) })} />
                                     </div>
                                 </div>
                                 <button type="submit" className="btn btn-primary w-full" disabled={submitting || !form.name.trim()}>
