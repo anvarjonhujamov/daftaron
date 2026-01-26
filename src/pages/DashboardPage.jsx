@@ -70,8 +70,13 @@ export default function DashboardPage() {
     const todayDebts = parseFloat(stats?.today_debts ?? stats?.today_given ?? 0)
     const todayPayments = parseFloat(stats?.today_payments ?? stats?.today_paid ?? 0)
 
-    // Debtors/Customers list fallback
-    const topDebtors = stats?.recent_customers ?? stats?.top_debtors ?? stats?.debtors ?? []
+    // Debtors/Customers list fallback - sorted by remaining debt
+    const topDebtors = (stats?.recent_customers ?? stats?.top_debtors ?? stats?.debtors ?? [])
+        .sort((a, b) => {
+            const debtA = parseFloat(a.remaining_amount ?? a.remaining_debts ?? a.debt_sum ?? a.balance ?? a.total_debt ?? 0)
+            const debtB = parseFloat(b.remaining_amount ?? b.remaining_debts ?? b.debt_sum ?? b.balance ?? b.total_debt ?? 0)
+            return debtB - debtA // Descending order
+        })
 
     if (loading) {
         return (
@@ -153,7 +158,7 @@ export default function DashboardPage() {
             {/* Top Debtors Quick Links */}
             <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-[18px] font-semibold text-gray-900 dark:text-white">Qarzdorlar</h2>
+                    <h2 className="text-[18px] font-semibold text-gray-900 dark:text-white">Eng ko'p qarzdorlar</h2>
                 </div>
 
                 {topDebtors?.length > 0 ? (

@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-    baseURL: 'https://daftaron.devxurshidbek.uz/api/v1',
+    baseURL: 'https://daftaron.firstcoder.uz/api/v1',
     headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
