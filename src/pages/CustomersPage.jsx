@@ -200,9 +200,19 @@ export default function CustomersPage() {
             ) : filteredCustomers.length === 0 ? (
                 <EmptyState
                     icon={Users}
-                    title={search ? "Topilmadi" : "Mijozlar yo'q"}
-                    description={search ? `"${search}" bo'yicha natija yo'q` : "Hali mijoz qo'shilmagan"}
-                    action={!search && (
+                    title={
+                        search ? "Topilmadi" :
+                            filter === 'paid' ? "To'langan mijozlar yo'q" :
+                                filter === 'debtors' ? "Qarzdor mijozlar yo'q" :
+                                    "Mijozlar yo'q"
+                    }
+                    description={
+                        search ? `"${search}" bo'yicha natija yo'q` :
+                            filter === 'paid' ? "Hali to'langan mijozlar mavjud emas" :
+                                filter === 'debtors' ? "Hozirda barcha qarzdorlar to'lov qildi" :
+                                    "Hali mijoz qo'shilmagan"
+                    }
+                    action={!search && !filter && (
                         <button onClick={() => setShowAddDrawer(true)} className="btn btn-primary mt-4">
                             <Plus size={18} />
                             Yangi mijoz qo'shish

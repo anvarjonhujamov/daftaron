@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardApi } from '../api/dashboard.api'
+import { customersApi } from '../api/customers.api'
 import {
     TrendingUp, Users, ChevronRight,
     UserPlus, Activity, CheckCircle2, History
@@ -9,6 +10,7 @@ import LoadingSpinner from '../components/LoadingSpinner'
 
 export default function DashboardPage() {
     const [stats, setStats] = useState(null)
+    const [customers, setCustomers] = useState([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -16,12 +18,23 @@ export default function DashboardPage() {
     }, [])
 
     const loadStats = async () => {
+        setLoading(true)
         try {
-            const data = await dashboardApi.getStats()
-            console.log("Dashboard statistika ma'lumotlari:", data) // Debug for user console
-            setStats(data)
+            const [statsData, customersData] = await Promise.allSettled([
+                dashboardApi.getStats(),
+                customersApi.getCustomers()
+            ])
+
+            if (statsData.status === 'fulfilled') {
+                setStats(statsData.value)
+            }
+
+            if (customersData.status === 'fulfilled') {
+                const data = customersData.value
+                setCustomers(Array.isArray(data) ? data : (data.data || []))
+            }
         } catch (err) {
-            console.error('Failed to load dashboard stats:', err)
+            console.error('Failed to load dashboard data:', err)
         } finally {
             setLoading(false)
         }
@@ -70,13 +83,17 @@ export default function DashboardPage() {
     const todayDebts = parseFloat(stats?.today_debts ?? stats?.today_given ?? 0)
     const todayPayments = parseFloat(stats?.today_payments ?? stats?.today_paid ?? 0)
 
-    // Debtors/Customers list fallback - sorted by remaining debt
-    const topDebtors = (stats?.recent_customers ?? stats?.top_debtors ?? stats?.debtors ?? [])
-        .sort((a, b) => {
-            const debtA = parseFloat(a.remaining_amount ?? a.remaining_debts ?? a.debt_sum ?? a.balance ?? a.total_debt ?? 0)
-            const debtB = parseFloat(b.remaining_amount ?? b.remaining_debts ?? b.debt_sum ?? b.balance ?? b.total_debt ?? 0)
-            return debtB - debtA // Descending order
-        })
+    // Debtors/Customers list source - prefer fetched customers for consistency
+    const debtorsSource = customers.length > 0
+        ? customers
+        : (stats?.recent_customers ?? stats?.top_debtors ?? stats?.debtors ?? [])
+
+    const topDebtors = debtorsSource
+        .map(customer => ({
+            ...customer,
+            computed_debt: parseFloat(customer.remaining_amount ?? customer.remaining_debts ?? customer.debt_sum ?? customer.balance ?? customer.total_debt ?? 0)
+        }))
+        .sort((a, b) => b.computed_debt - a.computed_debt) // Descending order
 
     if (loading) {
         return (
@@ -165,7 +182,7 @@ export default function DashboardPage() {
                     <div className="relative">
                         <div className="space-y-2">
                             {topDebtors
-                                .filter(customer => parseFloat(customer.remaining_amount || customer.total_debt || customer.remaining_debts || 0) > 0)
+                                .filter(customer => customer.computed_debt > 0)
                                 .slice(0, 3)
                                 .map((customer, index, arr) => (
                                     <Link
@@ -184,8 +201,8 @@ export default function DashboardPage() {
                                             <p className="text-[11px] text-gray-400 truncate">{customer.phone}</p>
                                         </div>
                                         <div className="text-right">
-                                            <div className={`text-[13px] font-bold ${parseFloat(customer.remaining_amount || customer.total_debt || 0) > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                                {formatCurrency(customer.remaining_amount ?? customer.total_debt ?? customer.remaining_debts ?? 0)}
+                                            <div className={`text-[13px] font-bold ${customer.computed_debt > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                {formatCurrency(customer.computed_debt)}
                                             </div>
                                             <span className="text-[10px] text-gray-400">so'm</span>
                                         </div>
