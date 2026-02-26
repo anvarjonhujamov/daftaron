@@ -18,26 +18,27 @@ export default function CustomersPage() {
     const [form, setForm] = useState({ name: '', phone: PHONE_PREFIX })
 
     useEffect(() => {
-        loadCustomers()
-
-        // Handle URL search params (e.g. ?filter=debtors)
         const params = new URLSearchParams(location.search)
         const filterParam = params.get('filter')
-        if (filterParam) {
-            setFilter(filterParam)
-        }
-
+        if (filterParam) setFilter(filterParam)
         if (location.state?.openAddDrawer) {
             setShowAddDrawer(true)
             window.history.replaceState({}, document.title)
         }
     }, [location.search])
 
-    const loadCustomers = async () => {
+    useEffect(() => {
+        const query = search.trim()
+        const delay = query ? 400 : 0
+        const t = setTimeout(() => loadCustomers(query), delay)
+        return () => clearTimeout(t)
+    }, [search])
+
+    const loadCustomers = async (searchQuery = '') => {
         setLoading(true)
         try {
-            const data = await customersApi.getCustomers()
-            // Handle both paginated (data.data) and non-paginated (simple array) responses
+            const params = searchQuery.trim() ? { q: searchQuery.trim() } : {}
+            const data = await customersApi.getCustomers(params)
             setCustomers(Array.isArray(data) ? data : (data.data || []))
         } catch (err) {
             console.error('Failed to load customers:', err)

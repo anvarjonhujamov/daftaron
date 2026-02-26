@@ -2,7 +2,9 @@ openapi: 3.0.3
 info:
   title: Daftaron API
   version: 1.0.0
-  description: ERP/CRM tenant API
+  description: |
+    Daftaron ERP/CRM tenant API.
+    Autentifikatsiya Web va API uchun bir xil: login (telefon + parol; SMS o'chirilganda darhol token), ro'yxatdan o'tish 2 bosqich (1) ism + telefon → (2) verify 1234 → (3) register/complete do'kon + parol. Ma'lumotlar to'liq kiritilguncha bazaga yozilmaydi, 30 daqiqa cache.
 servers:
   - url: /api/v1
 tags:
@@ -203,7 +205,11 @@ paths:
       - $ref: "#/components/parameters/ContentTypeJson"
     post:
       tags: [Auth]
-      summary: Login (telefon)
+      summary: Login
+      description: |
+        Telefon raqam va parolni yuboradi.
+        - SMS tasdiqlash yoqilgan bo'lsa (SMS_VERIFICATION_ENABLED=true): SMS orqali 4 xonali kod yuboriladi, keyin `/auth/verify` (type=login) orqali tasdiqlab token olasiz.
+        - SMS tasdiqlash o'chirilgan bo'lsa: darhol token qaytariladi (Web va API bir xil).
       requestBody:
         required: true
         content:
@@ -214,53 +220,197 @@ paths:
               properties:
                 phone:
                   type: string
-                  description: Telefon raqam
-                password: { type: string }
-                device_name: { type: string }
+                  description: "Telefon raqam (+998 majburiy, bazada +998XXXXXXXXX saqlanadi)"
+                  example: "+998901234567"
+                password:
+                  type: string
+                  description: Parol
+                device_name:
+                  type: string
+                  description: Qurilma nomi (ixtiyoriy)
+                  example: "mobile"
       responses:
         "200":
-          description: Token and user
+          description: |
+            SMS o'chirilganda: token va user.
+            SMS yoqilganda: requires_verification true, keyin /auth/verify (type=login) orqali token oling.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  token: { type: string, description: Sanctum bearer token }
+                  message: { type: string }
+                  token: { type: string, description: Sanctum bearer token (SMS o'chirilganda) }
                   user: { $ref: "#/components/schemas/User" }
+                  phone: { type: string }
+                  requires_verification: { type: boolean, description: true bo'lsa /auth/verify kerak }
+        "422":
+          description: Validation error
+        "500":
+          description: SMS yuborishda xatolik (SMS yoqilganda)
   /auth/register:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"
       - $ref: "#/components/parameters/ContentTypeJson"
     post:
       tags: [Auth]
-      summary: Register (create user and return token)
+      summary: Ro'yxatdan o'tish — 1-bosqich (ism + telefon)
+      description: |
+        Web va API bir xil: avval faqat ism va telefon raqamini yuboring. Ma'lumotlar bazaga yozilmaydi, 30 daqiqa cache da saqlanadi.
+        Keyin `/auth/verify` (type=register, code=1234 — hozircha standart kod) orqali tasdiqlang.
+        Tasdiqlagach, ro'yxatni to'ldirish uchun `/auth/register/complete` ga do'kon ma'lumotlarini yuboring; shundan keyin user yaratiladi va token qaytariladi.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [name, phone, password, password_confirmation, shop_name, region_id, district_id, street_id]
+              required: [name, phone]
               properties:
-                name: { type: string }
-                phone: { type: string }
-                password: { type: string }
-                password_confirmation: { type: string }
-                shop_name: { type: string }
-                region_id: { type: integer }
-                district_id: { type: integer }
-                street_id: { type: integer }
-                device_name: { type: string }
+                name:
+                  type: string
+                  description: Foydalanuvchi ismi
+                  example: "Xurshidbek Muminov"
+                phone:
+                  type: string
+                  description: "Telefon raqam (+998 majburiy, unique, bazada +998XXXXXXXXX saqlanadi)"
+                  example: "+998901234567"
+                device_name:
+                  type: string
+                  description: Qurilma nomi (ixtiyoriy, token uchun)
+                  example: "mobile"
       responses:
-        "201":
-          description: Token and user
+        "200":
+          description: Tasdiqlash kerak (30 daqiqa cache)
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  token: { type: string, description: Sanctum bearer token }
+                  message: { type: string }
+                  phone: { type: string }
+                  requires_verification: { type: boolean, example: true }
+        "422":
+          description: Validation error (masalan telefon allaqachon band)
+        "500":
+          description: SMS yuborishda xatolik (SMS yoqilganda)
+  /auth/verify:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      summary: SMS kodini tasdiqlash
+      description: |
+        Login yoki Register 1-bosqichidan keyin 4 xonali kodni tasdiqlash. Hozircha standart kod 1234 (Eskiz tasdiqlanishigacha).
+        - type=login: kod to'g'ri bo'lsa token va user qaytariladi.
+        - type=register: kod to'g'ri bo'lsa user yaratilmaydi; requires_completion true qaytadi, keyin `/auth/register/complete` ga so'rov yuborish kerak.
+        Cache 30 daqiqa (register), 10 daqiqa (login).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code, type]
+              properties:
+                phone:
+                  type: string
+                  description: "Telefon raqam (+998 majburiy, bazada +998XXXXXXXXX saqlanadi)"
+                  example: "+998901234567"
+                code:
+                  type: string
+                  description: 4 xonali tasdiqlash kodi (standart 1234)
+                  example: "1234"
+                  minLength: 4
+                  maxLength: 4
+                type:
+                  type: string
+                  description: "login — kirish; register — ro'yxatdan o'tish"
+                  enum: [login, register]
+      responses:
+        "200":
+          description: |
+            type=login: token va user.
+            type=register: requires_completion true, phone; keyin /auth/register/complete.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  token: { type: string }
                   user: { $ref: "#/components/schemas/User" }
+                  phone: { type: string }
+                  requires_completion: { type: boolean, description: "true bo'lsa register/complete kerak" }
+        "404":
+          description: Cache muddati tugagan yoki ma'lumot topilmadi
+        "422":
+          description: Tasdiqlash kodi noto'g'ri
+  /auth/register/complete:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      summary: Ro'yxatdan o'tish — 2-bosqich (do'kon + parol)
+      description: |
+        SMS tasdiqlangach (verify type=register) shu endpoint ga telefon va qolgan ma'lumotlarni yuboring. Ma'lumotlar to'liq kiritilgach bazaga yoziladi, token qaytariladi.
+        Telefon 30 daqiqa ichida cache da bo'lishi kerak (register + verify qilingan).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, shop_name, category_id, region_id, district_id, street_id, password, password_confirmation]
+              properties:
+                phone:
+                  type: string
+                  description: "Tasdiqlangan telefon (+998 formatida, cache kaliti)"
+                  example: "+998901234567"
+                shop_name:
+                  type: string
+                  description: Do'kon nomi
+                  example: "Mebel Do'koni"
+                category_id:
+                  type: integer
+                  description: Faoliyat turi (kategoriya) ID
+                  example: 1
+                region_id:
+                  type: integer
+                  description: Viloyat ID (locations/regions dan)
+                  example: 1
+                district_id:
+                  type: integer
+                  description: Tuman ID (locations/districts/{regionId})
+                  example: 5
+                street_id:
+                  type: integer
+                  description: Ko'cha ID (locations/streets/{districtId})
+                  example: 10
+                password:
+                  type: string
+                  description: Parol (min 6 belgi)
+                  example: "password123"
+                password_confirmation:
+                  type: string
+                  example: "password123"
+      responses:
+        "201":
+          description: User va tenant yaratildi, token qaytariladi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  token: { type: string }
+                  user: { $ref: "#/components/schemas/User" }
+        "404":
+          description: Cache muddati tugagan yoki ma'lumot topilmadi
+        "422":
+          description: Validation error
   /auth/me:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"
@@ -324,9 +474,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: 
-                  $ref: "#/components/schemas/CustomerListItem"
+                $ref: "#/components/schemas/PaginatedCustomers"
     post:
       tags: [Customers]
       security: [{ bearerAuth: [] }]
@@ -419,9 +567,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Debt"
+                $ref: "#/components/schemas/PaginatedDebts"
     post:
       tags: [Debts]
       security: [{ bearerAuth: [] }]

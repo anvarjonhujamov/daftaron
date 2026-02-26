@@ -1,6 +1,7 @@
 import api from './axios'
 
 export const customersApi = {
+    /** GET /customers — paginated. Optional query param `q` for search (OpenAPI). */
     getCustomers: async (params = {}) => {
         const response = await api.get('/customers', { params })
         return response.data
