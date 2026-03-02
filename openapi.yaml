@@ -5,6 +5,14 @@ info:
   description: |
     Daftaron ERP/CRM tenant API.
     Autentifikatsiya Web va API uchun bir xil: login (telefon + parol; SMS o'chirilganda darhol token), ro'yxatdan o'tish 2 bosqich (1) ism + telefon → (2) verify 1234 → (3) register/complete do'kon + parol. Ma'lumotlar to'liq kiritilguncha bazaga yozilmaydi, 30 daqiqa cache.
+
+    Click to'lov integratsiyasi:
+    - Web ilova balans va obuna uchun Click'ga redirect qiladi (`https://my.click.uz/services/pay`), transaction_param sifatida `payment_orders.id` yuboriladi.
+    - Click callback endpointlari (authsiz, JSON javob): `POST /payment/click/prepare` va `POST /payment/click/complete`.
+    - `merchant_trans_id` qiymati:
+      - ilovadan redirect qilinganda — bu `payment_orders.id` bo'lishi kerak;
+      - Click ilovasining o'zidan to'lov qilganda — foydalanuvchi public ID si (`id + 1000`, masalan 1001) yoki telefoni (`+998XXXXXXXXX` yoki `998XXXXXXXXX`) bo'lishi mumkin.
+    - Backend user ni topadi, kerak bo'lsa yangi `payment_orders` yozuvini (`type = balance_deposit`, `status = pending`) yaratadi va `Complete` muvaffaqiyatli tugaganda summani user balansiga qo'shadi.
 servers:
   - url: /api/v1
 tags:
@@ -44,7 +52,10 @@ components:
       type: object
       description: Authenticated user
       properties:
-        id: { type: integer, description: User ID }
+        id: { type: integer, description: Internal user ID (bazadagi id) }
+        public_id:
+          type: integer
+          description: "Foydalanuvchi uchun ko'rinadigan ID (profil va Click uchun) — `id + 1000`, masalan id=1 → public_id=1001"
         name: { type: string, description: Full name }
         phone: { type: string, description: Phone number in international format }
         email: { type: string, nullable: true, description: Optional email }
@@ -363,7 +374,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [phone, shop_name, category_id, region_id, district_id, street_id, password, password_confirmation]
+              required: [phone, shop_name, region_id, district_id, street_id, password, password_confirmation]
               properties:
                 phone:
                   type: string
@@ -373,10 +384,6 @@ paths:
                   type: string
                   description: Do'kon nomi
                   example: "Mebel Do'koni"
-                category_id:
-                  type: integer
-                  description: Faoliyat turi (kategoriya) ID
-                  example: 1
                 region_id:
                   type: integer
                   description: Viloyat ID (locations/regions dan)

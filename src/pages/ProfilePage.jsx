@@ -4,11 +4,12 @@ import { profileApi } from '../api/profile.api'
 import { authApi } from '../api/auth.api'
 import {
     User, Phone, Mail, Lock, LogOut, ChevronRight,
-    Edit3, Loader2, Check, X, Moon, Sun, Clock
+    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
+import { buildClickUrl } from '../utils/click'
 
 export default function ProfilePage() {
     const navigate = useNavigate()
@@ -18,6 +19,7 @@ export default function ProfilePage() {
     const [showPasswordDrawer, setShowPasswordDrawer] = useState(false)
     const [showEditDrawer, setShowEditDrawer] = useState(false)
     const [darkMode, setDarkMode] = useState(false)
+    const [balance, setBalance] = useState(0)
 
     const [profileForm, setProfileForm] = useState({
         name: '',
@@ -32,6 +34,7 @@ export default function ProfilePage() {
     })
 
     const [message, setMessage] = useState({ type: '', text: '' })
+    const [clickAmount, setClickAmount] = useState('')
 
     useEffect(() => {
         loadProfile()
@@ -47,12 +50,25 @@ export default function ProfilePage() {
         try {
             const data = await profileApi.getProfile()
             const userData = data.user || data
+            const tenantData = data.tenant || data.tenant_data || data.tenant || null
+
+            // TZ bo'yicha balans users.balance da saqlanadi; uni birinchi o'qib olamiz.
+            const rawBalance =
+                userData.balance ??
+                data.balance ??
+                tenantData?.balance ??
+                tenantData?.wallet_balance ??
+                tenantData?.current_balance ??
+                data.wallet_balance ??
+                0
+
             setUser(userData)
             setProfileForm({
                 name: userData.name || '',
                 phone: formatPhoneNumber(userData.phone || ''),
                 email: userData.email || ''
             })
+            setBalance(parseFloat(rawBalance) || 0)
         } catch (err) {
             console.error('Failed to load profile:', err)
         } finally {
@@ -141,6 +157,20 @@ export default function ProfilePage() {
         return `${mm}/${dd}/${yyyy}`
     }
 
+    const handleClickTopUp = () => {
+        try {
+            const amountNumber = clickAmount ? Number(clickAmount) : undefined
+            if (amountNumber !== undefined && (isNaN(amountNumber) || amountNumber <= 0)) {
+                alert("Iltimos, to'g'ri summa kiriting.")
+                return
+            }
+            const url = buildClickUrl(user, amountNumber)
+            window.location.href = url
+        } catch (err) {
+            alert(err.message || "Click to'lovini boshlashda xatolik yuz berdi.")
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -182,7 +212,22 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            {/* Trial Period Card */}
+            {/* Balance Card */}
+            <div className="card dark:bg-gray-800 mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Wallet size={18} className="text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-[14px] font-medium text-gray-900 dark:text-white">Balans</p>
+                        <p className="text-[16px] font-bold text-gray-900 dark:text-white">
+                            {new Intl.NumberFormat('uz-UZ').format(balance || 0)} <span className="text-[12px] text-gray-400">so'm</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Subscription / Trial Period Card */}
             {user?.trial_ends_at && (
                 <div className="card dark:bg-gray-800 mb-4 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 border border-orange-200 dark:border-orange-800">
                     <div className="flex items-center gap-3">
@@ -190,9 +235,9 @@ export default function ProfilePage() {
                             <Clock size={18} className="text-orange-500" />
                         </div>
                         <div className="flex-1">
-                            <p className="text-[14px] font-medium text-gray-900 dark:text-white">Sinov rejimi</p>
+                            <p className="text-[14px] font-medium text-gray-900 dark:text-white">Obuna muddati</p>
                             <p className="text-[13px] text-orange-600 dark:text-orange-400">
-                                {formatDate(user.trial_ends_at)} gacha bepul
+                                {formatDate(user.trial_ends_at)} gacha amal qiladi
                             </p>
                         </div>
                     </div>
@@ -239,6 +284,40 @@ export default function ProfilePage() {
                     </div>
                     <ChevronRight size={18} className="text-gray-400" />
                 </button>
+
+                {/* Click balance top-up */}
+                <div className="py-4 flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <CreditCard size={18} className="text-blue-500" />
+                        </div>
+                        <div className="flex-1">
+                            <span className="text-[15px] font-medium text-gray-900 dark:text-white block">
+                                Balansni to'ldirish (Click)
+                            </span>
+                            <p className="text-[12px] text-gray-400">
+                                Click ilovasi orqali obunani to'ldiring
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2">
+                        <input
+                            type="number"
+                            min="0"
+                            className="input w-32 text-[14px]"
+                            placeholder="Summа"
+                            value={clickAmount}
+                            onChange={(e) => setClickAmount(e.target.value)}
+                        />
+                        <button
+                            type="button"
+                            onClick={handleClickTopUp}
+                            className="btn btn-primary flex-1"
+                        >
+                            Click orqali to'lash
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Logout */}

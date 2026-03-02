@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import ScrollToTop from './components/ScrollToTop'
+import { initTelegramWebApp } from './utils/telegram'
 
 // Auth pages
 import LoginPage from './pages/LoginPage'
@@ -17,6 +19,11 @@ import HistoryPage from './pages/HistoryPage'
 import ProfilePage from './pages/ProfilePage'
 
 export default function App() {
+
+    useEffect(() => {
+        // Agar ilova Telegram WebApp ichida ochilgan bo'lsa — tayyorlab olamiz
+        initTelegramWebApp()
+    }, [])
 
     return (
         <>
