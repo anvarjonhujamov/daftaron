@@ -2,15 +2,28 @@
 // 123000 -> "123 000"
 
 export const formatCurrency = (value) => {
-    const num = Number(String(value).replace(/\D/g, '')) || 0
+    if (value === null || value === undefined) return '0'
+
+    let num
+
+    if (typeof value === 'number') {
+        num = value
+    } else {
+        const cleaned = String(value)
+            .replace(/\s/g, '')
+            .replace(',', '.')
+        const parsed = parseFloat(cleaned)
+        num = Number.isFinite(parsed) ? parsed : 0
+    }
+
     const rounded = Math.round(num)
-    const str = String(rounded)
+    const absStr = Math.abs(rounded).toString()
 
     let result = ''
     let counter = 0
 
-    for (let i = str.length - 1; i >= 0; i--) {
-        result = str[i] + result
+    for (let i = absStr.length - 1; i >= 0; i--) {
+        result = absStr[i] + result
         counter++
         if (counter === 3 && i !== 0) {
             result = ' ' + result
@@ -18,13 +31,16 @@ export const formatCurrency = (value) => {
         }
     }
 
-    return result
+    return rounded < 0 ? `-${result}` : result
 }
 
 export const parseCurrency = (value) => {
     if (value === null || value === undefined) return 0
-    const digits = String(value).replace(/\D/g, '')
-    if (!digits) return 0
-    return Number(digits)
+    const cleaned = String(value)
+        .replace(/\s/g, '')
+        .replace(',', '.')
+    const num = parseFloat(cleaned)
+    if (!Number.isFinite(num)) return 0
+    return Math.round(num)
 }
 

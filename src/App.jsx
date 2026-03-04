@@ -17,6 +17,7 @@ import DebtsPage from './pages/DebtsPage'
 import DebtDetailPage from './pages/DebtDetailPage'
 import HistoryPage from './pages/HistoryPage'
 import ProfilePage from './pages/ProfilePage'
+import SubscriptionPage from './pages/SubscriptionPage'
 
 export default function App() {
 
@@ -49,6 +50,7 @@ export default function App() {
                     <Route path="/debts/:id" element={<DebtDetailPage />} />
                     <Route path="/payments" element={<HistoryPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/subscription" element={<SubscriptionPage />} />
                 </Route>
             </Routes>
         </>

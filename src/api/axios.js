@@ -20,7 +20,7 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 )
 
-// Response interceptor - handle 401
+// Response interceptor - handle 401 / 403
 api.interceptors.response.use(
     (response) => response,
     (error) => {
@@ -28,6 +28,9 @@ api.interceptors.response.use(
             localStorage.removeItem('token')
             localStorage.removeItem('user')
             window.location.href = '/login'
+        } else if (error.response?.status === 403) {
+            // Trial tugagan yoki hisob faol emas — Obuna/Ta'rif sahifasiga yo'naltiramiz
+            window.location.href = '/subscription'
         }
         return Promise.reject(error)
     }

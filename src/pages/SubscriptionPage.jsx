@@ -1,0 +1,297 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { subscriptionApi } from '../api/subscription.api'
+import LoadingSpinner from '../components/LoadingSpinner'
+import { formatCurrency, parseCurrency } from '../utils/format'
+import { CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, Package, Clock, Receipt } from 'lucide-react'
+
+export default function SubscriptionPage() {
+    const navigate = useNavigate()
+    const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
+    const [status, setStatus] = useState(null)
+    const [error, setError] = useState('')
+    const [message, setMessage] = useState('')
+
+    useEffect(() => {
+        loadStatus()
+    }, [])
+
+    const loadStatus = async () => {
+        setLoading(true)
+        setError('')
+        try {
+            const data = await subscriptionApi.getStatus()
+            setStatus(data)
+        } catch (err) {
+            console.error('Failed to load subscription status:', err)
+            setError(err.response?.data?.message || 'Obuna holatini yuklashda xatolik yuz berdi')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleChoosePlan = async (planId) => {
+        if (!planId || saving) return
+        setSaving(true)
+        setError('')
+        setMessage('')
+
+        try {
+            const data = await subscriptionApi.choosePlan(planId)
+            setMessage(data.message || "Ta'rif muvaffaqiyatli tanlandi")
+            // Reload status to reflect new balance / trial info / plans
+            await loadStatus()
+            // Agar obuna yangilangan bo'lsa, foydalanuvchini asosiy sahifaga qaytarish mumkin
+            // navigate('/', { replace: true })
+        } catch (err) {
+            const resp = err.response?.data
+            if (resp?.message) {
+                setError(resp.message)
+            } else {
+                setError("Ta'rifni tanlashda xatolik yuz berdi")
+            }
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const trialInfo = status?.trial_info || status?.trial || {}
+    const plans = status?.plans || []
+    const transactions = status?.transactions || []
+    const numericBalance = parseCurrency(status?.balance ?? 0)
+
+    const formatDate = (dateString) => {
+        if (!dateString) return ''
+        const date = new Date(dateString)
+        const dd = String(date.getDate()).padStart(2, '0')
+        const mm = String(date.getMonth() + 1).padStart(2, '0')
+        const yyyy = date.getFullYear()
+        return `${dd}.${mm}.${yyyy}`
+    }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+                <LoadingSpinner size="lg" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+            <div className="flex items-center justify-between mb-6">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+                >
+                    <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
+                </button>
+                <h1 className="text-[22px] font-bold text-gray-900 dark:text-white">
+                    Ta'rif va obuna
+                </h1>
+                <div className="w-10 h-10" />
+            </div>
+
+            {message && (
+                <div className="mb-4 p-4 rounded-2xl text-[14px] flex items-center gap-2 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400">
+                    <CheckCircle2 size={18} />
+                    {message}
+                </div>
+            )}
+
+            {error && (
+                <div className="mb-4 p-4 rounded-2xl text-[14px] flex items-center gap-2 bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400">
+                    <AlertTriangle size={18} />
+                    {error}
+                </div>
+            )}
+
+            {/* Trial / subscription status card */}
+            <div
+                className={
+                    trialInfo.is_expired || trialInfo.status === 0
+                        ? 'card mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                        : 'card mb-4'
+                }
+            >
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Clock size={18} className="text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-[14px] font-medium text-gray-900 dark:text-white">
+                            Obuna holati
+                        </p>
+                        {trialInfo.is_expired ? (
+                            <p className="text-[13px] text-red-500">
+                                Bepul muddat tugagan. Ta'rif tanlang.
+                            </p>
+                        ) : (
+                            <>
+                                {trialInfo.trial_ends_at && (
+                                    <p className="text-[13px] text-gray-500 dark:text-gray-400">
+                                        {formatDate(trialInfo.trial_ends_at)} gacha amal qiladi
+                                    </p>
+                                )}
+                                {typeof trialInfo.days_remaining === 'number' && (() => {
+                                    const days = Math.max(0, Math.round(trialInfo.days_remaining))
+                                    return (
+                                        <p className="text-[13px] text-green-500">
+                                            Qolgan kunlar: {days} kun
+                                        </p>
+                                    )
+                                })()}
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Balance */}
+            <div className="card dark:bg-gray-800 mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                        <Receipt size={18} className="text-emerald-500" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-[14px] font-medium text-gray-900 dark:text-white">Balans</p>
+                        <p className="text-[16px] font-bold text-gray-900 dark:text-white">
+                            {formatCurrency(status?.balance ?? 0)} <span className="text-[12px] text-gray-400">so'm</span>
+                        </p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => navigate('/profile')}
+                    className="mt-3 text-[13px] text-blue-500 font-medium flex items-center gap-1"
+                >
+                    Balansni Click orqali to'ldirish
+                    <ArrowRight size={14} />
+                </button>
+            </div>
+
+            {/* Plans */}
+            <div className="mb-4">
+                <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
+                    Ta'riflar
+                </h2>
+                {plans.length === 0 ? (
+                    <p className="text-[14px] text-gray-400">
+                        Hozircha ta'riflar ro‘yxati yo‘q.
+                    </p>
+                ) : (
+                    <div className="space-y-3">
+                        {plans.map((plan) => {
+                            const planPriceAmount = parseCurrency(plan.price ?? 0)
+                            const hasEnoughBalance = numericBalance >= planPriceAmount
+                            return (
+                                <div
+                                    key={plan.id}
+                                    className="card dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex flex-col gap-2"
+                                >
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                                                <Package size={18} className="text-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
+                                                    {plan.name}
+                                                </p>
+                                                {plan.description && (
+                                                    <div
+                                                        className="text-[12px] text-gray-500 dark:text-gray-400"
+                                                        dangerouslySetInnerHTML={{ __html: plan.description }}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[15px] font-bold text-gray-900 dark:text-white">
+                                                {formatCurrency(plan.price || 0)}{' '}
+                                                <span className="text-[12px] text-gray-400">so'm</span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                                        {typeof plan.low_amount_limit !== 'undefined' && (
+                                            <div>
+                                                <span className="font-semibold">Past nasiya limiti: </span>
+                                                {plan.low_amount_limit} ta
+                                            </div>
+                                        )}
+                                        {typeof plan.high_amount_limit !== 'undefined' && (
+                                            <div>
+                                                <span className="font-semibold">Yuqori nasiya limiti: </span>
+                                                {plan.high_amount_limit} ta
+                                            </div>
+                                        )}
+                                        {typeof plan.low_amount_threshold !== 'undefined' && (
+                                            <div>
+                                                <span className="font-semibold">Chegara: </span>
+                                                {formatCurrency(plan.low_amount_threshold)} so'm
+                                            </div>
+                                        )}
+                                        {typeof plan.sms_limit !== 'undefined' && (
+                                            <div>
+                                                <span className="font-semibold">Bepul SMS: </span>
+                                                {plan.sms_limit} ta
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && (
+                                        <p className="mt-1 text-[11px] text-red-500">
+                                            Balans yetarli emas. Avval balansni to'ldiring.
+                                        </p>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        disabled={saving}
+                                        onClick={() => handleChoosePlan(plan.id)}
+                                        className="mt-3 btn btn-primary w-full"
+                                    >
+                                        {saving ? 'Tanlanmoqda...' : "Ushbu ta'rifni tanlash"}
+                                    </button>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Transactions (short history) */}
+            {transactions.length > 0 && (
+                <div className="mb-4">
+                    <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
+                        So‘nggi tranzaksiyalar
+                    </h2>
+                    <div className="space-y-2">
+                        {transactions.map((tx) => (
+                            <div key={tx.id || `${tx.date}-${tx.amount}`} className="card dark:bg-gray-800 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[14px] font-medium text-gray-900 dark:text-white">
+                                        {tx.description || 'Tranzaksiya'}
+                                    </p>
+                                    <p className="text-[12px] text-gray-500 dark:text-gray-400">
+                                        {formatDate(tx.created_at || tx.date)}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[14px] font-bold text-gray-900 dark:text-white">
+                                        {formatCurrency(tx.amount || 0)}{' '}
+                                        <span className="text-[12px] text-gray-400">so'm</span>
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+

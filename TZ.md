@@ -111,6 +111,14 @@
 - `low_amount_threshold` — past/yuqori nasiya chegarasi, so‘m (MVP: 30 000).
 - `sms_limit` — oyiga bepul SMS lar soni.
 
+**Obuna tugaganda (`GET /api/v1/subscription/status` javobi):**
+
+- `trial_info.is_expired` — `true` bo‘lsa obuna/trial tugagan; client yangi ta’rif tanlash yoki to‘lov sahifasiga yo‘naltirishi mumkin.
+- `trial_info.status` — `0` hisob faol emas (bloklangan), `1` faol.
+- `trial_info.trial_ends_at` — obuna tugash sanasi (ISO8601); sana o‘tgan bo‘lsa obuna tugagan.
+- `trial_info.days_remaining` — qolgan kunlar; tugaganda `0`.
+- `plans` — obuna tugaganda **barcha** mavjud ta’riflar qaytariladi (ta’rif tanlash uchun). Trial davrida esa faqat **Oddiy** plan qaytadi.
+
 MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozish API/Web darajasida xatolik bilan to‘xtatiladi; qo‘shimcha pullik paketlar (limitdan tashqari narxlar) keyingi iteratsiyada qo‘shiladi.
 
 ---
@@ -145,8 +153,7 @@ MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozi
 
 ### 7.4. Click ilovasidan to‘g‘ridan-to‘g‘ri to‘lov
 
-- **merchant_trans_id** ga: **public_id** (1001, 1002, ...) yoki **telefon** (`+998...` yoki `998...`) kiritiladi.
-- 9 xonali format (`991112233`) qo‘llab-quvvatlanmaydi.
+- **merchant_trans_id** ga: **public_id** (1001, 1002, ...) yoki **telefon** (`+998...`, `998...` yoki 9 xonali `99 111 22 33`) kiritiladi — 9 ta raqam avtomatik `998` bilan to‘ldiriladi.
 
 ---
 

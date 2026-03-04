@@ -4,7 +4,7 @@ import { profileApi } from '../api/profile.api'
 import { authApi } from '../api/auth.api'
 import {
     User, Phone, Mail, Lock, LogOut, ChevronRight,
-    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet
+    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -36,6 +36,10 @@ export default function ProfilePage() {
 
     const [message, setMessage] = useState({ type: '', text: '' })
     const [clickAmount, setClickAmount] = useState('')
+
+    const isTrialExpired = user?.trial_ends_at
+        ? new Date(user.trial_ends_at) < new Date()
+        : false
 
     useEffect(() => {
         loadProfile()
@@ -230,15 +234,30 @@ export default function ProfilePage() {
 
             {/* Subscription / Trial Period Card */}
             {user?.trial_ends_at && (
-                <div className="card dark:bg-gray-800 mb-4 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 border border-orange-200 dark:border-orange-800">
+                <div
+                    className={
+                        isTrialExpired
+                            ? 'card mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                            : 'card mb-4 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 border border-orange-200 dark:border-orange-800'
+                    }
+                >
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                            <Clock size={18} className="text-orange-500" />
+                            <Clock size={18} className={isTrialExpired ? 'text-red-500' : 'text-orange-500'} />
                         </div>
                         <div className="flex-1">
                             <p className="text-[14px] font-medium text-gray-900 dark:text-white">Obuna muddati</p>
-                            <p className="text-[13px] text-orange-600 dark:text-orange-400">
-                                {formatDate(user.trial_ends_at)} gacha amal qiladi
+                            <p
+                                className={
+                                    'text-[13px] ' +
+                                    (isTrialExpired
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-orange-600 dark:text-orange-400')
+                                }
+                            >
+                                {isTrialExpired
+                                    ? "Muddati tugagan. Ta'rif tanlang."
+                                    : `${formatDate(user.trial_ends_at)} gacha amal qiladi`}
                             </p>
                         </div>
                     </div>
@@ -271,6 +290,22 @@ export default function ProfilePage() {
                             }`} />
                     </button>
                 </div>
+
+                {/* Subscription / Tariff */}
+                <button
+                    onClick={() => navigate('/subscription')}
+                    className="w-full flex items-center justify-between py-4"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                            <Package size={18} className="text-indigo-500" />
+                        </div>
+                        <span className="text-[15px] font-medium text-gray-900 dark:text-white">
+                            Ta'rif va obuna
+                        </span>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-400" />
+                </button>
 
                 {/* Change Password */}
                 <button
