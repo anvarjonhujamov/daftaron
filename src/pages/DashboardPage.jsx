@@ -7,6 +7,7 @@ import {
     UserPlus, Activity, CheckCircle2, History
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { formatCurrency } from '../utils/format'
 
 export default function DashboardPage() {
     const [stats, setStats] = useState(null)
@@ -38,10 +39,6 @@ export default function DashboardPage() {
         } finally {
             setLoading(false)
         }
-    }
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('uz-UZ').format(amount || 0)
     }
 
     // Robust field mapping based on user console output
@@ -226,10 +223,10 @@ export default function DashboardPage() {
                     </div>
                 )
                 }
-            </div >
+            </div>
 
             {/* Action Button - Fixed at bottom */}
-            < div className="fixed bottom-20 left-0 right-0 p-4 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md z-40 border-t border-gray-100 dark:border-gray-700 max-w-lg mx-auto" >
+            <div className="fixed bottom-20 left-0 right-0 p-4 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md z-40 border-t border-gray-100 dark:border-gray-700 max-w-lg mx-auto">
                 <Link
                     to="/customers"
                     state={{ openAddDrawer: true }}
@@ -238,10 +235,10 @@ export default function DashboardPage() {
                     <UserPlus size={20} />
                     Yangi mijoz qo'shish
                 </Link>
-            </div >
+            </div>
 
             {/* Spacing for fixed button */}
-            < div className="h-24" />
-        </div >
+            <div className="h-24" />
+        </div>
     )
 }

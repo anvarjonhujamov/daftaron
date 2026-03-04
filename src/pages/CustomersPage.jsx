@@ -6,6 +6,7 @@ import { Search, Plus, ChevronRight, Users, User, Phone, X, Loader2 } from 'luci
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
+import { formatCurrency } from '../utils/format'
 
 export default function CustomersPage() {
     const location = useLocation()
@@ -95,10 +96,6 @@ export default function CustomersPage() {
         } finally {
             setSubmitting(false)
         }
-    }
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('uz-UZ').format(amount || 0)
     }
 
     const highlightText = (text, query) => {

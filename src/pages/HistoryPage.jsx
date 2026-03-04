@@ -8,6 +8,7 @@ import {
     TrendingDown, TrendingUp, Clock
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { formatCurrency } from '../utils/format'
 
 export default function HistoryPage() {
     const [mode, setMode] = useState('payments') // 'payments' or 'debts'
@@ -36,10 +37,6 @@ export default function HistoryPage() {
         } finally {
             setLoading(false)
         }
-    }
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('uz-UZ').format(amount || 0)
     }
 
     const formatDate = (dateString) => {

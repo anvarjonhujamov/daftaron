@@ -10,10 +10,6 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState('')
-    const [requiresVerification, setRequiresVerification] = useState(false)
-    const [verifyPhone, setVerifyPhone] = useState('')
-    const [code, setCode] = useState('')
-    const [verifyLoading, setVerifyLoading] = useState(false)
 
     useEffect(() => {
         const savedDarkMode = localStorage.getItem('darkMode') === 'true'
@@ -33,11 +29,8 @@ export default function LoginPage() {
             const rawPhone = getRawPhoneNumber(form.phone)
             const data = await authApi.login(rawPhone, form.password)
 
-            if (data.requires_verification) {
-                setVerifyPhone(rawPhone)
-                setRequiresVerification(true)
-                setCode('')
-            } else if (data.token) {
+            // Login uchun SMS tasdiqlash o'chirilgan: backend darhol token + user qaytaradi
+            if (data.token) {
                 localStorage.setItem('token', data.token)
                 localStorage.setItem('user', JSON.stringify(data.user))
                 navigate('/')
@@ -55,79 +48,6 @@ export default function LoginPage() {
         } finally {
             setLoading(false)
         }
-    }
-
-    const handleVerifySubmit = async (e) => {
-        e.preventDefault()
-        if (!code || code.length !== 4) {
-            setError('4 xonali kodni kiriting')
-            return
-        }
-        setVerifyLoading(true)
-        setError('')
-        try {
-            const data = await authApi.verify(verifyPhone, code, 'login')
-            if (data.token) {
-                localStorage.setItem('token', data.token)
-                localStorage.setItem('user', JSON.stringify(data.user))
-                navigate('/')
-            } else {
-                setError('Token olinmadi')
-            }
-        } catch (err) {
-            setError(err.response?.data?.message || 'Kod noto\'g\'ri yoki muddati tugagan')
-        } finally {
-            setVerifyLoading(false)
-        }
-    }
-
-    if (requiresVerification) {
-        return (
-            <div className="min-h-screen flex flex-col justify-center px-6 py-12 bg-gray-50 dark:bg-gray-900 transition-colors">
-                <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-                    <div className="text-center mb-10">
-                        <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Tasdiqlash</h1>
-                        <p className="text-gray-400 mt-2 text-[15px]">Telefonga yuborilgan 4 xonali kodni kiriting</p>
-                        <p className="text-gray-500 mt-1 text-[14px] font-medium">{verifyPhone}</p>
-                    </div>
-                    <div className="card">
-                        {error && (
-                            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 text-red-500 rounded-2xl text-[14px]">
-                                {error}
-                            </div>
-                        )}
-                        <form onSubmit={handleVerifySubmit} className="space-y-5">
-                            <div>
-                                <label className="label">SMS kodi</label>
-                                <input
-                                    type="text"
-                                    className="input text-center text-[20px] tracking-[0.5em]"
-                                    placeholder="1234"
-                                    value={code}
-                                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                    maxLength={4}
-                                    required
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                className="btn btn-primary w-full"
-                                disabled={verifyLoading || code.length !== 4}
-                            >
-                                {verifyLoading ? <Loader2 size={20} className="animate-spin" /> : 'Tasdiqlash'}
-                            </button>
-                        </form>
-                        <button
-                            type="button"
-                            onClick={() => { setRequiresVerification(false); setError(''); setCode('') }}
-                            className="w-full mt-4 text-[14px] text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                        >
-                            ← Orqaga
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )
     }
 
     return (

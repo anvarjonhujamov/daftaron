@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { formatCurrency } from '../utils/format'
 
 const MONTH_NAMES = [
     'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
@@ -43,10 +44,6 @@ export default function DebtsPage() {
         } finally {
             setLoading(false)
         }
-    }
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('uz-UZ').format(amount || 0)
     }
 
     const formatDate = (dateString) => {

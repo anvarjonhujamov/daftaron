@@ -42,6 +42,9 @@
 ### 4.1. Web
 
 - **Login:** `GET/POST /login` — telefon + parol. SMS tasdiqlash yoqilgan bo‘lsa verify sahifasiga yo‘naltiriladi.
+- **Telegram Web App login:** `GET /telegram/web-login?phone=+99890...`  
+  - Agar telefon bo‘yicha foydalanuvchi bazada bo‘lsa — login sahifasisiz darhol `/dashboard` ga kiradi.  
+  - Agar topilmasa — `GET /register?phone=+99890...` ochiladi (telefon maydoni prefill), foydalanuvchi odatdagi ro‘yxatdan o‘tish bosqichlarini bajaradi.
 - **Ro‘yxatdan o‘tish:**  
   1) `GET/POST /register` — ism + telefon (ma’lumot 30 daqiqa cache da);  
   2) `GET/POST /verify` — 4 xonali kod (type=register);  
@@ -55,6 +58,7 @@
 - **Bearer token:** Barcha himoyalangan endpointlar `Authorization: Bearer <token>` talab qiladi.
 - **Token olish:**
   - `POST /api/v1/auth/login` — telefon + parol (SMS o‘chiq bo‘lsa darhol token).
+  - `POST /api/v1/auth/telegram-login` — Telegram botdan kelgan telefon bo‘yicha tezkor login. Foydalanuvchi topilsa darhol token qaytariladi, bo‘lmasa `404 + requires_registration=true`.
   - Yoki `POST /api/v1/auth/register` → `POST /api/v1/auth/verify` (type=register) → `POST /api/v1/auth/register/complete` — token.
 - **Parolni tiklash (API):**  
   `POST /auth/password/forgot` → `POST /auth/password/verify` (reset_token qaytadi) → `POST /auth/password/reset`.
@@ -86,7 +90,7 @@
 
 | URL | Metod | Tavsif |
 |-----|--------|--------|
-| `/subscription/status` | GET | Balans, trial, tariflar, tranzaksiyalar |
+| `/subscription/status` | GET | Balans, trial, tariflar (nasiya to‘plamlari), tranzaksiyalar |
 | `/subscription/choose/{plan}` | POST | Tarif tanlash (balansdan) |
 | `/subscription/balance-topup` | POST | Balans to‘ldirish — to‘lov tizimini tanlash, redirect |
 | `/subscription/plan-pay/{plan}` | POST | Tarifni to‘lov tizimi orqali to‘lash |
@@ -96,8 +100,18 @@
 
 | URL | Metod | Auth | Tavsif |
 |-----|--------|------|--------|
-| `/api/v1/subscription/status` | GET | Bearer | Balans, trial_info, plans, transactions (oxirgi 10) |
+| `/api/v1/subscription/status` | GET | Bearer | Balans, trial_info, plans (nasiya to‘plamlari), transactions (oxirgi 10) |
 | `/api/v1/subscription/choose/{plan}` | POST | Bearer | Tarif tanlash; 422 mablag‘ yetmasa |
+
+**Plan (nasiya to‘plami) maydonlari:**
+
+- `price` — oylik abonent to‘lovi (so‘m).
+- `low_amount_limit` — past summali nasiyalar limiti (≤ `low_amount_threshold`).
+- `high_amount_limit` — yuqori summali nasiyalar limiti (> `low_amount_threshold`).
+- `low_amount_threshold` — past/yuqori nasiya chegarasi, so‘m (MVP: 30 000).
+- `sms_limit` — oyiga bepul SMS lar soni.
+
+MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozish API/Web darajasida xatolik bilan to‘xtatiladi; qo‘shimcha pullik paketlar (limitdan tashqari narxlar) keyingi iteratsiyada qo‘shiladi.
 
 ---
 
@@ -207,6 +221,7 @@
 | Metod | Endpoint | Auth | Qisqa tavsif |
 |-------|----------|------|----------------|
 | POST | `/auth/login` | — | Login |
+| POST | `/auth/telegram-login` | — | Telegram orqali tezkor login |
 | POST | `/auth/register` | — | Ro‘yxat 1-bosqich |
 | POST | `/auth/verify` | — | SMS tasdiq |
 | POST | `/auth/register/complete` | — | Ro‘yxat 2-bosqich, token |

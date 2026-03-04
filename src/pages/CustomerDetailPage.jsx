@@ -9,6 +9,7 @@ import {
     Plus, CreditCard, Loader2, FileText, X, Trash2
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { formatCurrency, parseCurrency } from '../utils/format'
 
 
 export default function CustomerDetailPage() {
@@ -22,7 +23,12 @@ export default function CustomerDetailPage() {
     const [showOptionsDrawer, setShowOptionsDrawer] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [submitting, setSubmitting] = useState(false)
-    const [debtForm, setDebtForm] = useState({ amount: '', description: '' })
+    const [debtForm, setDebtForm] = useState({
+        amount: '',
+        description: '',
+        debt_date: '',
+        send_sms: false
+    })
     const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null })
 
     useEffect(() => {
@@ -54,15 +60,18 @@ export default function CustomerDetailPage() {
 
     const handleAddDebt = async (e) => {
         e.preventDefault()
-        if (!debtForm.amount) return
+        const numericAmount = parseCurrency(debtForm.amount)
+        if (!numericAmount) return
         setSubmitting(true)
         try {
             await debtsApi.createDebt({
                 customer_id: parseInt(id),
-                total_amount: parseFloat(debtForm.amount),
-                description: debtForm.description || null
+                total_amount: numericAmount,
+                description: debtForm.description || null,
+                debt_date: debtForm.debt_date || null,
+                send_sms: debtForm.send_sms
             })
-            setDebtForm({ amount: '', description: '' })
+            setDebtForm({ amount: '', description: '', debt_date: '', send_sms: false })
             setShowDebtDrawer(false)
             loadData()
         } catch (err) {
@@ -74,7 +83,7 @@ export default function CustomerDetailPage() {
 
     const handleAddPayment = async (e) => {
         e.preventDefault()
-        let remainingPayment = parseFloat(paymentForm.amount)
+        let remainingPayment = parseCurrency(paymentForm.amount)
         if (!remainingPayment || remainingPayment <= 0) return
 
         // Identify all open debts, sorted by ID (usually oldest first) or date
@@ -148,8 +157,6 @@ export default function CustomerDetailPage() {
             setShowDeleteConfirm(false)
         }
     }
-
-    const formatCurrency = (amount) => new Intl.NumberFormat('uz-UZ').format(amount || 0)
 
     const formatPhone = (phone) => {
         if (!phone) return ''
@@ -329,7 +336,21 @@ export default function CustomerDetailPage() {
                                     <label className="label">Summa</label>
                                     <div className="relative">
                                         <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                        <input type="number" className="input pl-11 pr-16" placeholder="0" value={debtForm.amount} onChange={(e) => setDebtForm({ ...debtForm, amount: e.target.value })} required />
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            className="input pl-11 pr-16"
+                                            placeholder="0"
+                                            value={debtForm.amount}
+                                            onChange={(e) => {
+                                                const digits = e.target.value.replace(/\D/g, '')
+                                                setDebtForm({
+                                                    ...debtForm,
+                                                    amount: digits ? formatCurrency(digits) : ''
+                                                })
+                                            }}
+                                            required
+                                        />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
                                     </div>
                                 </div>
@@ -337,7 +358,41 @@ export default function CustomerDetailPage() {
                                     <label className="label">Izoh (ixtiyoriy)</label>
                                     <div className="relative">
                                         <FileText size={18} className="absolute left-4 top-4 text-gray-400" />
-                                        <textarea className="input pl-11 min-h-[80px] resize-none" placeholder="Tavsif qo'shish..." value={debtForm.description} onChange={(e) => setDebtForm({ ...debtForm, description: e.target.value })} />
+                                        <textarea
+                                            className="input pl-11 min-h-[80px] resize-none"
+                                            placeholder="Tavsif qo'shish..."
+                                            value={debtForm.description}
+                                            onChange={(e) => setDebtForm({ ...debtForm, description: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="label">Nasiya sanasi (ixtiyoriy)</label>
+                                    <input
+                                        type="date"
+                                        className="input"
+                                        value={debtForm.debt_date}
+                                        onChange={(e) => setDebtForm({ ...debtForm, debt_date: e.target.value })}
+                                    />
+                                    <p className="text-[12px] text-gray-400 mt-1">
+                                        Sana bo'sh qolsa bugungi sana olinadi. Oxirgi 1 oy oralig'ida bo'lishi kerak.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        id="customer_send_sms"
+                                        type="checkbox"
+                                        className="w-5 h-5 rounded-md border-gray-300 text-blue-500 focus:ring-blue-500"
+                                        checked={debtForm.send_sms}
+                                        onChange={(e) => setDebtForm({ ...debtForm, send_sms: e.target.checked })}
+                                    />
+                                    <div className="text-[13px] text-gray-600 dark:text-gray-300">
+                                        <label htmlFor="customer_send_sms" className="font-medium">
+                                            Mijozga SMS yuborish
+                                        </label>
+                                        <p className="text-[12px] text-gray-400">
+                                            Tarifdagi bepul SMS limitidan keyin har bir SMS uchun balansdan yechiladi.
+                                        </p>
                                     </div>
                                 </div>
                                 <button type="submit" className="btn btn-orange w-full" disabled={submitting}>
@@ -374,7 +429,21 @@ export default function CustomerDetailPage() {
                                     <label className="label">Summa</label>
                                     <div className="relative">
                                         <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                        <input type="number" className="input pl-11 pr-16" placeholder="0" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} required />
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            className="input pl-11 pr-16"
+                                            placeholder="0"
+                                            value={paymentForm.amount}
+                                            onChange={(e) => {
+                                                const digits = e.target.value.replace(/\D/g, '')
+                                                setPaymentForm({
+                                                    ...paymentForm,
+                                                    amount: digits ? formatCurrency(digits) : ''
+                                                })
+                                            }}
+                                            required
+                                        />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
                                     </div>
                                 </div>

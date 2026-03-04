@@ -21,6 +21,7 @@ tags:
   - name: Customers
   - name: Debts
   - name: Payments
+  - name: Subscription
   - name: Profile
   - name: Notifications
   - name: Locations
@@ -48,6 +49,39 @@ components:
         type: string
         example: application/json
   schemas:
+    Plan:
+      type: object
+      description: "Obuna ta'rifi (nasiya to'plami). Hozircha faqat Oddiy (MVP)."
+      properties:
+        id:
+          type: integer
+          description: Plan ID
+        name:
+          type: string
+          description: "Ta'rif nomi (masalan, Oddiy)"
+        price:
+          type: number
+          description: "Oylik abonent to'lovi (so'm)"
+        description:
+          type: string
+          nullable: true
+          description: "HTML tavsif (chegirmalar va imkoniyatlar ro'yxati)"
+        low_amount_limit:
+          type: integer
+          nullable: true
+          description: "Past summali nasiyalar soni limiti (<= low_amount_threshold). null bo'lsa cheklanmagan."
+        high_amount_limit:
+          type: integer
+          nullable: true
+          description: "Yuqori summali nasiyalar soni limiti (> low_amount_threshold). null bo'lsa cheklanmagan."
+        sms_limit:
+          type: integer
+          nullable: true
+          description: "Oyiga bepul SMS soni (nasiyalar, eslatmalar va h.k.). null bo'lsa cheklanmagan."
+        low_amount_threshold:
+          type: number
+          format: float
+          description: "Past va yuqori nasiya chegarasi (so'm). Masalan, 30000 so'm."
     User:
       type: object
       description: Authenticated user
@@ -110,6 +144,10 @@ components:
       properties:
         id: { type: integer, description: Debt ID }
         customer_id: { type: integer, description: Related customer ID }
+        debt_date:
+          type: string
+          format: date
+          description: "Nasiya sanasi (YYYY-MM-DD). Tanlanmasa bugungi sana. Oxirgi 1 oy oralig'ida bo'lishi kerak."
         total_amount: { type: number, description: Total debt amount }
         remaining_amount: { type: number, description: Remaining unpaid amount }
         status:
@@ -117,6 +155,9 @@ components:
           description: "Debt status: open or closed"
           enum: [open, closed]
         description: { type: string, nullable: true, description: Optional note }
+        sms_sent:
+          type: boolean
+          description: "true bo'lsa, bu nasiya yaratilganda mijozga SMS yuborilgan (debt SMS xabarnomasi)."
     Payment:
       type: object
       description: Payment for a debt
@@ -305,6 +346,55 @@ paths:
           description: Validation error (masalan telefon allaqachon band)
         "500":
           description: SMS yuborishda xatolik (SMS yoqilganda)
+  /auth/telegram-login:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      summary: Telegram orqali tezkor login (API)
+      description: |
+        Telegram bot orqali yuborilgan telefon raqami bo'yicha foydalanuvchini tezkor autentifikatsiya qiladi.
+
+        - Foydalanuvchi bazada bo'lsa — darhol token va user qaytaradi.
+        - Bo'lmasa — 404 va `requires_registration=true` qaytaradi (avval web orqali ro'yxatdan o'tishi kerak).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+                  description: "Telegram'dan olingan telefon raqam (+998 yoki 998 bilan). Bazada +998 formatida saqlanadi."
+                  example: "+998901234567"
+                device_name:
+                  type: string
+                  description: Qurilma nomi (standart: telegram)
+                  example: "telegram"
+      responses:
+        "200":
+          description: Foydalanuvchi topildi, token qaytarildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: "#/components/schemas/User" }
+        "404":
+          description: Foydalanuvchi topilmadi (ro'yxatdan o'tmagan)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  requires_registration:
+                    type: boolean
+                    example: true
   /auth/verify:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"
@@ -578,7 +668,7 @@ paths:
     post:
       tags: [Debts]
       security: [{ bearerAuth: [] }]
-      summary: Create debt
+      summary: Create debt (ixtiyoriy SMS bilan)
       requestBody:
         required: true
         content:
@@ -588,15 +678,40 @@ paths:
               required: [customer_id, total_amount]
               properties:
                 customer_id: { type: integer, description: Customer ID }
+                debt_date:
+                  type: string
+                  format: date
+                  description: "Nasiya sanasi (YYYY-MM-DD). Ixtiyoriy; tanlanmasa bugungi sana. Oxirgi 1 oy oralig'ida (min: bugundan 1 oy oldin, max: bugun)."
                 total_amount: { type: number, description: Total debt amount }
                 description: { type: string, nullable: true }
+                send_sms:
+                  type: boolean
+                  description: |
+                    true bo'lsa, nasiya yaratilganda mijozga SMS xabarnomasi yuboriladi.
+
+                    Basic (Oddiy) ta'rifida plan.sms_limit (hozircha 15 ta) bepul nasiya SMS bor;
+                    limitdan keyingi har bir SMS uchun 200 so'm user balansidan yechiladi (type=sms tranzaksiya).
       responses:
         "201":
-          description: Created
+          description: Created (SMS yuborilgan/yuborilmagan holat bilan)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Debt"
+                type: object
+                properties:
+                  debt:
+                    $ref: "#/components/schemas/Debt"
+                  sms_sent:
+                    type: boolean
+                    description: "true bo'lsa, SMS muvaffaqiyatli yuborilgan."
+                  sms_info:
+                    type: string
+                    nullable: true
+                    description: "Qo'shimcha ma'lumot (masalan, 'SMS yuborildi (bepul limit doirasida)')."
+                  sms_error:
+                    type: string
+                    nullable: true
+                    description: "SMS yuborishda xatolik bo'lsa, xabar matni."
   /debts/{id}:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"
@@ -721,6 +836,88 @@ paths:
                 type: object
                 properties:
                   message: { type: string }
+  /subscription/status:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Subscription]
+      security: [{ bearerAuth: [] }]
+      summary: Subscription status, balance and recent transactions
+      description: |
+        Foydalanuvchining balansini, trial ma'lumotlarini, mavjud tariflarni va oxirgi 10 ta tranzaksiyasini qaytaradi.
+        Web'dagi obuna sahifasi bilan bir xil mantiq.
+      responses:
+        "200":
+          description: Subscription status payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: number
+                    format: float
+                    description: Foydalanuvchi balansi
+                  trial_info:
+                    type: object
+                    properties:
+                      trial_ends_at: { type: string, format: date-time, nullable: true }
+                      days_remaining: { type: integer }
+                      is_expired: { type: boolean }
+                      status: { type: integer, description: "1=faol, 0=bloklangan/yakunlangan" }
+                  plans:
+                    type: array
+                    description: "Mavjud tariflar (hozircha faqat Oddiy nasiya to'plami). Har bir ta'rifda nasiya limitlari va bepul SMS limiti bo'lishi mumkin."
+                    items:
+                      $ref: "#/components/schemas/Plan"
+                  transactions:
+                    type: array
+                    description: Oxirgi 10 ta tranzaksiya (balans to'ldirish va obuna to'lovlari)
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        amount: { type: number, description: "Miqdor: balans to'ldirish uchun musbat, obuna uchun manfiy" }
+                        type: { type: string, description: "deposit yoki subscription" }
+                        status: { type: string }
+                        description: { type: string, nullable: true }
+                        created_at: { type: string, format: date-time }
+  /subscription/choose/{plan}:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Subscription]
+      security: [{ bearerAuth: [] }]
+      summary: Tarif tanlash (balansdan yechiladi)
+      description: |
+        Foydalanuvchi uchun tarifni faollashtiradi. Agar trial davom etayotgan bo'lsa va tarif "Oddiy" bo'lsa, balansdan pul yechilmaydi.
+        Boshqa hollarda tarif narxi balansdan yechiladi; mablag' yetarli bo'lmasa 422 "Mablag' yetarli emas" qaytadi.
+      parameters:
+        - in: path
+          name: plan
+          required: true
+          schema: { type: integer }
+          description: Tarif ID si
+      responses:
+        "200":
+          description: Tarif muvaffaqiyatli faollashtirildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  trial_ends_at: { type: string, format: date-time }
+                  balance:
+                    type: number
+                    format: float
+                    description: Yangilangan balans
+        "422":
+          description: Mablag' yetarli emas yoki trial cheklovi
+        "500":
+          description: Ichki server xatosi
   /profile:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"

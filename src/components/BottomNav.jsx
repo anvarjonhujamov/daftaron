@@ -6,7 +6,7 @@ export default function BottomNav() {
         { to: '/', icon: Home, label: 'Bosh sahifa' },
         { to: '/customers', icon: Users, label: 'Mijozlar' },
         { to: '/payments', icon: History, label: 'Tarix' },
-        { to: '/debts', icon: BarChart3, label: 'Xisobotlar' },
+        { to: '/debts', icon: BarChart3, label: 'Hisobotlar' },
         { to: '/profile', icon: Settings, label: 'Sozlamalar' }
     ]
 

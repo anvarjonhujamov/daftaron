@@ -10,6 +10,7 @@ import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 import { buildClickUrl } from '../utils/click'
+import { formatCurrency, parseCurrency } from '../utils/format'
 
 export default function ProfilePage() {
     const navigate = useNavigate()
@@ -159,7 +160,7 @@ export default function ProfilePage() {
 
     const handleClickTopUp = () => {
         try {
-            const amountNumber = clickAmount ? Number(clickAmount) : undefined
+            const amountNumber = clickAmount ? parseCurrency(clickAmount) : undefined
             if (amountNumber !== undefined && (isNaN(amountNumber) || amountNumber <= 0)) {
                 alert("Iltimos, to'g'ri summa kiriting.")
                 return
@@ -221,7 +222,7 @@ export default function ProfilePage() {
                     <div className="flex-1">
                         <p className="text-[14px] font-medium text-gray-900 dark:text-white">Balans</p>
                         <p className="text-[16px] font-bold text-gray-900 dark:text-white">
-                            {new Intl.NumberFormat('uz-UZ').format(balance || 0)} <span className="text-[12px] text-gray-400">so'm</span>
+                            {formatCurrency(balance || 0)} <span className="text-[12px] text-gray-400">so'm</span>
                         </p>
                     </div>
                 </div>
@@ -302,12 +303,15 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-3 mt-2">
                         <input
-                            type="number"
-                            min="0"
+                            type="text"
+                            inputMode="numeric"
                             className="input w-32 text-[14px]"
-                            placeholder="Summа"
+                            placeholder="Summa"
                             value={clickAmount}
-                            onChange={(e) => setClickAmount(e.target.value)}
+                            onChange={(e) => {
+                                const digits = e.target.value.replace(/\D/g, '')
+                                setClickAmount(digits ? formatCurrency(digits) : '')
+                            }}
                         />
                         <button
                             type="button"

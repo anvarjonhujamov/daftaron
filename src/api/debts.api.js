@@ -12,11 +12,21 @@ export const debtsApi = {
     },
 
     createDebt: async (data) => {
-        const response = await api.post('/debts', {
+        const payload = {
             customer_id: data.customer_id,
             total_amount: data.total_amount,
             description: data.description || null
-        })
+        }
+
+        // TZ va OpenAPI bo'yicha ixtiyoriy sana (debt_date) va SMS yuborish flagi (send_sms)
+        if (data.debt_date) {
+            payload.debt_date = data.debt_date
+        }
+        if (typeof data.send_sms === 'boolean') {
+            payload.send_sms = data.send_sms
+        }
+
+        const response = await api.post('/debts', payload)
         return response.data
     },
 

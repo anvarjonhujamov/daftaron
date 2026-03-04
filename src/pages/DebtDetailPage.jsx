@@ -7,6 +7,7 @@ import {
     FileText, Calendar, ChevronRight, CreditCard
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { formatCurrency } from '../utils/format'
 import EmptyState from '../components/EmptyState'
 
 export default function DebtDetailPage() {
@@ -66,10 +67,6 @@ export default function DebtDetailPage() {
         } finally {
             setSubmitting(false)
         }
-    }
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('uz-UZ').format(amount || 0)
     }
 
     const formatDate = (dateString) => {
