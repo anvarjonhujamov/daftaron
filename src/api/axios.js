@@ -29,8 +29,12 @@ api.interceptors.response.use(
             localStorage.removeItem('user')
             window.location.href = '/login'
         } else if (error.response?.status === 403) {
-            // Trial tugagan yoki hisob faol emas — Obuna/Ta'rif sahifasiga yo'naltiramiz
-            window.location.href = '/subscription'
+            // Trial tugagan yoki hisob faol emas — Sozlamalar sahifasiga yo'naltiramiz
+            // Agar allaqachon ruxsat etilgan sahifada bo'lsa, redirect qilmaymiz
+            const allowed = ['/profile', '/subscription']
+            if (!allowed.includes(window.location.pathname)) {
+                window.location.href = '/profile'
+            }
         }
         return Promise.reject(error)
     }

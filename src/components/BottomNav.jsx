@@ -1,14 +1,23 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Users, BarChart3, Settings, History } from 'lucide-react'
+import { Home, Users, BarChart3, Settings, History, Package } from 'lucide-react'
+import { useSubscription } from '../contexts/SubscriptionContext'
+
+const FULL_NAV_ITEMS = [
+    { to: '/', icon: Home, label: 'Bosh sahifa' },
+    { to: '/customers', icon: Users, label: 'Mijozlar' },
+    { to: '/payments', icon: History, label: 'Tarix' },
+    { to: '/debts', icon: BarChart3, label: 'Hisobotlar' },
+    { to: '/profile', icon: Settings, label: 'Sozlamalar' }
+]
+
+const BLOCKED_NAV_ITEMS = [
+    { to: '/subscription', icon: Package, label: "Ta'rif" },
+    { to: '/profile', icon: Settings, label: 'Sozlamalar' }
+]
 
 export default function BottomNav() {
-    const navItems = [
-        { to: '/', icon: Home, label: 'Bosh sahifa' },
-        { to: '/customers', icon: Users, label: 'Mijozlar' },
-        { to: '/payments', icon: History, label: 'Tarix' },
-        { to: '/debts', icon: BarChart3, label: 'Hisobotlar' },
-        { to: '/profile', icon: Settings, label: 'Sozlamalar' }
-    ]
+    const { blocked } = useSubscription()
+    const navItems = blocked ? BLOCKED_NAV_ITEMS : FULL_NAV_ITEMS
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 pb-safe z-50 transition-colors">

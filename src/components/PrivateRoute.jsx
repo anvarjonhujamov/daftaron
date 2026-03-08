@@ -1,6 +1,7 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { subscriptionApi } from '../api/subscription.api'
+import { SubscriptionContext } from '../contexts/SubscriptionContext'
 
 export default function PrivateRoute({ children }) {
     const token = localStorage.getItem('token')
@@ -24,9 +25,10 @@ export default function PrivateRoute({ children }) {
 
                 setBlocked(isBlocked)
 
-                // Agar trial tugagan yoki hisob bloklangan bo'lsa — obuna sahifasiga yo'naltiramiz
-                if (isBlocked && location.pathname !== '/subscription') {
-                    navigate('/subscription', { replace: true })
+                // Agar trial tugagan yoki hisob bloklangan bo'lsa — faqat obuna yoki sozlamalar sahifasiga ruxsat
+                const allowedWhenBlocked = ['/subscription', '/profile']
+                if (isBlocked && !allowedWhenBlocked.includes(location.pathname)) {
+                    navigate('/profile', { replace: true })
                 }
             } catch (err) {
                 // 401 holatini axios interceptori hal qiladi (login sahifasiga qaytaradi)
@@ -50,7 +52,10 @@ export default function PrivateRoute({ children }) {
         return <Navigate to="/login" state={{ from: location }} replace />
     }
 
-    if (checking && location.pathname !== '/subscription') {
+    // Allow both /subscription and /profile pages to load right away without redirect while checking subscription.
+    // If not, it flashes incorrectly or gets blocked during load.
+    const allowedWhenChecking = ['/subscription', '/profile']
+    if (checking && !allowedWhenChecking.includes(location.pathname)) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
                 <div className="text-gray-500 dark:text-gray-400 text-sm">Yuklanmoqda...</div>
@@ -58,10 +63,15 @@ export default function PrivateRoute({ children }) {
         )
     }
 
-    // Obuna tugagan foydalanuvchi faqat obuna sahifasini ko'ra oladi
-    if (blocked && location.pathname !== '/subscription') {
-        return <Navigate to="/subscription" replace />
+    // Obuna tugagan foydalanuvchi faqat obuna va sozlamalar sahifasini ko'ra oladi
+    const allowedWhenBlocked = ['/subscription', '/profile']
+    if (blocked && !allowedWhenBlocked.includes(location.pathname)) {
+        return <Navigate to="/profile" replace />
     }
 
-    return children
+    return (
+        <SubscriptionContext.Provider value={{ blocked }}>
+            {children}
+        </SubscriptionContext.Provider>
+    )
 }

@@ -43,11 +43,10 @@ export default function RegisterPage() {
         let mounted = true
         categoriesApi.getCategories().then((list) => {
             if (mounted) {
-                const options = list.length > 0 ? list : categoriesApi.getCategoriesFallback()
-                setCategories(options)
+                setCategories(list)
                 setFormComplete(prev => ({
                     ...prev,
-                    category_id: prev.category_id ?? options[0]?.id ?? null
+                    category_id: prev.category_id ?? list[0]?.id ?? null
                 }))
             }
         })

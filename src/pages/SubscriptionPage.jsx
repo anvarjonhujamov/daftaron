@@ -4,7 +4,8 @@ import { subscriptionApi } from '../api/subscription.api'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { buildClickUrl } from '../utils/click'
-import { CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, Package, Clock, Receipt } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, Package, Clock, Receipt, LogOut } from 'lucide-react'
+import { authApi } from '../api/auth.api'
 
 export default function SubscriptionPage() {
     const navigate = useNavigate()
@@ -90,6 +91,19 @@ export default function SubscriptionPage() {
         }
     }
 
+    const handleLogout = async () => {
+        if (!confirm('Chiqmoqchimisiz?')) return
+        try {
+            await authApi.logout()
+        } catch (err) {
+            console.error('Logout error:', err)
+        } finally {
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            navigate('/login')
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -98,19 +112,31 @@ export default function SubscriptionPage() {
         )
     }
 
+    const isBlocked = trialInfo?.is_expired || trialInfo?.status === 0
+
     return (
         <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
             <div className="flex items-center justify-between mb-6">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
-                >
-                    <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
-                </button>
+                {isBlocked ? (
+                    <div className="w-10 h-10" />
+                ) : (
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+                    >
+                        <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
+                    </button>
+                )}
                 <h1 className="text-[22px] font-bold text-gray-900 dark:text-white">
                     Ta'rif va obuna
                 </h1>
-                <div className="w-10 h-10" />
+                <button
+                    onClick={handleLogout}
+                    className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center"
+                    title="Chiqish"
+                >
+                    <LogOut size={20} className="text-red-600 dark:text-red-400" />
+                </button>
             </div>
 
             {message && (

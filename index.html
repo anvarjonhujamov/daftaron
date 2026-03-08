@@ -15,6 +15,12 @@
     <title>Daftaron</title>
     <!-- Telegram WebApp SDK (normal browserlarda ham xatolik bermaydi) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+      }
+    </script>
     <!-- Telegram web-login auto-check (Web flow uchun) -->
     <script>
       (function () {
