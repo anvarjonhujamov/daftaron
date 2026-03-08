@@ -4,7 +4,7 @@ import { profileApi } from '../api/profile.api'
 import { authApi } from '../api/auth.api'
 import {
     User, Phone, Mail, Lock, LogOut, ChevronRight,
-    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package
+    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -278,7 +278,7 @@ export default function ProfilePage() {
                             )}
                         </div>
                         <span className="text-[15px] font-medium text-gray-900 dark:text-white">
-                            {darkMode ? 'Tungi rejim' : 'Kunduzgi rejim'}
+                            Tungi rejim
                         </span>
                     </div>
                     <button
@@ -321,6 +321,21 @@ export default function ProfilePage() {
                     <ChevronRight size={18} className="text-gray-400" />
                 </button>
 
+                {/* Aloqa / Support */}
+                <button
+                    type="button"
+                    onClick={() => window.open('https://t.me/backend_php_dev', '_blank', 'noopener,noreferrer')}
+                    className="w-full flex items-center justify-between py-4"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                            <MessageCircle size={18} className="text-sky-500" />
+                        </div>
+                        <span className="text-[15px] font-medium text-gray-900 dark:text-white">Aloqa / Qo'llab-quvvatlash</span>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-400" />
+                </button>
+
                 {/* Click balance top-up */}
                 <div className="py-4 flex flex-col gap-3">
                     <div className="flex items-center gap-3">
@@ -332,7 +347,7 @@ export default function ProfilePage() {
                                 Balansni to'ldirish (Click)
                             </span>
                             <p className="text-[12px] text-gray-400">
-                                Click ilovasi orqali obunani to'ldiring
+                                Click ilovasi orqali balansni to'ldiring
                             </p>
                         </div>
                     </div>

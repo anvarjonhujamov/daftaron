@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { subscriptionApi } from '../api/subscription.api'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatCurrency, parseCurrency } from '../utils/format'
+import { buildClickUrl } from '../utils/click'
 import { CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, Package, Clock, Receipt } from 'lucide-react'
 
 export default function SubscriptionPage() {
@@ -12,6 +13,7 @@ export default function SubscriptionPage() {
     const [status, setStatus] = useState(null)
     const [error, setError] = useState('')
     const [message, setMessage] = useState('')
+    const [clickAmount, setClickAmount] = useState('')
 
     useEffect(() => {
         loadStatus()
@@ -68,6 +70,24 @@ export default function SubscriptionPage() {
         const mm = String(date.getMonth() + 1).padStart(2, '0')
         const yyyy = date.getFullYear()
         return `${dd}.${mm}.${yyyy}`
+    }
+
+    const handleClickTopUp = () => {
+        try {
+            const stored = localStorage.getItem('user')
+            const user = stored ? JSON.parse(stored) : null
+            const amountNumber = clickAmount ? parseCurrency(clickAmount) : 0
+
+            if (!amountNumber || isNaN(amountNumber) || amountNumber <= 0) {
+                alert("Iltimos, to'g'ri summa kiriting.")
+                return
+            }
+
+            const url = buildClickUrl(user, amountNumber)
+            window.location.href = url
+        } catch (err) {
+            alert(err.message || "Click to'lovini boshlashda xatolik yuz berdi.")
+        }
     }
 
     if (loading) {
@@ -161,14 +181,30 @@ export default function SubscriptionPage() {
                         </p>
                     </div>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => navigate('/profile')}
-                    className="mt-3 text-[13px] text-blue-500 font-medium flex items-center gap-1"
-                >
-                    Balansni Click orqali to'ldirish
-                    <ArrowRight size={14} />
-                </button>
+                <p className="mt-2 text-[12px] text-gray-400">
+                    Balansni Click orqali to'ldirish uchun summa kiriting.
+                </p>
+                <div className="mt-2 flex items-center gap-3">
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        className="input w-32 text-[14px]"
+                        placeholder="Summa"
+                        value={clickAmount}
+                        onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '')
+                            setClickAmount(digits ? formatCurrency(digits) : '')
+                        }}
+                    />
+                    <button
+                        type="button"
+                        onClick={handleClickTopUp}
+                        className="btn btn-primary flex-1"
+                    >
+                        Click orqali to'lash
+                        <ArrowRight size={16} />
+                    </button>
+                </div>
             </div>
 
             {/* Plans */}

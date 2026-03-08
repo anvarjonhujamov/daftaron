@@ -7,6 +7,7 @@ export default function PrivateRoute({ children }) {
     const location = useLocation()
     const navigate = useNavigate()
     const [checking, setChecking] = useState(!!token)
+    const [blocked, setBlocked] = useState(false)
 
     useEffect(() => {
         if (!token) return
@@ -17,11 +18,14 @@ export default function PrivateRoute({ children }) {
             try {
                 const data = await subscriptionApi.getStatus()
                 const trial = data.trial_info || data.trial || {}
+                const isBlocked = !!(trial.is_expired || trial.status === 0)
 
                 if (cancelled) return
 
+                setBlocked(isBlocked)
+
                 // Agar trial tugagan yoki hisob bloklangan bo'lsa — obuna sahifasiga yo'naltiramiz
-                if ((trial.is_expired || trial.status === 0) && location.pathname !== '/subscription') {
+                if (isBlocked && location.pathname !== '/subscription') {
                     navigate('/subscription', { replace: true })
                 }
             } catch (err) {
@@ -52,6 +56,11 @@ export default function PrivateRoute({ children }) {
                 <div className="text-gray-500 dark:text-gray-400 text-sm">Yuklanmoqda...</div>
             </div>
         )
+    }
+
+    // Obuna tugagan foydalanuvchi faqat obuna sahifasini ko'ra oladi
+    if (blocked && location.pathname !== '/subscription') {
+        return <Navigate to="/subscription" replace />
     }
 
     return children
