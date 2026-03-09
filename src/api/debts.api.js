@@ -43,6 +43,11 @@ export const debtsApi = {
     closeDebt: async (id) => {
         const response = await api.patch(`/debts/${id}/close`)
         return response.data
+    },
+
+    getOverdue: async (params = {}) => {
+        const response = await api.get('/debts/overdue', { params })
+        return response.data
     }
 }
 

@@ -74,9 +74,10 @@ Foydalanuvchi Telegram Mini App / bot orqali kirdi va backend telefon raqamni yu
 
 ### 4.3. Bosqich 3 — Do‘kon va parol
 
-Avval **viloyat/tuman/ko‘cha** ro‘yxatlari kerak bo‘ladi (locations — authsiz):
+Avval **viloyat, kategoriya, tuman, ko‘cha** ro‘yxatlari kerak bo‘ladi (locations — authsiz):
 
 - `GET /locations/regions` — viloyatlar
+- `GET /locations/categories` — do‘kon kategoriyalari (category_id tanlash uchun)
 - `GET /locations/districts/{regionId}` — tumanlar
 - `GET /locations/streets/{districtId}` — ko‘chalar
 
@@ -86,7 +87,7 @@ Keyin:
 |-------|----------|------|--------|
 | POST | `/auth/register/complete` | `phone`, `shop_name`, `category_id`, `region_id`, `district_id`, `street_id`, `password`, `password_confirmation` | **201:** `token`, `user` — ro‘yxatdan o‘tish tugadi, token saqlanadi. **404:** Verify muddati tugagan. **422:** Validatsiya xatosi. |
 
-**Eslatma:** Kategoriyalar ro‘yxati uchun API v1 da hozircha alohida public endpoint yo‘q (admin panelda CRUD). Ro‘yxatdan o‘tish va do‘kon qo‘shish uchun backend bilan kelishib `GET /locations/categories` yoki shunga o‘xshash endpoint qo‘shish mumkin; yoki ilova birinchi marta so‘rovda backend dan olib cache qilishi mumkin (agar kelajakda bunday endpoint chiqsa).
+**Kategoriyalar:** `GET /locations/categories` (authsiz) — do‘kon kategoriyalari ro‘yxati (id, name); ro‘yxatdan o‘tish va yangi do‘kon qo‘shishda `category_id` sifatida ishlatiladi.
 
 Ro‘yxatdan o‘tishdan keyin yana `GET /subscription/status` chaqirib, trial va ta’rif holatini ko‘rsatish mumkin.
 
@@ -120,6 +121,8 @@ Trial tugagach yoki hisob faol emas bo‘lsa, barcha asosiy endpointlar (dashboa
 | POST | `/subscription/choose/{plan}` | — (plan path da: plan ID) | **200:** `message`, `trial_ends_at`, `balance` — obuna yangilandi, asosiy ilovaga o‘tish mumkin. **422:** "Mablag' yetarli emas" — `plan_price`, `balance` ham qaytadi; yoki "Sinov muddati davomida faqat Oddiy ta'rifni tanlash mumkin." |
 
 Trial davrida faqat **Oddiy** ta’rif ruxsat etiladi va Oddiy bepul. Trial tugagach yoki boshqa ta’rif tanlashda narx **balansdan** yechiladi; balans yetmasa 422.
+
+**Web da ta’rifni Click orqali to‘lash:** `/subscription/plan-pay/{plan}` (POST, body: `payment_system_id`) — backend `PaymentOrder` (type=subscription, plan_id, amount=plan narxi) yaratadi va Click ga redirect qiladi. Foydalanuvchi Click da o‘sha summani to‘laydi. To‘lov muvaffaqiyatli tugagach callback da **shu ta’rif avtomatik faollashadi** (trial_ends_at yangilanadi, PlanPurchase yoziladi, tenant.plan_id yangilanadi); qo‘lda yana ta’rif tanlash shart emas.
 
 Balans to‘ldirish mobil ilovada odatda **Click** orqali amalga oshiriladi (backend Web uchun redirect URL beradi). Mobil uchun: foydalanuvchiga **public_id** (user.id + 1000) yoki telefon raqamini ko‘rsatish va Click ilovasida to‘lov qilishni aytish mumkin; yoki kelajakda mobil SDK/Deep Link orqali integratsiya qo‘shilishi mumkin.
 
@@ -179,7 +182,7 @@ Barcha quyidagi endpointlar **Bearer** va **trial tekshiruvdan** o‘tadi. Trial
 |-------|----------|------|--------|
 | POST | `/tenants` | `name`, `category_id`, `region_id`, `district_id`, `street_id` | **201:** yangi do‘kon. **422:** Oddiy ta’rifda allaqachon 1 do‘kon bo‘lsa — "Basic (Oddiy) ta'rifda faqat bitta do'kon mumkin…", `requires_upgrade: true`. |
 
-Locations: `GET /locations/regions`, `GET /locations/districts/{regionId}`, `GET /locations/streets/{districtId}` (authsiz ham ishlaydi).
+Locations: `GET /locations/regions`, `GET /locations/categories`, `GET /locations/districts/{regionId}`, `GET /locations/streets/{districtId}` (authsiz ham ishlaydi).
 
 ### 6.7. Bildirishnomalar
 
@@ -239,12 +242,14 @@ Token talab qilinmaydi.
 | Obuna holati | GET | `/subscription/status` |
 | Ta’rif tanlash | POST | `/subscription/choose/{plan}` |
 | Viloyatlar | GET | `/locations/regions` |
+| Kategoriyalar | GET | `/locations/categories` |
 | Tumanlar | GET | `/locations/districts/{regionId}` |
 | Ko‘chalar | GET | `/locations/streets/{districtId}` |
 | Dashboard | GET | `/dashboard` |
 | Profil | GET / PUT | `/profile`, `/profile/password` |
 | Mijozlar | GET / POST / GET / PUT / DELETE | `/customers`, `/customers/{id}` |
 | Nasiyalar | GET / POST / GET / PUT / DELETE / PATCH | `/debts`, `/debts/{id}`, `/debts/{id}/close` |
+| Muddati o‘tgan qarzdorlar | GET | `/debts/overdue` |
 | To‘lovlar | GET / POST | `/payments` |
 | Do‘kon qo‘shish | POST | `/tenants` |
 | Bildirishnomalar | GET / GET | `/notifications`, `/notifications/{id}` |

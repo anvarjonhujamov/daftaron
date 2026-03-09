@@ -5,7 +5,7 @@ import { authApi } from '../api/auth.api'
 import { subscriptionApi } from '../api/subscription.api'
 import {
     User, Phone, Mail, Lock, LogOut, ChevronRight,
-    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle
+    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle, Store, Bell
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -228,10 +228,12 @@ export default function ProfilePage() {
                     <div className="flex-1">
                         <h2 className="text-[17px] font-semibold text-gray-900 dark:text-white">{user?.name}</h2>
                         <p className="text-gray-400 text-[14px]">{user?.phone}</p>
+                        {user?.id && (
+                            <p className="text-[12px] text-gray-400 mt-0.5">ID: {(user.public_id || (user.id + 1000))}</p>
+                        )}
                     </div>
                     <button
                         onClick={() => {
-                            // Drawer ochilganda formani user ma'lumotlari bilan to'ldiramiz
                             if (user) {
                                 setProfileForm({
                                     name: user.name || '',
@@ -247,6 +249,25 @@ export default function ProfilePage() {
                     </button>
                 </div>
             </div>
+
+            {/* Shop Info */}
+            {(user?.tenant_name || user?.shop_name || user?.tenant?.name) && (
+                <div className="card dark:bg-gray-800 mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                            <Store size={18} className="text-purple-500" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-[14px] font-medium text-gray-900 dark:text-white">
+                                {user?.tenant_name || user?.shop_name || user?.tenant?.name}
+                            </p>
+                            <p className="text-[12px] text-gray-400">
+                                {user?.category_name || user?.tenant?.category?.name || "Do'kon"}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Balance Card */}
             <div className="card dark:bg-gray-800 mb-4">
@@ -415,10 +436,10 @@ export default function ProfilePage() {
             </button>
 
             {/* Edit Profile Drawer */}
-            <Drawer.Root open={showEditDrawer} onOpenChange={setShowEditDrawer}>
+            <Drawer.Root open={showEditDrawer} onOpenChange={setShowEditDrawer} shouldScaleBackground={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh]">
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] overflow-y-auto">
                         <div className="p-4">
                             <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
 
@@ -499,10 +520,10 @@ export default function ProfilePage() {
             </Drawer.Root>
 
             {/* Password Drawer */}
-            <Drawer.Root open={showPasswordDrawer} onOpenChange={setShowPasswordDrawer}>
+            <Drawer.Root open={showPasswordDrawer} onOpenChange={setShowPasswordDrawer} shouldScaleBackground={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh]">
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] overflow-y-auto">
                         <div className="p-4">
                             <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
 

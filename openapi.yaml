@@ -8,11 +8,12 @@ info:
 
     Click to'lov integratsiyasi:
     - Web ilova balans va obuna uchun Click'ga redirect qiladi (`https://my.click.uz/services/pay`), transaction_param sifatida `payment_orders.id` yuboriladi.
+    - Ta'rif to'lovi (Web): POST /subscription/plan-pay/{plan} — backend PaymentOrder (type=subscription, plan_id, amount=plan narxi) yaratadi va Click ga redirect qiladi. Complete callback da order type=subscription bo'lsa ta'rif avtomatik faollashadi (trial_ends_at yangilanadi, PlanPurchase yoziladi, tenant.plan_id yangilanadi).
     - Click callback endpointlari (authsiz, JSON javob): `POST /payment/click/prepare` va `POST /payment/click/complete`.
     - `merchant_trans_id` qiymati:
       - ilovadan redirect qilinganda — bu `payment_orders.id` bo'lishi kerak;
       - Click ilovasining o'zidan to'lov qilganda — foydalanuvchi public ID si (`id + 1000`, masalan 1001) yoki telefoni (`+998XXXXXXXXX` yoki `998XXXXXXXXX`) bo'lishi mumkin.
-    - Backend user ni topadi, kerak bo'lsa yangi `payment_orders` yozuvini (`type = balance_deposit`, `status = pending`) yaratadi va `Complete` muvaffaqiyatli tugaganda summani user balansiga qo'shadi.
+    - Complete da: order type=balance_deposit bo'lsa summa user balansiga qo'shiladi; order type=subscription va plan_id bor bo'lsa ta'rif avtomatik sotib olinadi (qo'lda yana tanlash shart emas).
 servers:
   - url: /api/v1
 tags:
@@ -250,6 +251,12 @@ components:
         id: { type: integer }
         district_id: { type: integer }
         name: { type: string }
+    Category:
+      type: object
+      description: Do'kon kategoriyasi (ro'yxatdan o'tish va do'kon qo'shishda tanlanadi)
+      properties:
+        id: { type: integer }
+        name: { type: string }
 paths:
   /auth/login:
     parameters:
@@ -372,7 +379,7 @@ paths:
                   example: "+998901234567"
                 device_name:
                   type: string
-                  description: Qurilma nomi (standart: telegram)
+                  description: "Qurilma nomi (standart: telegram)"
                   example: "telegram"
       responses:
         "200":
@@ -464,7 +471,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [phone, shop_name, region_id, district_id, street_id, password, password_confirmation]
+              required: [phone, shop_name, category_id, region_id, district_id, street_id, password, password_confirmation]
               properties:
                 phone:
                   type: string
@@ -474,6 +481,10 @@ paths:
                   type: string
                   description: Do'kon nomi
                   example: "Mebel Do'koni"
+                category_id:
+                  type: integer
+                  description: "Do'kon kategoriyasi ID (GET /locations/categories dan)"
+                  example: 1
                 region_id:
                   type: integer
                   description: Viloyat ID (locations/regions dan)
@@ -788,6 +799,68 @@ paths:
                 type: object
                 properties:
                   message: { type: string }
+  /debts/overdue:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Debts]
+      security: [{ bearerAuth: [] }]
+      summary: Muddati o'tgan qarzdorlar (har bir mijoz bo'yicha)
+      description: |
+        Har bir mijoz uchun muddati o'tgan ochiq nasiyalarni agregatsiya qiladi:
+
+        - `total_remaining` — shu mijoz bo'yicha barcha muddati o'tgan nasiyalarning qolgan summasi;
+        - `first_debt_date` — birinchi (eng eski) muddati o'tgan nasiya sanasi;
+        - `days_overdue` — shu sanadan boshlab bugungacha o'tgan kunlar soni.
+
+        Default bo'yicha faqat **10 kundan** oshgan nasiyalar olinadi va birinchi bo'lib eng uzoq (kuni eng ko'p o'tgan) mijozlar chiqadi.
+      parameters:
+        - in: query
+          name: days
+          schema: { type: integer, default: 10, minimum: 1, maximum: 365 }
+          description: "Necha kundan oshgan nasiyalarni hisoblash (default: 10)."
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum: [asc, desc]
+          description: "Tartiblash: asc — eng uzoq birinchi (standart), desc — eng yaqindan."
+        - in: query
+          name: tenant_id
+          schema: { type: integer }
+          description: "Faqat admin/manager uchun: ma'lum do'kon bo'yicha filter."
+      responses:
+        "200":
+          description: Muddati o'tgan qarzdorlar ro'yxati (har bir mijoz uchun bitta satr)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    customer_id: { type: integer, description: Mijoz ID si }
+                    name: { type: string, description: Mijoz ismi }
+                    phone: { type: string, description: Mijoz telefoni }
+                    first_debt_date:
+                      type: string
+                      format: date
+                      description: "Muddati o'tgan birinchi nasiya sanasi"
+                    days_overdue:
+                      type: integer
+                      description: "Necha kundan beri qarzdor (first_debt_date dan boshlab bugungacha)."
+                    total_remaining:
+                      type: number
+                      description: "Muddati o'tgan barcha nasiyalarning umumiy qolgan summasi"
+                    overdue_sms_count:
+                      type: integer
+                      description: "Ushbu mijozga muddati o'tgan qarzdorlik bo'yicha nechta eslatma SMS yuborilgan (faqat hozirgi tenant uchun hisoblanadi)."
+                    overdue_sms_last_sent_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                      description: "Oxirgi eslatma SMS yuborilgan sana-vaqt (UTC)."
   /payments:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"
@@ -1037,6 +1110,22 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Region" }
+  /locations/categories:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    get:
+      tags: [Locations]
+      summary: Do'kon kategoriyalari
+      description: Ro'yxatdan o'tish (register/complete) va yangi do'kon (POST /tenants) da category_id tanlash uchun.
+      responses:
+        "200":
+          description: Kategoriyalar ro'yxati (id, name), alfabet tartibda
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Category" }
   /locations/districts/{regionId}:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"

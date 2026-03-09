@@ -4,7 +4,7 @@ import { dashboardApi } from '../api/dashboard.api'
 import { customersApi } from '../api/customers.api'
 import {
     TrendingUp, Users, ChevronRight,
-    UserPlus, Activity, CheckCircle2, History
+    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatCurrency } from '../utils/format'
@@ -105,13 +105,22 @@ export default function DashboardPage() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Daftaron</h1>
-                <Link
-                    to="/payments"
-                    className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
-                    title="To'lovlar tarixi"
-                >
-                    <History size={22} />
-                </Link>
+                <div className="flex gap-2">
+                    <Link
+                        to="/notifications"
+                        className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
+                        title="Bildirishnomalar"
+                    >
+                        <Bell size={22} />
+                    </Link>
+                    <Link
+                        to="/payments"
+                        className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
+                        title="To'lovlar tarixi"
+                    >
+                        <History size={22} />
+                    </Link>
+                </div>
             </div>
 
             {/* Main Stats Grid */}
@@ -165,6 +174,28 @@ export default function DashboardPage() {
                             </div>
                         </div>
                         <p className="text-[22px] font-bold leading-none truncate">{formatCurrency(totalPaid)}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Today Stats */}
+            <div className="flex gap-3 mb-6">
+                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3">
+                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                        <ArrowDown size={16} className="text-red-500" />
+                    </div>
+                    <div>
+                        <p className="text-[11px] text-gray-400">Bugun nasiya</p>
+                        <p className="text-[14px] font-bold text-red-500">{formatCurrency(todayDebts)}</p>
+                    </div>
+                </div>
+                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3">
+                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <ArrowUp size={16} className="text-green-500" />
+                    </div>
+                    <div>
+                        <p className="text-[11px] text-gray-400">Bugun to'lov</p>
+                        <p className="text-[14px] font-bold text-green-500">{formatCurrency(todayPayments)}</p>
                     </div>
                 </div>
             </div>

@@ -1,12 +1,12 @@
-import { NavLink } from 'react-router-dom'
-import { Home, Users, BarChart3, Settings, History, Package } from 'lucide-react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { Home, Users, Settings, History, Package, AlertCircle, Bell } from 'lucide-react'
 import { useSubscription } from '../contexts/SubscriptionContext'
 
 const FULL_NAV_ITEMS = [
     { to: '/', icon: Home, label: 'Bosh sahifa' },
     { to: '/customers', icon: Users, label: 'Mijozlar' },
+    { to: '/overdue', icon: AlertCircle, label: 'Qarzdorlar' },
     { to: '/payments', icon: History, label: 'Tarix' },
-    { to: '/debts', icon: BarChart3, label: 'Hisobotlar' },
     { to: '/profile', icon: Settings, label: 'Sozlamalar' }
 ]
 
@@ -29,12 +29,9 @@ export default function BottomNav() {
                             key={item.to}
                             to={item.to}
                             className={({ isActive }) => `
-                flex flex-col items-center justify-center flex-1 py-2 transition-all
-                ${isActive
-                                    ? 'text-blue-500'
-                                    : 'text-gray-400 dark:text-gray-500'
-                                }
-              `}
+                                flex flex-col items-center justify-center flex-1 py-2 transition-all
+                                ${isActive ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'}
+                            `}
                         >
                             {({ isActive }) => (
                                 <>

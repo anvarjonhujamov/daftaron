@@ -28,14 +28,9 @@ api.interceptors.response.use(
             localStorage.removeItem('token')
             localStorage.removeItem('user')
             window.location.href = '/login'
-        } else if (error.response?.status === 403) {
-            // Trial tugagan yoki hisob faol emas — Sozlamalar sahifasiga yo'naltiramiz
-            // Agar allaqachon ruxsat etilgan sahifada bo'lsa, redirect qilmaymiz
-            const allowed = ['/profile', '/subscription']
-            if (!allowed.includes(window.location.pathname)) {
-                window.location.href = '/profile'
-            }
         }
+        // 403 ni PrivateRoute o'zi boshqaradi — bu yerda redirect qilmaymiz
+        // chunki har bir sahifa (ProfilePage, SubscriptionPage) 403 ni o'zi handle qiladi
         return Promise.reject(error)
     }
 )

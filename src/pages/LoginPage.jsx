@@ -127,7 +127,13 @@ export default function LoginPage() {
                         </button>
                     </form>
 
-                    <div className="mt-6 text-center">
+                    <div className="mt-4 text-center">
+                        <Link to="/forgot-password" className="text-gray-400 hover:text-blue-500 text-[14px]">
+                            Parolni unutdingizmi?
+                        </Link>
+                    </div>
+
+                    <div className="mt-3 text-center">
                         <span className="text-gray-400 text-[14px]">Hisobingiz yo'qmi? </span>
                         <Link to="/register" className="text-blue-500 font-semibold text-[14px]">
                             Ro'yxatdan o'tish

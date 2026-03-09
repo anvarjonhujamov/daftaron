@@ -48,7 +48,7 @@
 - **Ro‘yxatdan o‘tish:**  
   1) `GET/POST /register` — ism + telefon (ma’lumot 30 daqiqa cache da);  
   2) `GET/POST /verify` — 4 xonali kod (type=register);  
-  3) `GET/POST /register/complete` — do‘kon nomi, category_id, viloyat/tuman/ko‘cha, parol. Shundan keyin user va tenant yaratiladi, login qilinadi.
+  3) `GET/POST /register/complete` — do‘kon nomi, **do'kon kategoriyasi (category_id)**, viloyat/tuman/ko‘cha, parol. Shundan keyin user va tenant yaratiladi, login qilinadi. Kategoriyalar ro‘yxati **GET /api/v1/locations/categories** orqali olinadi (authsiz).
 - **Parolni tiklash:** `/password/forgot` → SMS kod → `/password/verify` → `/password/new` → yangi parol.
 - **Remember:** Login da “eslab qolish” yoqilgan (sessiya 30 kun).
 - **Admin kirish:** `GET/POST /admin/login` — faqat `admin` roli bilan.
@@ -93,7 +93,7 @@
 | `/subscription/status` | GET | Balans, trial, tariflar (nasiya to‘plamlari), tranzaksiyalar |
 | `/subscription/choose/{plan}` | POST | Tarif tanlash (balansdan) |
 | `/subscription/balance-topup` | POST | Balans to‘ldirish — to‘lov tizimini tanlash, redirect |
-| `/subscription/plan-pay/{plan}` | POST | Tarifni to‘lov tizimi orqali to‘lash |
+| `/subscription/plan-pay/{plan}` | POST | Tarifni to‘lov tizimi orqali to‘lash — body: `payment_system_id`. Backend `PaymentOrder` (type=subscription, plan_id, amount=plan narxi) yaratadi va Click (yoki boshqa tizim) ga redirect qiladi. To‘lov muvaffaqiyatli tugagach callback da shu ta’rif avtomatik faollashadi (7.3 ga q.). |
 | `/payment/return`, `/payment/cancel` | GET | To‘lovdan keyin qaytish |
 
 ### 6.3. API
@@ -132,8 +132,9 @@ MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozi
 
 ### 7.2. Redirect (ilovadan to‘lov)
 
-- Balans yoki tarif to‘lovi uchun backend `https://my.click.uz/services/pay?...` URL generatsiya qiladi.
-- Parametrlar: `service_id`, `merchant_id`, `amount`, `transaction_param` (= `payment_orders.id`), `return_url`, `merchant_user_id` (ixtiyoriy).
+- Balans to‘ldirish: `/subscription/balance-topup` — `PaymentOrder` (type=balance_deposit) yaratiladi.
+- Ta’rif to‘lovi: `/subscription/plan-pay/{plan}` — `PaymentOrder` (type=subscription, plan_id, amount=plan narxi) yaratiladi.
+- Backend `https://my.click.uz/services/pay?...` URL generatsiya qiladi. Parametrlar: `service_id`, `merchant_id`, `amount`, `transaction_param` (= `payment_orders.id`), `return_url`, `merchant_user_id` (ixtiyoriy).
 
 ### 7.3. Callback (Click server chaqiradi)
 
@@ -146,7 +147,9 @@ MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozi
   - User topilsa yangi `PaymentOrder` (type=balance_deposit, status=pending) yaratiladi va `merchant_prepare_id` shu order id qaytariladi.
 - **Complete:** `POST /payment/click/complete`  
   - Sign tekshiriladi, `merchant_prepare_id` bo‘yicha order topiladi.  
-  - Order completed qilinadi, user balansiga summa qo‘shiladi, `transactions` yozuvi yaratiladi.
+  - Order completed qilinadi. **Order turi bo‘yicha:**  
+    - `type = balance_deposit`: user balansiga summa qo‘shiladi, `transactions` (deposit) yozuvi yaratiladi.  
+    - `type = subscription` va `plan_id` bor bo‘lsa: ta’rif **avtomatik sotib olinadi** — `trial_ends_at` 1 oyga yangilanadi, `user.status = 1`, `PlanPurchase` yozuvi yaratiladi, `tenant.plan_id` yangilanadi; balansdan pul yechilmaydi.
 - Javob formati: **JSON** (application/json).  
   Prepare: `click_trans_id`, `merchant_trans_id`, `merchant_prepare_id`, `error`, `error_note`.  
   Complete: `click_trans_id`, `merchant_trans_id`, `merchant_confirm_id`, `error`, `error_note`.
@@ -204,7 +207,7 @@ MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozi
 ## 11. Boshqa tenant (Web) funksiyalari
 
 - **Dashboard:** `/dashboard` — statistikalar.
-- **Muddati o‘tganlar:** `/overdue` — qarzlar bo‘yicha filter (5–30 kun), tartib.
+- **Muddati o‘tganlar:** `/overdue` — har bir mijoz bo‘yicha **muddati o‘tgan qarzdorlar** ro‘yxati. Default bo‘yicha 10 kun; filter 5–30 kun oralig‘ida o‘zgartiriladi. Bir mijozda bir nechta nasiya bo‘lsa, ularning **umumiy qolgan summasi** ko‘rsatiladi va tartib birinchi olingan (eng eski) nasiya sanasiga qarab (eng ko‘p kuni o‘tganlar birinchi).
 - **To‘lovlar tarixi:** `/transaction-history` — tranzaksiyalar + ta’rif sotib olish tarixi.
 - **Do‘kon qo‘shish:** `/shops/create`, `POST /shops` — ta’rif bo‘yicha cheklov (Oddiy da 1 ta).
 - **Bildirishnomalar:** `/notifications`, `/notifications/{id}`.
@@ -231,7 +234,7 @@ MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozi
 | POST | `/auth/telegram-login` | — | Telegram orqali tezkor login |
 | POST | `/auth/register` | — | Ro‘yxat 1-bosqich |
 | POST | `/auth/verify` | — | SMS tasdiq |
-| POST | `/auth/register/complete` | — | Ro‘yxat 2-bosqich, token |
+| POST | `/auth/register/complete` | — | Ro‘yxat 2-bosqich: body — phone, shop_name, **category_id**, region_id, district_id, street_id, password, password_confirmation → token |
 | GET | `/auth/me` | Bearer | Joriy user |
 | POST | `/auth/logout` | Bearer | Chiqish |
 | POST | `/auth/password/forgot` | — | Parol tiklash 1 |
@@ -250,7 +253,9 @@ MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozi
 | PUT | `/profile/password` | Bearer | Parol o‘zgartirish |
 | GET/GET | `/notifications`, `/notifications/{id}` | Bearer | Bildirishnomalar |
 | POST | `/tenants` | Bearer | Yangi do‘kon |
+| GET | `/debts/overdue` | Bearer | Muddati o‘tgan qarzdorlar ro‘yxati (har bir mijoz uchun bitta satr; default 10 kun, `days` query bilan o‘zgaradi) |
 | GET | `/locations/regions` | — | Viloyatlar |
+| GET | `/locations/categories` | — | Do'kon kategoriyalari (ro'yxatdan o'tish / yangi do'kon uchun) |
 | GET | `/locations/districts/{regionId}` | — | Tumanlar |
 | GET | `/locations/streets/{districtId}` | — | Ko‘chalar |
 

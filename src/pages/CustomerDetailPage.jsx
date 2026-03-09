@@ -29,7 +29,7 @@ export default function CustomerDetailPage() {
         debt_date: '',
         send_sms: false
     })
-    const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null })
+    const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null, paid_at: '' })
 
     useEffect(() => {
         loadData()
@@ -117,7 +117,8 @@ export default function CustomerDetailPage() {
                 if (paymentForThisDebt > 0) {
                     await paymentsApi.createPayment({
                         debt_id: debt.id,
-                        amount: paymentForThisDebt
+                        amount: paymentForThisDebt,
+                        paid_at: paymentForm.paid_at || null
                     })
                     remainingPayment -= paymentForThisDebt
                 }
@@ -127,7 +128,7 @@ export default function CustomerDetailPage() {
             // we could potentially apply it to a "credit" or just inform user.
             // For now, we've paid off everything we could.
 
-            setPaymentForm({ amount: '', description: '', debt_id: null })
+            setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '' })
             setShowPaymentDrawer(false)
             loadData()
         } catch (err) {
@@ -372,6 +373,8 @@ export default function CustomerDetailPage() {
                                         type="date"
                                         className="input"
                                         value={debtForm.debt_date}
+                                        min={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                        max={new Date().toISOString().split('T')[0]}
                                         onChange={(e) => setDebtForm({ ...debtForm, debt_date: e.target.value })}
                                     />
                                     <p className="text-[12px] text-gray-400 mt-1">
@@ -446,6 +449,19 @@ export default function CustomerDetailPage() {
                                         />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
                                     </div>
+                                </div>
+                                <div>
+                                    <label className="label">To'lov sanasi (ixtiyoriy)</label>
+                                    <input
+                                        type="date"
+                                        className="input"
+                                        value={paymentForm.paid_at}
+                                        max={new Date().toISOString().split('T')[0]}
+                                        onChange={(e) => setPaymentForm({ ...paymentForm, paid_at: e.target.value })}
+                                    />
+                                    <p className="text-[12px] text-gray-400 mt-1">
+                                        Bo'sh qolsa bugungi sana olinadi.
+                                    </p>
                                 </div>
                                 <button type="submit" className="btn btn-orange w-full" disabled={submitting}>
                                     {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}

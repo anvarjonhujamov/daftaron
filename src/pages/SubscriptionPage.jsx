@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { subscriptionApi } from '../api/subscription.api'
+import { useSubscription } from '../contexts/SubscriptionContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { buildClickUrl } from '../utils/click'
-import { CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, Package, Clock, Receipt, LogOut } from 'lucide-react'
-import { authApi } from '../api/auth.api'
+import {
+    CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight,
+    Package, Clock, Receipt, Check
+} from 'lucide-react'
 
 export default function SubscriptionPage() {
     const navigate = useNavigate()
+    const { recheckSubscription } = useSubscription()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [status, setStatus] = useState(null)
@@ -43,10 +47,19 @@ export default function SubscriptionPage() {
         try {
             const data = await subscriptionApi.choosePlan(planId)
             setMessage(data.message || "Ta'rif muvaffaqiyatli tanlandi")
-            // Reload status to reflect new balance / trial info / plans
+
+            // Status ni qayta yuklash
             await loadStatus()
-            // Agar obuna yangilangan bo'lsa, foydalanuvchini asosiy sahifaga qaytarish mumkin
-            // navigate('/', { replace: true })
+
+            // PrivateRoute da blocked state ni yangilash
+            if (recheckSubscription) {
+                await recheckSubscription()
+            }
+
+            // 2 sekunddan keyin bosh sahifaga yo'naltirish
+            setTimeout(() => {
+                navigate('/', { replace: true })
+            }, 2000)
         } catch (err) {
             const resp = err.response?.data
             if (resp?.message) {
@@ -63,6 +76,10 @@ export default function SubscriptionPage() {
     const plans = status?.plans || []
     const transactions = status?.transactions || []
     const numericBalance = parseCurrency(status?.balance ?? 0)
+
+    // Joriy aktiv ta'rif ID sini aniqlash
+    const activePlanId = trialInfo?.plan_id ?? status?.current_plan_id ?? status?.active_plan_id ?? null
+    const isSubscriptionActive = !trialInfo.is_expired && trialInfo.status !== 0
 
     const formatDate = (dateString) => {
         if (!dateString) return ''
@@ -88,19 +105,6 @@ export default function SubscriptionPage() {
             window.location.href = url
         } catch (err) {
             alert(err.message || "Click to'lovini boshlashda xatolik yuz berdi.")
-        }
-    }
-
-    const handleLogout = async () => {
-        if (!confirm('Chiqmoqchimisiz?')) return
-        try {
-            await authApi.logout()
-        } catch (err) {
-            console.error('Logout error:', err)
-        } finally {
-            localStorage.removeItem('token')
-            localStorage.removeItem('user')
-            navigate('/login')
         }
     }
 
@@ -130,13 +134,7 @@ export default function SubscriptionPage() {
                 <h1 className="text-[22px] font-bold text-gray-900 dark:text-white">
                     Ta'rif va obuna
                 </h1>
-                <button
-                    onClick={handleLogout}
-                    className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center"
-                    title="Chiqish"
-                >
-                    <LogOut size={20} className="text-red-600 dark:text-red-400" />
-                </button>
+                <div className="w-10 h-10" />
             </div>
 
             {message && (
@@ -158,19 +156,26 @@ export default function SubscriptionPage() {
                 className={
                     trialInfo.is_expired || trialInfo.status === 0
                         ? 'card mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-                        : 'card mb-4'
+                        : 'card mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
                 }
             >
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <Clock size={18} className="text-blue-500" />
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${trialInfo.is_expired || trialInfo.status === 0
+                        ? 'bg-red-100 dark:bg-red-900/30'
+                        : 'bg-green-100 dark:bg-green-900/30'
+                        }`}>
+                        <Clock size={18} className={
+                            trialInfo.is_expired || trialInfo.status === 0
+                                ? 'text-red-500'
+                                : 'text-green-500'
+                        } />
                     </div>
                     <div className="flex-1">
-                        <p className="text-[14px] font-medium text-gray-900 dark:text-white">
+                        <p className="text-[15px] font-medium text-gray-900 dark:text-white">
                             Obuna holati
                         </p>
                         {trialInfo.is_expired ? (
-                            <p className="text-[13px] text-red-500">
+                            <p className="text-[14px] text-red-500 font-medium">
                                 Bepul muddat tugagan. Ta'rif tanlang.
                             </p>
                         ) : (
@@ -183,7 +188,7 @@ export default function SubscriptionPage() {
                                 {typeof trialInfo.days_remaining === 'number' && (() => {
                                     const days = Math.max(0, Math.round(trialInfo.days_remaining))
                                     return (
-                                        <p className="text-[13px] text-green-500">
+                                        <p className="text-[13px] text-green-500 font-medium">
                                             Qolgan kunlar: {days} kun
                                         </p>
                                     )
@@ -202,12 +207,12 @@ export default function SubscriptionPage() {
                     </div>
                     <div className="flex-1">
                         <p className="text-[14px] font-medium text-gray-900 dark:text-white">Balans</p>
-                        <p className="text-[16px] font-bold text-gray-900 dark:text-white">
-                            {formatCurrency(status?.balance ?? 0)} <span className="text-[12px] text-gray-400">so'm</span>
+                        <p className="text-[18px] font-bold text-gray-900 dark:text-white">
+                            {formatCurrency(status?.balance ?? 0)} <span className="text-[13px] text-gray-400">so'm</span>
                         </p>
                     </div>
                 </div>
-                <p className="mt-2 text-[12px] text-gray-400">
+                <p className="mt-2 text-[13px] text-gray-400">
                     Balansni Click orqali to'ldirish uchun summa kiriting.
                 </p>
                 <div className="mt-2 flex items-center gap-3">
@@ -235,49 +240,69 @@ export default function SubscriptionPage() {
 
             {/* Plans */}
             <div className="mb-4">
-                <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
+                <h2 className="text-[18px] font-semibold text-gray-900 dark:text-white mb-3">
                     Ta'riflar
                 </h2>
                 {plans.length === 0 ? (
                     <p className="text-[14px] text-gray-400">
-                        Hozircha ta'riflar ro‘yxati yo‘q.
+                        Hozircha ta'riflar ro'yxati yo'q.
                     </p>
                 ) : (
                     <div className="space-y-3">
                         {plans.map((plan) => {
                             const planPriceAmount = parseCurrency(plan.price ?? 0)
                             const hasEnoughBalance = numericBalance >= planPriceAmount
+                            const isActivePlan = activePlanId && activePlanId === plan.id && isSubscriptionActive
+
                             return (
                                 <div
                                     key={plan.id}
-                                    className="card dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex flex-col gap-2"
+                                    className={`card dark:bg-gray-800 flex flex-col gap-2 ${isActivePlan
+                                        ? 'border-2 border-green-400 dark:border-green-600'
+                                        : 'border border-gray-100 dark:border-gray-700'
+                                        }`}
                                 >
+                                    {/* Active badge */}
+                                    {isActivePlan && (
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <div className="bg-green-500 text-white text-[12px] font-semibold px-3 py-1 rounded-full flex items-center gap-1">
+                                                <Check size={14} />
+                                                Faol ta'rif
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                                                <Package size={18} className="text-indigo-500" />
+                                            <div className={`w-11 h-11 rounded-full flex items-center justify-center ${isActivePlan
+                                                ? 'bg-green-100 dark:bg-green-900/30'
+                                                : 'bg-indigo-100 dark:bg-indigo-900/30'
+                                                }`}>
+                                                <Package size={20} className={
+                                                    isActivePlan ? 'text-green-500' : 'text-indigo-500'
+                                                } />
                                             </div>
                                             <div>
-                                                <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
+                                                <p className="text-[17px] font-semibold text-gray-900 dark:text-white">
                                                     {plan.name}
                                                 </p>
                                                 {plan.description && (
                                                     <div
-                                                        className="text-[12px] text-gray-500 dark:text-gray-400"
+                                                        className="text-[14px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed"
                                                         dangerouslySetInnerHTML={{ __html: plan.description }}
                                                     />
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-[15px] font-bold text-gray-900 dark:text-white">
-                                                {formatCurrency(plan.price || 0)}{' '}
-                                                <span className="text-[12px] text-gray-400">so'm</span>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-[17px] font-bold text-gray-900 dark:text-white">
+                                                {formatCurrency(plan.price || 0)}
                                             </p>
+                                            <p className="text-[12px] text-gray-400">so'm</p>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-2 mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                                    <div className="grid grid-cols-2 gap-2 mt-2 text-[13px] text-gray-500 dark:text-gray-400">
                                         {typeof plan.low_amount_limit !== 'undefined' && (
                                             <div>
                                                 <span className="font-semibold">Past nasiya limiti: </span>
@@ -304,20 +329,27 @@ export default function SubscriptionPage() {
                                         )}
                                     </div>
 
-                                    {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && (
-                                        <p className="mt-1 text-[11px] text-red-500">
+                                    {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && !isActivePlan && (
+                                        <p className="mt-1 text-[12px] text-red-500">
                                             Balans yetarli emas. Avval balansni to'ldiring.
                                         </p>
                                     )}
 
-                                    <button
-                                        type="button"
-                                        disabled={saving}
-                                        onClick={() => handleChoosePlan(plan.id)}
-                                        className="mt-3 btn btn-primary w-full"
-                                    >
-                                        {saving ? 'Tanlanmoqda...' : "Ushbu ta'rifni tanlash"}
-                                    </button>
+                                    {isActivePlan ? (
+                                        <div className="mt-3 btn w-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 font-semibold cursor-default flex items-center justify-center gap-2">
+                                            <Check size={16} />
+                                            Joriy ta'rif
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            disabled={saving}
+                                            onClick={() => handleChoosePlan(plan.id)}
+                                            className="mt-3 btn btn-primary w-full"
+                                        >
+                                            {saving ? 'Tanlanmoqda...' : "Ushbu ta'rifni tanlash"}
+                                        </button>
+                                    )}
                                 </div>
                             )
                         })}
@@ -328,8 +360,8 @@ export default function SubscriptionPage() {
             {/* Transactions (short history) */}
             {transactions.length > 0 && (
                 <div className="mb-4">
-                    <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
-                        So‘nggi tranzaksiyalar
+                    <h2 className="text-[18px] font-semibold text-gray-900 dark:text-white mb-3">
+                        So'nggi tranzaksiyalar
                     </h2>
                     <div className="space-y-2">
                         {transactions.map((tx) => (
@@ -343,7 +375,7 @@ export default function SubscriptionPage() {
                                     </p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[14px] font-bold text-gray-900 dark:text-white">
+                                    <p className="text-[15px] font-bold text-gray-900 dark:text-white">
                                         {formatCurrency(tx.amount || 0)}{' '}
                                         <span className="text-[12px] text-gray-400">so'm</span>
                                     </p>
@@ -356,4 +388,3 @@ export default function SubscriptionPage() {
         </div>
     )
 }
-
