@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { profileApi } from '../api/profile.api'
 import { authApi } from '../api/auth.api'
+import { subscriptionApi } from '../api/subscription.api'
 import {
     User, Phone, Mail, Lock, LogOut, ChevronRight,
     Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle
@@ -52,33 +53,53 @@ export default function ProfilePage() {
     }, [])
 
     const loadProfile = async () => {
+        // 1) Profil ma'lumotlarini yuklash
         try {
             const data = await profileApi.getProfile()
-            const userData = data.user || data
-            const tenantData = data.tenant || data.tenant_data || data.tenant || null
+            const userData = data.user || data.data || data
 
-            // TZ bo'yicha balans users.balance da saqlanadi; uni birinchi o'qib olamiz.
-            const rawBalance =
-                userData.balance ??
-                data.balance ??
-                tenantData?.balance ??
-                tenantData?.wallet_balance ??
-                tenantData?.current_balance ??
-                data.wallet_balance ??
-                0
+            let finalUser = userData
+            if (!finalUser?.name && !finalUser?.phone) {
+                try {
+                    const stored = localStorage.getItem('user')
+                    if (stored) {
+                        finalUser = { ...JSON.parse(stored), ...userData }
+                    }
+                } catch (e) { /* ignore */ }
+            }
 
-            setUser(userData)
+            setUser(finalUser)
             setProfileForm({
-                name: userData.name || '',
-                phone: formatPhoneNumber(userData.phone || ''),
-                email: userData.email || ''
+                name: finalUser.name || '',
+                phone: formatPhoneNumber(finalUser.phone || ''),
+                email: finalUser.email || ''
             })
-            setBalance(parseFloat(rawBalance) || 0)
         } catch (err) {
             console.error('Failed to load profile:', err)
-        } finally {
-            setLoading(false)
+            // API xato bersa (masalan 403), localStorage dan olamiz
+            try {
+                const stored = localStorage.getItem('user')
+                if (stored) {
+                    const parsed = JSON.parse(stored)
+                    setUser(parsed)
+                    setProfileForm({
+                        name: parsed.name || '',
+                        phone: formatPhoneNumber(parsed.phone || ''),
+                        email: parsed.email || ''
+                    })
+                }
+            } catch (e) { /* ignore */ }
         }
+
+        // 2) Balansni ALOHIDA yuklash — profil xato bersa ham balans ko'rinadi
+        try {
+            const subData = await subscriptionApi.getStatus()
+            setBalance(parseFloat(subData?.balance) || 0)
+        } catch (balanceErr) {
+            console.error('Failed to load balance:', balanceErr)
+        }
+
+        setLoading(false)
     }
 
     const toggleDarkMode = () => {
@@ -209,7 +230,17 @@ export default function ProfilePage() {
                         <p className="text-gray-400 text-[14px]">{user?.phone}</p>
                     </div>
                     <button
-                        onClick={() => setShowEditDrawer(true)}
+                        onClick={() => {
+                            // Drawer ochilganda formani user ma'lumotlari bilan to'ldiramiz
+                            if (user) {
+                                setProfileForm({
+                                    name: user.name || '',
+                                    phone: formatPhoneNumber(user.phone || ''),
+                                    email: user.email || ''
+                                })
+                            }
+                            setShowEditDrawer(true)
+                        }}
                         className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center"
                     >
                         <Edit3 size={18} className="text-gray-500 dark:text-gray-400" />
