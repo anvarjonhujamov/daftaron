@@ -25,6 +25,7 @@ export const DashboardSkeleton = () => (
         </div>
         <div className="flex gap-3 mb-6">
             <Skeleton className="h-14 flex-1" />
+
             <Skeleton className="h-14 flex-1" />
         </div>
         <Skeleton className="h-6 w-40 mb-4" />
