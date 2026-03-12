@@ -8,6 +8,7 @@ import {
     TrendingDown, TrendingUp, Clock
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { CustomersSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
 
 export default function HistoryPage() {
@@ -95,11 +96,7 @@ export default function HistoryPage() {
     }, {})
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner size="lg" />
-            </div>
-        )
+        return <CustomersSkeleton />
     }
 
     return (

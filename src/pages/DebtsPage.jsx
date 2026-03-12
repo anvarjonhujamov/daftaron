@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { CustomersSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
 
 const MONTH_NAMES = [
@@ -99,11 +100,7 @@ export default function DebtsPage() {
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner size="lg" />
-            </div>
-        )
+        return <CustomersSkeleton />
     }
 
     return (

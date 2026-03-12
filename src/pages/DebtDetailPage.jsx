@@ -7,6 +7,7 @@ import {
     FileText, Calendar, ChevronRight, CreditCard
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { CustomerDetailSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
 import EmptyState from '../components/EmptyState'
 import toast from 'react-hot-toast'
@@ -84,11 +85,7 @@ export default function DebtDetailPage() {
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner size="lg" />
-            </div>
-        )
+        return <CustomerDetailSkeleton />
     }
 
     if (!debt) {

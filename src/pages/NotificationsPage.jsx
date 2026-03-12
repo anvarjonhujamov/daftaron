@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { notificationsApi } from '../api/notifications.api'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { CustomersSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import { ArrowLeft, Bell, CreditCard, ShoppingBag, Wallet, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatCurrency } from '../utils/format'
@@ -121,9 +122,7 @@ export default function NotificationsPage() {
             )}
 
             {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <LoadingSpinner size="lg" />
-                </div>
+                <CustomersSkeleton />
             ) : notifications.length === 0 ? (
                 <EmptyState
                     icon={Bell}

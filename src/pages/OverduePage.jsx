@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { debtsApi } from '../api/debts.api'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { CustomersSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import { formatCurrency } from '../utils/format'
 import { formatPhoneNumber } from '../utils/phoneMask'
@@ -165,9 +166,7 @@ export default function OverduePage() {
 
             {/* Content */}
             {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <LoadingSpinner size="lg" />
-                </div>
+                <CustomersSkeleton />
             ) : overdueList.length === 0 ? (
                 <EmptyState
                     icon={Clock}

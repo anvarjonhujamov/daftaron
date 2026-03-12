@@ -7,6 +7,7 @@ import { buildClickUrl } from '../utils/click'
 import toast from 'react-hot-toast'
 import PaymentMethods from '../components/PaymentMethods'
 import PaymentDrawer from '../components/PaymentDrawer'
+import { SubscriptionSkeleton } from '../components/Skeleton'
 import {
     CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight,
     Package, Clock, Receipt, Check, ChevronDown, ChevronUp
@@ -118,11 +119,7 @@ export default function SubscriptionPage() {
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-                <LoadingSpinner size="lg" />
-            </div>
-        )
+        return <SubscriptionSkeleton />
     }
 
     const isBlocked = trialInfo?.is_expired || trialInfo?.status === 0

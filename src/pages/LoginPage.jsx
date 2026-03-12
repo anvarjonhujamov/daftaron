@@ -4,12 +4,20 @@ import { authApi } from '../api/auth.api'
 import { Loader2, Phone, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 import toast from 'react-hot-toast'
+import { LoginSkeleton } from '../components/Skeleton'
 
 export default function LoginPage() {
     const navigate = useNavigate()
     const [form, setForm] = useState({ phone: PHONE_PREFIX, password: '' })
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
+    const [initialCheck, setInitialCheck] = useState(true)
+
+    useEffect(() => {
+        // Simulating a brief initial check or just allowing layout to settle
+        const timer = setTimeout(() => setInitialCheck(false), 300)
+        return () => clearTimeout(timer)
+    }, [])
 
     useEffect(() => {
         const savedDarkMode = localStorage.getItem('darkMode') === 'true'
@@ -47,6 +55,10 @@ export default function LoginPage() {
         } finally {
             setLoading(false)
         }
+    }
+
+    if (initialCheck) {
+        return <LoginSkeleton />
     }
 
     return (
