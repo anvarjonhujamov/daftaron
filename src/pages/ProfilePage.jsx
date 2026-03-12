@@ -10,8 +10,10 @@ import {
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
-import { buildClickUrl } from '../utils/click'
 import { formatCurrency, parseCurrency } from '../utils/format'
+import toast from 'react-hot-toast'
+import PaymentMethods from '../components/PaymentMethods'
+import PaymentDrawer from '../components/PaymentDrawer'
 
 export default function ProfilePage() {
     const navigate = useNavigate()
@@ -35,8 +37,8 @@ export default function ProfilePage() {
         password_confirmation: ''
     })
 
-    const [message, setMessage] = useState({ type: '', text: '' })
-    const [clickAmount, setClickAmount] = useState('')
+    const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false)
+    const [selectedProvider, setSelectedProvider] = useState(null)
 
     const isTrialExpired = user?.trial_ends_at
         ? new Date(user.trial_ends_at) < new Date()
@@ -116,7 +118,6 @@ export default function ProfilePage() {
     const handleUpdateProfile = async (e) => {
         e.preventDefault()
         setSaving(true)
-        setMessage({ type: '', text: '' })
 
         try {
             const submitData = { ...profileForm, phone: getRawPhoneNumber(profileForm.phone) }
@@ -124,13 +125,10 @@ export default function ProfilePage() {
             const updatedUser = data.user || data
             setUser(updatedUser)
             localStorage.setItem('user', JSON.stringify(updatedUser))
-            setMessage({ type: 'success', text: 'Profil yangilandi' })
+            toast.success('Profil yangilandi')
             setShowEditDrawer(false)
         } catch (err) {
-            setMessage({
-                type: 'error',
-                text: err.response?.data?.message || 'Xatolik yuz berdi'
-            })
+            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
         } finally {
             setSaving(false)
         }
@@ -139,11 +137,10 @@ export default function ProfilePage() {
     const handleUpdatePassword = async (e) => {
         e.preventDefault()
         setSaving(true)
-        setMessage({ type: '', text: '' })
 
         try {
             await profileApi.updatePassword(passwordForm)
-            setMessage({ type: 'success', text: 'Parol yangilandi' })
+            toast.success('Parol yangilandi')
             setPasswordForm({
                 current_password: '',
                 password: '',
@@ -151,10 +148,7 @@ export default function ProfilePage() {
             })
             setShowPasswordDrawer(false)
         } catch (err) {
-            setMessage({
-                type: 'error',
-                text: err.response?.data?.message || 'Xatolik yuz berdi'
-            })
+            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
         } finally {
             setSaving(false)
         }
@@ -183,20 +177,6 @@ export default function ProfilePage() {
         return `${mm}/${dd}/${yyyy}`
     }
 
-    const handleClickTopUp = () => {
-        try {
-            const amountNumber = clickAmount ? parseCurrency(clickAmount) : undefined
-            if (amountNumber !== undefined && (isNaN(amountNumber) || amountNumber <= 0)) {
-                alert("Iltimos, to'g'ri summa kiriting.")
-                return
-            }
-            const url = buildClickUrl(user, amountNumber)
-            window.location.href = url
-        } catch (err) {
-            alert(err.message || "Click to'lovini boshlashda xatolik yuz berdi.")
-        }
-    }
-
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -209,29 +189,25 @@ export default function ProfilePage() {
         <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
             <h1 className="text-[28px] font-bold text-gray-900 dark:text-white mb-6">Sozlamalar</h1>
 
-            {message.text && (
-                <div className={`mb-4 p-4 rounded-2xl text-[14px] flex items-center gap-2 ${message.type === 'success'
-                    ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                    : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'
-                    }`}>
-                    {message.type === 'success' ? <Check size={18} /> : null}
-                    {message.text}
-                </div>
-            )}
+            {/* Profile Unified Card */}
+            <div className="bg-white dark:bg-gray-800 rounded-[24px] p-4 mb-5 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] border border-gray-100 dark:border-gray-700/50">
 
-            {/* User Card */}
-            <div className="card dark:bg-gray-800 mb-4">
-                <div className="flex items-center gap-4">
-                    <div className="avatar avatar-md">
-                        {user?.name?.charAt(0)?.toUpperCase()}
+                {/* Header: User Info & Edit */}
+                <div className="flex items-center justify-between mb-4 relative">
+                    <div className="flex items-center gap-3">
+                        <div className="w-[48px] h-[48px] rounded-full bg-emerald-500 text-white flex items-center justify-center text-[18px] font-bold shrink-0">
+                            {user?.name?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div className="flex flex-col">
+                            <h2 className="text-[15.5px] font-semibold text-gray-900 dark:text-white leading-tight mb-[3px]">
+                                {user?.name}
+                            </h2>
+                            <p className="text-gray-500 dark:text-gray-400 text-[13px] leading-tight font-medium">
+                                {user?.phone}
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex-1">
-                        <h2 className="text-[17px] font-semibold text-gray-900 dark:text-white">{user?.name}</h2>
-                        <p className="text-gray-400 text-[14px]">{user?.phone}</p>
-                        {user?.id && (
-                            <p className="text-[12px] text-gray-400 mt-0.5">ID: {(user.public_id || (user.id + 1000))}</p>
-                        )}
-                    </div>
+
                     <button
                         onClick={() => {
                             if (user) {
@@ -243,42 +219,41 @@ export default function ProfilePage() {
                             }
                             setShowEditDrawer(true)
                         }}
-                        className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center"
+                        className="w-[34px] h-[34px] rounded-[12px] border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
                     >
-                        <Edit3 size={18} className="text-gray-500 dark:text-gray-400" />
+                        <Edit3 size={15} className="text-gray-500 dark:text-gray-400" />
                     </button>
                 </div>
-            </div>
 
-            {/* Shop Info */}
-            {(user?.tenant_name || user?.shop_name || user?.tenant?.name) && (
-                <div className="card dark:bg-gray-800 mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                            <Store size={18} className="text-purple-500" />
+                {/* Shop / Tenant Info */}
+                {(user?.tenant_name || user?.shop_name || user?.tenant?.name) && (
+                    <div className="flex items-center gap-3.5 bg-[#f9fafb] dark:bg-gray-900/40 px-[14px] py-[10px] rounded-[18px] mb-[18px]">
+                        <div className="w-[38px] h-[38px] rounded-[12px] bg-[#f5f3ff] dark:bg-purple-900/30 flex items-center justify-center shrink-0">
+                            <Store size={15} className="text-[#a855f7]" />
                         </div>
-                        <div className="flex-1">
-                            <p className="text-[14px] font-medium text-gray-900 dark:text-white">
+                        <div className="flex-1 flex flex-col justify-center">
+                            <p className="text-[14px] font-medium text-gray-900 dark:text-white leading-none mb-[5px]">
                                 {user?.tenant_name || user?.shop_name || user?.tenant?.name}
                             </p>
-                            <p className="text-[12px] text-gray-400">
+                            <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-none">
                                 {user?.category_name || user?.tenant?.category?.name || "Do'kon"}
                             </p>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Balance Card */}
-            <div className="card dark:bg-gray-800 mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <Wallet size={18} className="text-blue-500" />
+                {/* Balance Divider Line */}
+                <div className="h-px bg-gray-100 dark:bg-gray-700/50 w-[calc(100%+32px)] mb-3 -mx-4 block box-content"></div>
+
+                {/* Balance Section */}
+                <div className="flex items-center gap-3.5 px-0.5 pb-0.5 relative">
+                    <div className="w-[42px] h-[42px] rounded-full bg-[#eff6ff] dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                        <Wallet size={17} className="text-[#3b82f6]" />
                     </div>
-                    <div className="flex-1">
-                        <p className="text-[14px] font-medium text-gray-900 dark:text-white">Balans</p>
-                        <p className="text-[16px] font-bold text-gray-900 dark:text-white">
-                            {formatCurrency(balance || 0)} <span className="text-[12px] text-gray-400">so'm</span>
+                    <div className="flex flex-col justify-center pt-1">
+                        <p className="text-[12px] text-gray-400 dark:text-gray-500 leading-none mb-1">Joriy balans</p>
+                        <p className="text-[17px] font-bold text-gray-900 dark:text-white leading-none tracking-tight">
+                            {formatCurrency(balance || 0)} <span className="text-[13px] font-normal text-gray-500 tracking-normal ml-0.5">so'm</span>
                         </p>
                     </div>
                 </div>
@@ -388,41 +363,15 @@ export default function ProfilePage() {
                     <ChevronRight size={18} className="text-gray-400" />
                 </button>
 
-                {/* Click balance top-up */}
-                <div className="py-4 flex flex-col gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                            <CreditCard size={18} className="text-blue-500" />
-                        </div>
-                        <div className="flex-1">
-                            <span className="text-[15px] font-medium text-gray-900 dark:text-white block">
-                                Balansni to'ldirish (Click)
-                            </span>
-                            <p className="text-[12px] text-gray-400">
-                                Click ilovasi orqali balansni to'ldiring
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3 mt-2">
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            className="input w-32 text-[14px]"
-                            placeholder="Summa"
-                            value={clickAmount}
-                            onChange={(e) => {
-                                const digits = e.target.value.replace(/\D/g, '')
-                                setClickAmount(digits ? formatCurrency(digits) : '')
-                            }}
-                        />
-                        <button
-                            type="button"
-                            onClick={handleClickTopUp}
-                            className="btn btn-primary flex-1"
-                        >
-                            Click orqali to'lash
-                        </button>
-                    </div>
+                {/* Balance top-up */}
+                <div className="py-4">
+                    <span className="text-[15px] font-medium text-gray-900 dark:text-white block mb-3">
+                        Balansni to'ldirish
+                    </span>
+                    <PaymentMethods onSelect={(provider) => {
+                        setSelectedProvider(provider)
+                        setPaymentDrawerOpen(true)
+                    }} />
                 </div>
             </div>
 
@@ -436,7 +385,7 @@ export default function ProfilePage() {
             </button>
 
             {/* Edit Profile Drawer */}
-            <Drawer.Root open={showEditDrawer} onOpenChange={setShowEditDrawer} shouldScaleBackground={false}>
+            <Drawer.Root open={showEditDrawer} onOpenChange={setShowEditDrawer} shouldScaleBackground={false} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
                     <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] overflow-y-auto">
@@ -519,11 +468,11 @@ export default function ProfilePage() {
                 </Drawer.Portal>
             </Drawer.Root>
 
-            {/* Password Drawer */}
-            <Drawer.Root open={showPasswordDrawer} onOpenChange={setShowPasswordDrawer} shouldScaleBackground={false}>
+            {/* Change Password Drawer */}
+            <Drawer.Root open={showPasswordDrawer} onOpenChange={setShowPasswordDrawer} shouldScaleBackground={false} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] overflow-y-auto">
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50">
                         <div className="p-4">
                             <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
 
@@ -533,7 +482,7 @@ export default function ProfilePage() {
                                         Parolni o'zgartirish
                                     </Drawer.Title>
                                     <Drawer.Description className="text-gray-400 text-[14px]">
-                                        Yangi xavfsiz parolni kiriting
+                                        Xavfsizlik maqsadida yangi parol kamida 6 belgidan iborat bo'lishi kerak
                                     </Drawer.Description>
                                 </div>
                                 <button
@@ -549,47 +498,51 @@ export default function ProfilePage() {
                                     <label className="label dark:text-gray-400">Joriy parol</label>
                                     <input
                                         type="password"
-                                        className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        className="input"
                                         value={passwordForm.current_password}
                                         onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
                                         required
                                     />
                                 </div>
-
                                 <div>
                                     <label className="label dark:text-gray-400">Yangi parol</label>
                                     <input
                                         type="password"
-                                        className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        className="input"
                                         value={passwordForm.password}
                                         onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
                                         required
                                     />
                                 </div>
-
                                 <div>
-                                    <label className="label dark:text-gray-400">Parolni tasdiqlang</label>
+                                    <label className="label dark:text-gray-400">Yangi parolni takrorlash</label>
                                     <input
                                         type="password"
-                                        className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        className="input"
                                         value={passwordForm.password_confirmation}
                                         onChange={(e) => setPasswordForm({ ...passwordForm, password_confirmation: e.target.value })}
                                         required
                                     />
                                 </div>
-
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="btn btn-orange w-full"
+                                    className="btn btn-primary w-full mt-2"
                                 >
-                                    {saving ? <Loader2 size={18} className="animate-spin" /> : 'O\'zgartirish'}
+                                    {saving ? 'Saqlanmoqda...' : 'Saqlash'}
                                 </button>
                             </form>
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>
             </Drawer.Root>
+
+            <PaymentDrawer
+                isOpen={paymentDrawerOpen}
+                onClose={() => setPaymentDrawerOpen(false)}
+                user={user}
+                provider={selectedProvider}
+            />
         </div>
     )
 }

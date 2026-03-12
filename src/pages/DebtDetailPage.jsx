@@ -9,6 +9,7 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatCurrency } from '../utils/format'
 import EmptyState from '../components/EmptyState'
+import toast from 'react-hot-toast'
 
 export default function DebtDetailPage() {
     const { id } = useParams()
@@ -47,9 +48,10 @@ export default function DebtDetailPage() {
         setSubmitting(true)
         try {
             await debtsApi.closeDebt(id)
+            toast.success('Nasiya yopildi')
             loadData()
         } catch (err) {
-            alert(err.response?.data?.message || 'Xatolik yuz berdi')
+            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
         } finally {
             setSubmitting(false)
         }
@@ -61,9 +63,10 @@ export default function DebtDetailPage() {
         setSubmitting(true)
         try {
             await debtsApi.deleteDebt(id)
+            toast.success('Nasiya o\'chirildi')
             navigate('/debts')
         } catch (err) {
-            alert(err.response?.data?.message || 'Xatolik yuz berdi')
+            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
         } finally {
             setSubmitting(false)
         }

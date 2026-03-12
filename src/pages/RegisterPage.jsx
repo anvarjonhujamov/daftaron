@@ -6,6 +6,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import LocationSelector from '../components/LocationSelector'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
+import toast from 'react-hot-toast'
 
 const STEP_NAMES = { namePhone: 1, verify: 2, complete: 3 }
 
@@ -31,7 +32,6 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-    const [error, setError] = useState('')
     const [errors, setErrors] = useState({})
 
     const handleLocationChange = (location) => {
@@ -56,7 +56,6 @@ export default function RegisterPage() {
     const handleStep1Submit = async (e) => {
         e.preventDefault()
         setLoading(true)
-        setError('')
         setErrors({})
         try {
             const rawPhone = getRawPhoneNumber(formStep1.phone)
@@ -67,9 +66,9 @@ export default function RegisterPage() {
         } catch (err) {
             if (err.response?.status === 422) {
                 setErrors(err.response.data.errors || {})
-                setError(err.response.data.message || 'Ma\'lumotlarni tekshiring')
+                toast.error(err.response.data.message || 'Ma\'lumotlarni tekshiring')
             } else {
-                setError(err.response?.data?.message || 'Ro\'yxatdan o\'tish amalga oshmadi')
+                toast.error(err.response?.data?.message || 'Ro\'yxatdan o\'tish amalga oshmadi')
             }
         } finally {
             setLoading(false)
@@ -79,11 +78,10 @@ export default function RegisterPage() {
     const handleVerifySubmit = async (e) => {
         e.preventDefault()
         if (!code || code.length !== 4) {
-            setError('4 xonali kodni kiriting')
+            toast.error('4 xonali kodni kiriting')
             return
         }
         setLoading(true)
-        setError('')
         try {
             const data = await authApi.verify(phoneCache, code, 'register')
             if (data.requires_completion) {
@@ -93,10 +91,10 @@ export default function RegisterPage() {
                 localStorage.setItem('user', JSON.stringify(data.user))
                 navigate('/')
             } else {
-                setError('Kutilmagan javob')
+                toast.error('Kutilmagan javob')
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Kod noto\'g\'ri yoki muddati tugagan')
+            toast.error(err.response?.data?.message || 'Kod noto\'g\'ri yoki muddati tugagan')
         } finally {
             setLoading(false)
         }
@@ -105,7 +103,6 @@ export default function RegisterPage() {
     const handleCompleteSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
-        setError('')
         setErrors({})
         try {
             const data = await authApi.registerComplete({
@@ -123,15 +120,15 @@ export default function RegisterPage() {
                 localStorage.setItem('user', JSON.stringify(data.user))
                 navigate('/')
             } else {
-                setError('Hisob yaratildi, lekin kirish amalga oshmadi. Login sahifasiga o\'ting.')
+                toast.error('Hisob yaratildi, lekin kirish amalga oshmadi. Login sahifasiga o\'ting.')
                 setTimeout(() => navigate('/login'), 2000)
             }
         } catch (err) {
             if (err.response?.status === 422) {
                 setErrors(err.response.data.errors || {})
-                setError(err.response.data.message || 'Ma\'lumotlarni tekshiring')
+                toast.error(err.response.data.message || 'Ma\'lumotlarni tekshiring')
             } else {
-                setError(err.response?.data?.message || 'Ro\'yxatdan o\'tish amalga oshmadi')
+                toast.error(err.response?.data?.message || 'Ro\'yxatdan o\'tish amalga oshmadi')
             }
         } finally {
             setLoading(false)
@@ -163,12 +160,6 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="card">
-                    {error && (
-                        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-sm">
-                            {error}
-                        </div>
-                    )}
-
                     {/* Step 1: Name + Phone */}
                     {step === STEP_NAMES.namePhone && (
                         <form onSubmit={handleStep1Submit} className="space-y-4">

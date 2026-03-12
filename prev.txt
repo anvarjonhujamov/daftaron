@@ -1,15 +1,13 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { subscriptionApi } from '../api/subscription.api'
 import { useSubscription } from '../contexts/SubscriptionContext'
+import LoadingSpinner from '../components/LoadingSpinner'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { buildClickUrl } from '../utils/click'
-import toast from 'react-hot-toast'
-import PaymentMethods from '../components/PaymentMethods'
-import PaymentDrawer from '../components/PaymentDrawer'
 import {
     CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight,
-    Package, Clock, Receipt, Check, ChevronDown, ChevronUp
+    Package, Clock, Receipt, Check
 } from 'lucide-react'
 
 export default function SubscriptionPage() {
@@ -18,10 +16,9 @@ export default function SubscriptionPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [status, setStatus] = useState(null)
+    const [error, setError] = useState('')
+    const [message, setMessage] = useState('')
     const [clickAmount, setClickAmount] = useState('')
-    const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false)
-    const [selectedProvider, setSelectedProvider] = useState(null)
-    const [openPlanId, setOpenPlanId] = useState(null)
 
     useEffect(() => {
         loadStatus()
@@ -29,12 +26,13 @@ export default function SubscriptionPage() {
 
     const loadStatus = async () => {
         setLoading(true)
+        setError('')
         try {
             const data = await subscriptionApi.getStatus()
             setStatus(data)
         } catch (err) {
             console.error('Failed to load subscription status:', err)
-            toast.error(err.response?.data?.message || 'Obuna holatini yuklashda xatolik yuz berdi')
+            setError(err.response?.data?.message || 'Obuna holatini yuklashda xatolik yuz berdi')
         } finally {
             setLoading(false)
         }
@@ -43,10 +41,12 @@ export default function SubscriptionPage() {
     const handleChoosePlan = async (planId) => {
         if (!planId || saving) return
         setSaving(true)
+        setError('')
+        setMessage('')
 
         try {
             const data = await subscriptionApi.choosePlan(planId)
-            toast.success(data.message || "Ta'rif muvaffaqiyatli tanlandi")
+            setMessage(data.message || "Ta'rif muvaffaqiyatli tanlandi")
 
             // Status ni qayta yuklash
             await loadStatus()
@@ -63,9 +63,9 @@ export default function SubscriptionPage() {
         } catch (err) {
             const resp = err.response?.data
             if (resp?.message) {
-                toast.error(resp.message)
+                setError(resp.message)
             } else {
-                toast.error("Ta'rifni tanlashda xatolik yuz berdi")
+                setError("Ta'rifni tanlashda xatolik yuz berdi")
             }
         } finally {
             setSaving(false)
@@ -73,35 +73,8 @@ export default function SubscriptionPage() {
     }
 
     const trialInfo = status?.trial_info || status?.trial || {}
-    const apiPlans = status?.plans || []
+    const plans = status?.plans || []
     const transactions = status?.transactions || []
-
-    // API dan kelgan tariflar (odatda 1 ta) va UI uchun qolgan 2 ta mock tarif
-    // Backend to'liq ishlaguncha 3 ta tarif ko'rsatish uchun
-    const mockPlans = [
-        {
-            id: 'mock_pro',
-            name: "Pro nasiya to'plami",
-            price: 59000,
-            description: "O'rta biznes uchun qulay ta'rif",
-            low_amount_limit: 100,
-            high_amount_limit: 50,
-            sms_limit: 50
-        },
-        {
-            id: 'mock_premium',
-            name: "Premium nasiya to'plami",
-            price: 129000,
-            description: "Katta biznes uchun cheksiz imkoniyatlar",
-            low_amount_limit: 500,
-            high_amount_limit: 200,
-            sms_limit: 200
-        }
-    ]
-
-    const plans = apiPlans.length > 0
-        ? [...apiPlans, ...mockPlans.slice(0, Math.max(0, 3 - apiPlans.length))]
-        : mockPlans
     const numericBalance = parseCurrency(status?.balance ?? 0)
 
     // Joriy aktiv ta'rif ID sini aniqlash
@@ -115,6 +88,24 @@ export default function SubscriptionPage() {
         const mm = String(date.getMonth() + 1).padStart(2, '0')
         const yyyy = date.getFullYear()
         return `${dd}.${mm}.${yyyy}`
+    }
+
+    const handleClickTopUp = () => {
+        try {
+            const stored = localStorage.getItem('user')
+            const user = stored ? JSON.parse(stored) : null
+            const amountNumber = clickAmount ? parseCurrency(clickAmount) : 0
+
+            if (!amountNumber || isNaN(amountNumber) || amountNumber <= 0) {
+                alert("Iltimos, to'g'ri summa kiriting.")
+                return
+            }
+
+            const url = buildClickUrl(user, amountNumber)
+            window.location.href = url
+        } catch (err) {
+            alert(err.message || "Click to'lovini boshlashda xatolik yuz berdi.")
+        }
     }
 
     if (loading) {
@@ -145,6 +136,20 @@ export default function SubscriptionPage() {
                 </h1>
                 <div className="w-10 h-10" />
             </div>
+
+            {message && (
+                <div className="mb-4 p-4 rounded-2xl text-[14px] flex items-center gap-2 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400">
+                    <CheckCircle2 size={18} />
+                    {message}
+                </div>
+            )}
+
+            {error && (
+                <div className="mb-4 p-4 rounded-2xl text-[14px] flex items-center gap-2 bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400">
+                    <AlertTriangle size={18} />
+                    {error}
+                </div>
+            )}
 
             {/* Trial / subscription status card */}
             <div
@@ -208,25 +213,30 @@ export default function SubscriptionPage() {
                     </div>
                 </div>
                 <p className="mt-2 text-[13px] text-gray-400">
-                    Balansni to'ldirish uchun to'lov usulini tanlang.
+                    Balansni Click orqali to'ldirish uchun summa kiriting.
                 </p>
-                <div className="mt-4">
-                    <PaymentMethods onSelect={(provider) => {
-                        setSelectedProvider(provider)
-                        setPaymentDrawerOpen(true)
-                    }} />
+                <div className="mt-2 flex items-center gap-3">
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        className="input w-32 text-[14px]"
+                        placeholder="Summa"
+                        value={clickAmount}
+                        onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '')
+                            setClickAmount(digits ? formatCurrency(digits) : '')
+                        }}
+                    />
+                    <button
+                        type="button"
+                        onClick={handleClickTopUp}
+                        className="btn btn-primary flex-1"
+                    >
+                        Click orqali to'lash
+                        <ArrowRight size={16} />
+                    </button>
                 </div>
             </div>
-
-            <PaymentDrawer
-                isOpen={paymentDrawerOpen}
-                onClose={() => setPaymentDrawerOpen(false)}
-                user={(() => {
-                    const stored = localStorage.getItem('user')
-                    return stored ? JSON.parse(stored) : null
-                })()}
-                provider={selectedProvider}
-            />
 
             {/* Plans */}
             <div className="mb-4">
@@ -238,114 +248,107 @@ export default function SubscriptionPage() {
                         Hozircha ta'riflar ro'yxati yo'q.
                     </p>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         {plans.map((plan) => {
                             const planPriceAmount = parseCurrency(plan.price ?? 0)
                             const hasEnoughBalance = numericBalance >= planPriceAmount
                             const isActivePlan = activePlanId && activePlanId === plan.id && isSubscriptionActive
-                            const isOpen = openPlanId === plan.id
 
                             return (
                                 <div
                                     key={plan.id}
-                                    className={`card dark:bg-gray-800 transition-all ${isActivePlan
+                                    className={`card dark:bg-gray-800 flex flex-col gap-2 ${isActivePlan
                                         ? 'border-2 border-green-400 dark:border-green-600'
                                         : 'border border-gray-100 dark:border-gray-700'
                                         }`}
                                 >
-                                    {/* Accordion header — always visible */}
-                                    <button
-                                        type="button"
-                                        onClick={() => setOpenPlanId(isOpen ? null : plan.id)}
-                                        className="w-full flex items-center gap-3 text-left"
-                                    >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isActivePlan
-                                            ? 'bg-green-100 dark:bg-green-900/30'
-                                            : 'bg-indigo-100 dark:bg-indigo-900/30'
-                                            }`}>
-                                            <Package size={18} className={
-                                                isActivePlan ? 'text-green-500' : 'text-indigo-500'
-                                            } />
+                                    {/* Active badge */}
+                                    {isActivePlan && (
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <div className="bg-green-500 text-white text-[12px] font-semibold px-3 py-1 rounded-full flex items-center gap-1">
+                                                <Check size={14} />
+                                                Faol ta'rif
+                                            </div>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
+                                    )}
+
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-11 h-11 rounded-full flex items-center justify-center ${isActivePlan
+                                                ? 'bg-green-100 dark:bg-green-900/30'
+                                                : 'bg-indigo-100 dark:bg-indigo-900/30'
+                                                }`}>
+                                                <Package size={20} className={
+                                                    isActivePlan ? 'text-green-500' : 'text-indigo-500'
+                                                } />
+                                            </div>
+                                            <div>
+                                                <p className="text-[17px] font-semibold text-gray-900 dark:text-white">
                                                     {plan.name}
                                                 </p>
-                                                {isActivePlan && (
-                                                    <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                        Faol
-                                                    </span>
+                                                {plan.description && (
+                                                    <div
+                                                        className="text-[14px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed"
+                                                        dangerouslySetInnerHTML={{ __html: plan.description }}
+                                                    />
                                                 )}
                                             </div>
-                                            <p className="text-[14px] font-bold text-blue-600 dark:text-blue-400">
-                                                {formatCurrency(plan.price || 0)} <span className="text-[12px] font-normal text-gray-400">so'm/oy</span>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-[17px] font-bold text-gray-900 dark:text-white">
+                                                {formatCurrency(plan.price || 0)}
                                             </p>
+                                            <p className="text-[12px] text-gray-400">so'm</p>
                                         </div>
-                                        <div className="shrink-0 text-gray-400">
-                                            {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                                        </div>
-                                    </button>
+                                    </div>
 
-                                    {/* Accordion content — expanded */}
-                                    {isOpen && (
-                                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                                            {plan.description && (
-                                                <div
-                                                    className="text-[13px] text-gray-500 dark:text-gray-400 mb-3 leading-relaxed"
-                                                    dangerouslySetInnerHTML={{ __html: plan.description }}
-                                                />
-                                            )}
-
-                                            <div className="space-y-2 text-[13px]">
-                                                {plan.low_amount_limit != null && (
-                                                    <div className="flex justify-between py-1.5 border-b border-gray-50 dark:border-gray-700">
-                                                        <span className="text-gray-500 dark:text-gray-400">Past nasiya limiti</span>
-                                                        <span className="font-semibold text-gray-900 dark:text-white">{plan.low_amount_limit === null ? 'Cheksiz' : `${plan.low_amount_limit} ta`}</span>
-                                                    </div>
-                                                )}
-                                                {plan.high_amount_limit != null && (
-                                                    <div className="flex justify-between py-1.5 border-b border-gray-50 dark:border-gray-700">
-                                                        <span className="text-gray-500 dark:text-gray-400">Yuqori nasiya limiti</span>
-                                                        <span className="font-semibold text-gray-900 dark:text-white">{plan.high_amount_limit === null ? 'Cheksiz' : `${plan.high_amount_limit} ta`}</span>
-                                                    </div>
-                                                )}
-                                                {plan.low_amount_threshold != null && (
-                                                    <div className="flex justify-between py-1.5 border-b border-gray-50 dark:border-gray-700">
-                                                        <span className="text-gray-500 dark:text-gray-400">Chegara summasi</span>
-                                                        <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(plan.low_amount_threshold)} so'm</span>
-                                                    </div>
-                                                )}
-                                                {plan.sms_limit != null && (
-                                                    <div className="flex justify-between py-1.5">
-                                                        <span className="text-gray-500 dark:text-gray-400">Bepul SMS</span>
-                                                        <span className="font-semibold text-gray-900 dark:text-white">{plan.sms_limit === null ? 'Cheksiz' : `${plan.sms_limit} ta`}</span>
-                                                    </div>
-                                                )}
+                                    <div className="grid grid-cols-2 gap-2 mt-2 text-[13px] text-gray-500 dark:text-gray-400">
+                                        {typeof plan.low_amount_limit !== 'undefined' && (
+                                            <div>
+                                                <span className="font-semibold">Past nasiya limiti: </span>
+                                                {plan.low_amount_limit} ta
                                             </div>
+                                        )}
+                                        {typeof plan.high_amount_limit !== 'undefined' && (
+                                            <div>
+                                                <span className="font-semibold">Yuqori nasiya limiti: </span>
+                                                {plan.high_amount_limit} ta
+                                            </div>
+                                        )}
+                                        {typeof plan.low_amount_threshold !== 'undefined' && (
+                                            <div>
+                                                <span className="font-semibold">Chegara: </span>
+                                                {formatCurrency(plan.low_amount_threshold)} so'm
+                                            </div>
+                                        )}
+                                        {typeof plan.sms_limit !== 'undefined' && (
+                                            <div>
+                                                <span className="font-semibold">Bepul SMS: </span>
+                                                {plan.sms_limit} ta
+                                            </div>
+                                        )}
+                                    </div>
 
-                                            {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && !isActivePlan && (
-                                                <p className="mt-2 text-[12px] text-red-500">
-                                                    Balans yetarli emas. Avval balansni to'ldiring.
-                                                </p>
-                                            )}
+                                    {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && !isActivePlan && (
+                                        <p className="mt-1 text-[12px] text-red-500">
+                                            Balans yetarli emas. Avval balansni to'ldiring.
+                                        </p>
+                                    )}
 
-                                            {isActivePlan ? (
-                                                <div className="mt-3 btn w-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 font-semibold cursor-default flex items-center justify-center gap-2">
-                                                    <Check size={16} />
-                                                    Joriy ta'rif
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    disabled={saving}
-                                                    onClick={() => handleChoosePlan(plan.id)}
-                                                    className="mt-3 btn btn-primary w-full"
-                                                >
-                                                    {saving ? 'Tanlanmoqda...' : "Ushbu ta'rifni tanlash"}
-                                                </button>
-                                            )}
+                                    {isActivePlan ? (
+                                        <div className="mt-3 btn w-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 font-semibold cursor-default flex items-center justify-center gap-2">
+                                            <Check size={16} />
+                                            Joriy ta'rif
                                         </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            disabled={saving}
+                                            onClick={() => handleChoosePlan(plan.id)}
+                                            className="mt-3 btn btn-primary w-full"
+                                        >
+                                            {saving ? 'Tanlanmoqda...' : "Ushbu ta'rifni tanlash"}
+                                        </button>
                                     )}
                                 </div>
                             )

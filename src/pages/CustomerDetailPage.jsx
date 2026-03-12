@@ -4,6 +4,7 @@ import { Drawer } from 'vaul'
 import { customersApi } from '../api/customers.api'
 import { debtsApi } from '../api/debts.api'
 import { paymentsApi } from '../api/payments.api'
+import toast from 'react-hot-toast'
 import {
     ChevronLeft, MoreVertical, Phone as PhoneIcon, MessageSquare,
     Plus, CreditCard, Loader2, FileText, X, Trash2
@@ -73,9 +74,15 @@ export default function CustomerDetailPage() {
             })
             setDebtForm({ amount: '', description: '', debt_date: '', send_sms: false })
             setShowDebtDrawer(false)
+            toast.success(
+                <div>
+                    <p className="font-bold">Nasiya qo'shildi</p>
+                    <p className="text-sm">Yangi bildirishnoma bor</p>
+                </div>
+            )
             loadData()
         } catch (err) {
-            alert(err.response?.data?.message || 'Xatolik yuz berdi')
+            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
         } finally {
             setSubmitting(false)
         }
@@ -92,7 +99,7 @@ export default function CustomerDetailPage() {
             .sort((a, b) => a.id - b.id)
 
         if (openDebts.length === 0) {
-            alert('Faol nasiya topilmadi')
+            toast.error('Faol nasiya topilmadi')
             return
         }
 
@@ -130,9 +137,15 @@ export default function CustomerDetailPage() {
 
             setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '' })
             setShowPaymentDrawer(false)
+            toast.success(
+                <div>
+                    <p className="font-bold">To'lov qabul qilindi</p>
+                    <p className="text-sm">Yangi bildirishnoma bor</p>
+                </div>
+            )
             loadData()
         } catch (err) {
-            alert(err.response?.data?.message || 'Xatolik yuz berdi')
+            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
         } finally {
             setSubmitting(false)
         }
@@ -150,9 +163,10 @@ export default function CustomerDetailPage() {
         setSubmitting(true)
         try {
             await customersApi.deleteCustomer(id)
+            toast.success('Mijoz o\'chirildi')
             navigate('/customers')
         } catch (err) {
-            alert(err.response?.data?.message || 'Xatolik yuz berdi')
+            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
         } finally {
             setSubmitting(false)
             setShowDeleteConfirm(false)
@@ -242,8 +256,16 @@ export default function CustomerDetailPage() {
                     <button onClick={handleMessage} className="btn btn-outline flex-1 py-3"><MessageSquare size={18} />Xabar</button>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={() => setShowDebtDrawer(true)} className="btn btn-outline-danger flex-1 py-3"><Plus size={18} />Nasiya qo'shish</button>
-                    <button onClick={() => setShowPaymentDrawer(true)} className="btn btn-outline-success flex-1 py-3"><Plus size={18} />To'lov qo'shish</button>
+                    <button onClick={() => setShowDebtDrawer(true)} className="btn btn-outline-danger flex-1 py-3">
+                        <Plus size={18} />Nasiya qo'shish
+                    </button>
+                    <button
+                        onClick={() => setShowPaymentDrawer(true)}
+                        disabled={totalDebt <= 0}
+                        className={`btn flex-1 py-3 ${totalDebt > 0 ? 'btn-outline-success' : 'border border-gray-200 text-gray-400 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50 opacity-60 cursor-not-allowed'}`}
+                    >
+                        <Plus size={18} />To'lov qo'shish
+                    </button>
                 </div>
             </div>
 
@@ -313,7 +335,7 @@ export default function CustomerDetailPage() {
             </div>
 
             {/* Add Debt Drawer */}
-            <Drawer.Root open={showDebtDrawer} onOpenChange={setShowDebtDrawer}>
+            <Drawer.Root open={showDebtDrawer} onOpenChange={setShowDebtDrawer} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
                     <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh]">
@@ -408,7 +430,7 @@ export default function CustomerDetailPage() {
             </Drawer.Root>
 
             {/* Add Payment Drawer */}
-            <Drawer.Root open={showPaymentDrawer} onOpenChange={setShowPaymentDrawer}>
+            <Drawer.Root open={showPaymentDrawer} onOpenChange={setShowPaymentDrawer} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
                     <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh]">

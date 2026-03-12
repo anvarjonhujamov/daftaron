@@ -9,17 +9,16 @@ import {
     ArrowLeft, Clock, Phone, MessageSquare, ChevronDown,
     ArrowUpDown, AlertTriangle, Send, Check, Loader2
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export default function OverduePage() {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
     const [overdueList, setOverdueList] = useState([])
-    const [error, setError] = useState('')
     const [days, setDays] = useState(10)
     const [order, setOrder] = useState('asc') // asc = eng uzoq birinchi
     const [selectedIds, setSelectedIds] = useState(new Set())
     const [sendingSms, setSendingSms] = useState(false)
-    const [smsMessage, setSmsMessage] = useState({ type: '', text: '' })
 
     useEffect(() => {
         loadOverdue()
@@ -27,14 +26,13 @@ export default function OverduePage() {
 
     const loadOverdue = async () => {
         setLoading(true)
-        setError('')
         try {
             const data = await debtsApi.getOverdue({ days, order })
             // API array qaytaradi
             setOverdueList(Array.isArray(data) ? data : (data.data || []))
         } catch (err) {
             console.error('Failed to load overdue:', err)
-            setError(err.response?.data?.message || "Muddati o'tganlarni yuklashda xatolik")
+            toast.error(err.response?.data?.message || "Muddati o'tganlarni yuklashda xatolik")
         } finally {
             setLoading(false)
         }
@@ -63,25 +61,18 @@ export default function OverduePage() {
     const handleSendSms = async () => {
         if (selectedIds.size === 0) return
         setSendingSms(true)
-        setSmsMessage({ type: '', text: '' })
 
         try {
             // SMS yuborish — hozircha har bir tanlangan mijoz uchun
             const ids = Array.from(selectedIds)
             // Agar backend da bulk SMS endpoint bo'lsa, shu yerda chaqiriladi
             // Hozircha individual SMS (agar mavjud bo'lsa)
-            setSmsMessage({
-                type: 'success',
-                text: `${ids.length} ta mijozga SMS yuborish so'rovi yuborildi`
-            })
+            toast.success(`${ids.length} ta mijozga SMS yuborish so'rovi yuborildi`)
             setSelectedIds(new Set())
             // Ro'yxatni yangilash
             await loadOverdue()
         } catch (err) {
-            setSmsMessage({
-                type: 'error',
-                text: err.response?.data?.message || 'SMS yuborishda xatolik'
-            })
+            toast.error(err.response?.data?.message || 'SMS yuborishda xatolik')
         } finally {
             setSendingSms(false)
         }
@@ -169,24 +160,6 @@ export default function OverduePage() {
                         )}
                         SMS yuborish
                     </button>
-                </div>
-            )}
-
-            {/* Messages */}
-            {smsMessage.text && (
-                <div className={`mb-4 p-3 rounded-2xl text-[14px] flex items-center gap-2 ${smsMessage.type === 'success'
-                    ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                    : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'
-                    }`}>
-                    {smsMessage.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
-                    {smsMessage.text}
-                </div>
-            )}
-
-            {error && (
-                <div className="mb-4 p-3 rounded-2xl text-[14px] flex items-center gap-2 bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400">
-                    <AlertTriangle size={16} />
-                    {error}
                 </div>
             )}
 

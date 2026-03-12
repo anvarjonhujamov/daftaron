@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import ScrollToTop from './components/ScrollToTop'
 import { initTelegramWebApp } from './utils/telegram'
+import { Toaster } from 'react-hot-toast'
 
 // Auth pages
 import LoginPage from './pages/LoginPage'
@@ -30,6 +31,18 @@ export default function App() {
 
     return (
         <>
+            <Toaster
+                position="top-center"
+                toastOptions={{
+                    duration: 4000,
+                    style: {
+                        borderRadius: '16px',
+                        background: '#333',
+                        color: '#fff',
+                        fontSize: '14px'
+                    },
+                }}
+            />
             <ScrollToTop />
             <Routes>
                 {/* Public routes */}

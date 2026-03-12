@@ -3,13 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../api/auth.api'
 import { Loader2, Phone, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
+import toast from 'react-hot-toast'
 
 export default function LoginPage() {
     const navigate = useNavigate()
     const [form, setForm] = useState({ phone: PHONE_PREFIX, password: '' })
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
-    const [error, setError] = useState('')
 
     useEffect(() => {
         const savedDarkMode = localStorage.getItem('darkMode') === 'true'
@@ -23,7 +23,6 @@ export default function LoginPage() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
-        setError('')
 
         try {
             const rawPhone = getRawPhoneNumber(form.phone)
@@ -35,15 +34,15 @@ export default function LoginPage() {
                 localStorage.setItem('user', JSON.stringify(data.user))
                 navigate('/')
             } else {
-                setError('Kutilmagan javob. Qaytadan urinib ko\'ring.')
+                toast.error('Kutilmagan javob. Qaytadan urinib ko\'ring.')
             }
         } catch (err) {
             if (err.response?.data?.errors) {
                 const errors = err.response.data.errors
                 const messages = Object.values(errors).flat().join(', ')
-                setError(messages)
+                toast.error(messages)
             } else {
-                setError(err.response?.data?.message || 'Kirish amalga oshmadi')
+                toast.error(err.response?.data?.message || 'Kirish amalga oshmadi')
             }
         } finally {
             setLoading(false)
@@ -63,12 +62,6 @@ export default function LoginPage() {
 
                 <div className="card">
                     <h2 className="text-[20px] font-semibold text-center text-gray-900 dark:text-white mb-6">Kirish</h2>
-
-                    {error && (
-                        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 text-red-500 rounded-2xl text-[14px]">
-                            {error}
-                        </div>
-                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>

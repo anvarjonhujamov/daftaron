@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { dashboardApi } from '../api/dashboard.api'
 import { customersApi } from '../api/customers.api'
 import { debtsApi } from '../api/debts.api'
+import { notificationsApi } from '../api/notifications.api'
+import { paymentsApi } from '../api/payments.api'
 import {
     TrendingUp, Users, ChevronRight,
     UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp
@@ -14,6 +16,8 @@ export default function DashboardPage() {
     const [stats, setStats] = useState(null)
     const [customers, setCustomers] = useState([])
     const [allDebts, setAllDebts] = useState([])
+    const [allPayments, setAllPayments] = useState([])
+    const [unreadNotifs, setUnreadNotifs] = useState(0)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -23,10 +27,12 @@ export default function DashboardPage() {
     const loadStats = async () => {
         setLoading(true)
         try {
-            const [statsData, customersData, debtsData] = await Promise.allSettled([
+            const [statsData, customersData, debtsData, notifsData, paymentsData] = await Promise.allSettled([
                 dashboardApi.getStats(),
                 customersApi.getCustomers(),
-                debtsApi.getDebts()
+                debtsApi.getDebts(),
+                notificationsApi.getNotifications(),
+                paymentsApi.getPayments()
             ])
 
             if (statsData.status === 'fulfilled') {
@@ -41,6 +47,17 @@ export default function DashboardPage() {
             if (debtsData.status === 'fulfilled') {
                 const data = debtsData.value
                 setAllDebts(Array.isArray(data) ? data : (data.data || []))
+            }
+
+            if (notifsData.status === 'fulfilled') {
+                const data = notifsData.value
+                const list = Array.isArray(data) ? data : (data.data || [])
+                setUnreadNotifs(list.filter(n => !n.read_at).length)
+            }
+
+            if (paymentsData.status === 'fulfilled') {
+                const data = paymentsData.value
+                setAllPayments(Array.isArray(data) ? data : (data.data || []))
             }
         } catch (err) {
             console.error('Failed to load dashboard data:', err)
@@ -85,33 +102,51 @@ export default function DashboardPage() {
 
     const monthlyPercent = Math.min(Math.round((monthlyPaid / (monthlyTotal || 1)) * 100), 100) || 0
 
-    // Today's stats — calculate from real debts data
-    const todayStr = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+    // Today's stats — calculate from real debts and payments data in local time
+    const todayRaw = new Date();
+    const offset = todayRaw.getTimezoneOffset() * 60000;
+    const todayStr = new Date(todayRaw - offset).toISOString().split('T')[0];
 
+    // Bugun nasiya (Today's Debts)
     const todayDebts = (() => {
-        // First try from debts list
-        const fromDebts = allDebts
-            .filter(d => (d.debt_date || '').slice(0, 10) === todayStr)
-            .reduce((sum, d) => sum + parseFloat(d.total_amount || 0), 0)
-        if (fromDebts > 0) return fromDebts
-        // Fallback to API stats
-        return parseFloat(stats?.today_debts ?? stats?.today_given ?? 0)
+        const val = stats?.today_debts ?? stats?.today_given ?? stats?.today_debt_amount ?? stats?.today_amount ?? stats?.today_nasiya;
+        if (val !== undefined && val !== null) {
+            return parseFloat(val) || 0;
+        }
+
+        // Fallback to client-side filtering
+        return allDebts
+            .filter(d => {
+                const dateStr = d.created_at || d.debt_date;
+                if (!dateStr) return false;
+                try {
+                    const dt = new Date(dateStr);
+                    const localStr = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                    return localStr === todayStr;
+                } catch (e) { return false; }
+            })
+            .reduce((sum, d) => sum + parseFloat(d.remaining_amount ?? d.remaining_debts ?? d.amount ?? d.total_amount ?? d.debt_amount ?? d.price ?? 0), 0)
     })()
 
+    // Bugun to'lov (Today's Payments)
     const todayPayments = (() => {
-        // Calculate from debts' payments (if debts have nested payments)
-        let sum = 0
-        allDebts.forEach(d => {
-            const payments = d.payments || []
-            payments.forEach(p => {
-                if ((p.paid_at || '').slice(0, 10) === todayStr) {
-                    sum += parseFloat(p.amount || 0)
-                }
+        const val = stats?.today_payments ?? stats?.today_paid ?? stats?.today_paid_amount ?? stats?.today_payment ?? stats?.today_tolov;
+        if (val !== undefined && val !== null) {
+            return parseFloat(val) || 0;
+        }
+
+        // Fallback to client-side filtering via allPayments
+        return allPayments
+            .filter(p => {
+                const dateStr = p.created_at || p.paid_at || p.payment_date;
+                if (!dateStr) return false;
+                try {
+                    const dt = new Date(dateStr);
+                    const localStr = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                    return localStr === todayStr;
+                } catch (e) { return false; }
             })
-        })
-        if (sum > 0) return sum
-        // Fallback to API stats
-        return parseFloat(stats?.today_payments ?? stats?.today_paid ?? 0)
+            .reduce((sum, p) => sum + parseFloat(p.amount || p.paid_amount || 0), 0)
     })()
 
     // Debtors/Customers list source - prefer fetched customers for consistency
@@ -142,10 +177,15 @@ export default function DashboardPage() {
                 <div className="flex gap-2">
                     <Link
                         to="/notifications"
-                        className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
+                        className="relative w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
                         title="Bildirishnomalar"
                     >
                         <Bell size={22} />
+                        {unreadNotifs > 0 && (
+                            <span className="absolute top-1.5 right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-gray-800">
+                                {unreadNotifs > 99 ? '99+' : unreadNotifs}
+                            </span>
+                        )}
                     </Link>
                     <Link
                         to="/payments"

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '../api/auth.api'
 import { Loader2, Phone, Lock, ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
+import toast from 'react-hot-toast'
 
 export default function ForgotPasswordPage() {
     const navigate = useNavigate()
@@ -14,8 +15,6 @@ export default function ForgotPasswordPage() {
     const [password, setPassword] = useState('')
     const [passwordConfirmation, setPasswordConfirmation] = useState('')
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
-    const [message, setMessage] = useState('')
 
     useEffect(() => {
         const savedDarkMode = localStorage.getItem('darkMode') === 'true'
@@ -29,18 +28,17 @@ export default function ForgotPasswordPage() {
     const handleStep1 = async (e) => {
         e.preventDefault()
         setLoading(true)
-        setError('')
         try {
             const raw = getRawPhoneNumber(phone)
             setRawPhone(raw)
             await authApi.forgotPassword(raw)
-            setMessage('SMS kod yuborildi')
+            toast.success('SMS kod yuborildi')
             setStep(2)
         } catch (err) {
             if (err.response?.status === 404) {
-                setError('Bu raqam ro\'yxatda yo\'q')
+                toast.error('Bu raqam ro\'yxatda yo\'q')
             } else {
-                setError(err.response?.data?.message || 'Xatolik yuz berdi')
+                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
             }
         } finally {
             setLoading(false)
@@ -50,21 +48,19 @@ export default function ForgotPasswordPage() {
     const handleStep2 = async (e) => {
         e.preventDefault()
         if (code.length !== 4) {
-            setError('4 xonali kodni kiriting')
+            toast.error('4 xonali kodni kiriting')
             return
         }
         setLoading(true)
-        setError('')
         try {
             const data = await authApi.verifyPasswordReset(rawPhone, code)
             setResetToken(data.reset_token)
-            setMessage('')
             setStep(3)
         } catch (err) {
             if (err.response?.status === 404) {
-                setError('Kod muddati tugagan. Qaytadan urinib ko\'ring')
+                toast.error('Kod muddati tugagan. Qaytadan urinib ko\'ring')
             } else {
-                setError(err.response?.data?.message || 'Kod noto\'g\'ri')
+                toast.error(err.response?.data?.message || 'Kod noto\'g\'ri')
             }
         } finally {
             setLoading(false)
@@ -74,21 +70,20 @@ export default function ForgotPasswordPage() {
     const handleStep3 = async (e) => {
         e.preventDefault()
         if (password.length < 6) {
-            setError('Parol kamida 6 belgidan iborat bo\'lishi kerak')
+            toast.error('Parol kamida 6 belgidan iborat bo\'lishi kerak')
             return
         }
         if (password !== passwordConfirmation) {
-            setError('Parollar mos kelmaydi')
+            toast.error('Parollar mos kelmaydi')
             return
         }
         setLoading(true)
-        setError('')
         try {
             await authApi.resetPassword(resetToken, password, passwordConfirmation)
-            setMessage('Parol muvaffaqiyatli yangilandi!')
+            toast.success('Parol muvaffaqiyatli yangilandi!')
             setTimeout(() => navigate('/login'), 2000)
         } catch (err) {
-            setError(err.response?.data?.message || 'Parolni yangilashda xatolik')
+            toast.error(err.response?.data?.message || 'Parolni yangilashda xatolik')
         } finally {
             setLoading(false)
         }
@@ -108,19 +103,6 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div className="card dark:bg-gray-800">
-                    {message && (
-                        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 rounded-2xl text-[14px] flex items-center gap-2">
-                            <ShieldCheck size={16} />
-                            {message}
-                        </div>
-                    )}
-
-                    {error && (
-                        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-500 rounded-2xl text-[14px]">
-                            {error}
-                        </div>
-                    )}
-
                     {/* Step 1: Phone */}
                     {step === 1 && (
                         <form onSubmit={handleStep1} className="space-y-5">

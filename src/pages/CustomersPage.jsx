@@ -6,6 +6,7 @@ import { debtsApi } from '../api/debts.api'
 import { Search, Plus, ChevronRight, Users, User, Phone, X, Loader2, Clock, MessageSquare } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import toast from 'react-hot-toast'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 import { formatCurrency } from '../utils/format'
 
@@ -113,9 +114,10 @@ export default function CustomersPage() {
             })
             setForm({ name: '', phone: PHONE_PREFIX })
             setShowAddDrawer(false)
+            toast.success('Mijoz qo\'shildi')
             loadCustomers()
         } catch (err) {
-            alert(err.response?.data?.message || 'Xatolik yuz berdi')
+            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
         } finally {
             setSubmitting(false)
         }
@@ -192,12 +194,12 @@ export default function CustomersPage() {
             </div>
 
             {/* Filter Pills */}
-            <div className="flex gap-1.5 mb-4">
+            <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide">
                 {[
                     { value: '', label: 'Barchasi' },
                     { value: 'debtors', label: 'Qarzdor' },
                     { value: 'paid', label: "To'langan" },
-                    { value: 'overdue', label: "O'tgan" }
+                    { value: 'overdue', label: "Muddati o'tganlar" }
                 ].map(tab => (
                     <button
                         key={tab.value}
@@ -364,7 +366,7 @@ export default function CustomersPage() {
             )}
 
             {/* Add Customer Drawer */}
-            <Drawer.Root open={showAddDrawer} onOpenChange={setShowAddDrawer}>
+            <Drawer.Root open={showAddDrawer} onOpenChange={setShowAddDrawer} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
                     <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50">
