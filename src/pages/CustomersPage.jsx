@@ -5,6 +5,7 @@ import { customersApi } from '../api/customers.api'
 import { debtsApi } from '../api/debts.api'
 import { Search, Plus, ChevronRight, Users, User, Phone, X, Loader2, Clock, MessageSquare } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { CustomersSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import toast from 'react-hot-toast'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
@@ -229,9 +230,7 @@ export default function CustomersPage() {
                     </div>
 
                     {overdueLoading ? (
-                        <div className="flex justify-center py-16">
-                            <LoadingSpinner size="lg" />
-                        </div>
+                        <CustomersSkeleton />
                     ) : overdueList.length === 0 ? (
                         <EmptyState
                             icon={Clock}
@@ -290,9 +289,7 @@ export default function CustomersPage() {
 
                     {/* Customer List */}
                     {loading ? (
-                        <div className="flex justify-center py-16">
-                            <LoadingSpinner size="lg" />
-                        </div>
+                        <CustomersSkeleton />
                     ) : filteredCustomers.length === 0 ? (
                         <EmptyState
                             icon={Users}

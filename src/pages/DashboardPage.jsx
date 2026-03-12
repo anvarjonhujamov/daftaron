@@ -10,6 +10,7 @@ import {
     UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import Skeleton, { DashboardSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
 
 export default function DashboardPage() {
@@ -162,11 +163,7 @@ export default function DashboardPage() {
         .sort((a, b) => b.computed_debt - a.computed_debt) // Descending order
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner size="lg" />
-            </div>
-        )
+        return <DashboardSkeleton />
     }
 
     return (
@@ -198,56 +195,56 @@ export default function DashboardPage() {
             </div>
 
             {/* Main Stats Grid */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-3 mb-6">
                 {/* Jami mijozlar */}
-                <div className="relative overflow-hidden rounded-[24px] p-5 h-[120px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-transform">
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
-                            <span className="text-[13px] font-medium opacity-90">Jami mijozlar</span>
-                            <div className="p-2 bg-white/20 rounded-xl">
-                                <Users size={18} className="text-white" />
+                            <span className="text-[12px] font-medium opacity-90">Jami mijozlar</span>
+                            <div className="p-1.5 bg-white/20 rounded-lg">
+                                <Users size={16} className="text-white" />
                             </div>
                         </div>
-                        <p className="text-[28px] font-bold leading-none">{totalCustomers}</p>
+                        <p className="text-[24px] font-bold leading-none">{totalCustomers}</p>
                     </div>
                 </div>
 
                 {/* Umumiy nasiya */}
-                <div className="relative overflow-hidden rounded-[24px] p-5 h-[120px] bg-gradient-to-br from-orange-400 to-rose-500 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-transform">
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-orange-400 to-rose-500 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
-                            <span className="text-[13px] font-medium opacity-90">Umumiy nasiya</span>
-                            <div className="p-2 bg-white/20 rounded-xl">
-                                <TrendingUp size={18} className="text-white" />
+                            <span className="text-[12px] font-medium opacity-90">Umumiy nasiya</span>
+                            <div className="p-1.5 bg-white/20 rounded-lg">
+                                <TrendingUp size={16} className="text-white" />
                             </div>
                         </div>
-                        <p className="text-[22px] font-bold leading-none truncate">{formatCurrency(totalGiven)}</p>
+                        <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(totalGiven)}</p>
                     </div>
                 </div>
 
                 {/* Qolgan qarz */}
-                <div className="relative overflow-hidden rounded-[24px] p-5 h-[120px] bg-gradient-to-br from-rose-500 to-red-700 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-transform">
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-rose-500 to-red-700 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
-                            <span className="text-[13px] font-medium opacity-90">Qolgan qarz</span>
-                            <div className="p-2 bg-white/20 rounded-xl">
-                                <Activity size={18} className="text-white" />
+                            <span className="text-[12px] font-medium opacity-90">Qolgan qarz</span>
+                            <div className="p-1.5 bg-white/20 rounded-lg">
+                                <Activity size={16} className="text-white" />
                             </div>
                         </div>
-                        <p className="text-[22px] font-bold leading-none truncate">{formatCurrency(totalDebt)}</p>
+                        <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(totalDebt)}</p>
                     </div>
                 </div>
 
                 {/* To'langan summa */}
-                <div className="relative overflow-hidden rounded-[24px] p-5 h-[120px] bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-transform">
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
-                            <span className="text-[13px] font-medium opacity-90">To'langan summa</span>
-                            <div className="p-2 bg-white/20 rounded-xl">
-                                <CheckCircle2 size={18} className="text-white" />
+                            <span className="text-[12px] font-medium opacity-90">To'langan summa</span>
+                            <div className="p-1.5 bg-white/20 rounded-lg">
+                                <CheckCircle2 size={16} className="text-white" />
                             </div>
                         </div>
-                        <p className="text-[22px] font-bold leading-none truncate">{formatCurrency(totalPaid)}</p>
+                        <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(totalPaid)}</p>
                     </div>
                 </div>
             </div>
