@@ -204,7 +204,7 @@ export default function CustomersPage() {
                     <button
                         key={tab.value}
                         onClick={() => setFilter(tab.value)}
-                        className={`px-3 py-2 rounded-full text-[13px] font-medium transition-all ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
+                        className={`px-3 py-2 rounded-full text-[12px] font-medium transition-all ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
                     >
                         {tab.label}
                     </button>
