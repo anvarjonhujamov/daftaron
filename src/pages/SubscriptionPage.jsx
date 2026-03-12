@@ -7,7 +7,7 @@ import { formatCurrency, parseCurrency } from '../utils/format'
 import { buildClickUrl } from '../utils/click'
 import {
     CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight,
-    Package, Clock, Receipt, Check
+    Package, Clock, Receipt, Check, ChevronDown, ChevronUp
 } from 'lucide-react'
 
 export default function SubscriptionPage() {
@@ -19,6 +19,7 @@ export default function SubscriptionPage() {
     const [error, setError] = useState('')
     const [message, setMessage] = useState('')
     const [clickAmount, setClickAmount] = useState('')
+    const [openPlanId, setOpenPlanId] = useState(null)
 
     useEffect(() => {
         loadStatus()
@@ -248,107 +249,114 @@ export default function SubscriptionPage() {
                         Hozircha ta'riflar ro'yxati yo'q.
                     </p>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         {plans.map((plan) => {
                             const planPriceAmount = parseCurrency(plan.price ?? 0)
                             const hasEnoughBalance = numericBalance >= planPriceAmount
                             const isActivePlan = activePlanId && activePlanId === plan.id && isSubscriptionActive
+                            const isOpen = openPlanId === plan.id
 
                             return (
                                 <div
                                     key={plan.id}
-                                    className={`card dark:bg-gray-800 flex flex-col gap-2 ${isActivePlan
+                                    className={`card dark:bg-gray-800 transition-all ${isActivePlan
                                         ? 'border-2 border-green-400 dark:border-green-600'
                                         : 'border border-gray-100 dark:border-gray-700'
                                         }`}
                                 >
-                                    {/* Active badge */}
-                                    {isActivePlan && (
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                            <div className="bg-green-500 text-white text-[12px] font-semibold px-3 py-1 rounded-full flex items-center gap-1">
-                                                <Check size={14} />
-                                                Faol ta'rif
-                                            </div>
+                                    {/* Accordion header — always visible */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpenPlanId(isOpen ? null : plan.id)}
+                                        className="w-full flex items-center gap-3 text-left"
+                                    >
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isActivePlan
+                                            ? 'bg-green-100 dark:bg-green-900/30'
+                                            : 'bg-indigo-100 dark:bg-indigo-900/30'
+                                            }`}>
+                                            <Package size={18} className={
+                                                isActivePlan ? 'text-green-500' : 'text-indigo-500'
+                                            } />
                                         </div>
-                                    )}
-
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-11 h-11 rounded-full flex items-center justify-center ${isActivePlan
-                                                ? 'bg-green-100 dark:bg-green-900/30'
-                                                : 'bg-indigo-100 dark:bg-indigo-900/30'
-                                                }`}>
-                                                <Package size={20} className={
-                                                    isActivePlan ? 'text-green-500' : 'text-indigo-500'
-                                                } />
-                                            </div>
-                                            <div>
-                                                <p className="text-[17px] font-semibold text-gray-900 dark:text-white">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
                                                     {plan.name}
                                                 </p>
-                                                {plan.description && (
-                                                    <div
-                                                        className="text-[14px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed"
-                                                        dangerouslySetInnerHTML={{ __html: plan.description }}
-                                                    />
+                                                {isActivePlan && (
+                                                    <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                        Faol
+                                                    </span>
                                                 )}
                                             </div>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                            <p className="text-[17px] font-bold text-gray-900 dark:text-white">
-                                                {formatCurrency(plan.price || 0)}
+                                            <p className="text-[14px] font-bold text-blue-600 dark:text-blue-400">
+                                                {formatCurrency(plan.price || 0)} <span className="text-[12px] font-normal text-gray-400">so'm/oy</span>
                                             </p>
-                                            <p className="text-[12px] text-gray-400">so'm</p>
                                         </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2 mt-2 text-[13px] text-gray-500 dark:text-gray-400">
-                                        {typeof plan.low_amount_limit !== 'undefined' && (
-                                            <div>
-                                                <span className="font-semibold">Past nasiya limiti: </span>
-                                                {plan.low_amount_limit} ta
-                                            </div>
-                                        )}
-                                        {typeof plan.high_amount_limit !== 'undefined' && (
-                                            <div>
-                                                <span className="font-semibold">Yuqori nasiya limiti: </span>
-                                                {plan.high_amount_limit} ta
-                                            </div>
-                                        )}
-                                        {typeof plan.low_amount_threshold !== 'undefined' && (
-                                            <div>
-                                                <span className="font-semibold">Chegara: </span>
-                                                {formatCurrency(plan.low_amount_threshold)} so'm
-                                            </div>
-                                        )}
-                                        {typeof plan.sms_limit !== 'undefined' && (
-                                            <div>
-                                                <span className="font-semibold">Bepul SMS: </span>
-                                                {plan.sms_limit} ta
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && !isActivePlan && (
-                                        <p className="mt-1 text-[12px] text-red-500">
-                                            Balans yetarli emas. Avval balansni to'ldiring.
-                                        </p>
-                                    )}
-
-                                    {isActivePlan ? (
-                                        <div className="mt-3 btn w-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 font-semibold cursor-default flex items-center justify-center gap-2">
-                                            <Check size={16} />
-                                            Joriy ta'rif
+                                        <div className="shrink-0 text-gray-400">
+                                            {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                                         </div>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            disabled={saving}
-                                            onClick={() => handleChoosePlan(plan.id)}
-                                            className="mt-3 btn btn-primary w-full"
-                                        >
-                                            {saving ? 'Tanlanmoqda...' : "Ushbu ta'rifni tanlash"}
-                                        </button>
+                                    </button>
+
+                                    {/* Accordion content — expanded */}
+                                    {isOpen && (
+                                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                            {plan.description && (
+                                                <div
+                                                    className="text-[13px] text-gray-500 dark:text-gray-400 mb-3 leading-relaxed"
+                                                    dangerouslySetInnerHTML={{ __html: plan.description }}
+                                                />
+                                            )}
+
+                                            <div className="space-y-2 text-[13px]">
+                                                {plan.low_amount_limit != null && (
+                                                    <div className="flex justify-between py-1.5 border-b border-gray-50 dark:border-gray-700">
+                                                        <span className="text-gray-500 dark:text-gray-400">Past nasiya limiti</span>
+                                                        <span className="font-semibold text-gray-900 dark:text-white">{plan.low_amount_limit === null ? 'Cheksiz' : `${plan.low_amount_limit} ta`}</span>
+                                                    </div>
+                                                )}
+                                                {plan.high_amount_limit != null && (
+                                                    <div className="flex justify-between py-1.5 border-b border-gray-50 dark:border-gray-700">
+                                                        <span className="text-gray-500 dark:text-gray-400">Yuqori nasiya limiti</span>
+                                                        <span className="font-semibold text-gray-900 dark:text-white">{plan.high_amount_limit === null ? 'Cheksiz' : `${plan.high_amount_limit} ta`}</span>
+                                                    </div>
+                                                )}
+                                                {plan.low_amount_threshold != null && (
+                                                    <div className="flex justify-between py-1.5 border-b border-gray-50 dark:border-gray-700">
+                                                        <span className="text-gray-500 dark:text-gray-400">Chegara summasi</span>
+                                                        <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(plan.low_amount_threshold)} so'm</span>
+                                                    </div>
+                                                )}
+                                                {plan.sms_limit != null && (
+                                                    <div className="flex justify-between py-1.5">
+                                                        <span className="text-gray-500 dark:text-gray-400">Bepul SMS</span>
+                                                        <span className="font-semibold text-gray-900 dark:text-white">{plan.sms_limit === null ? 'Cheksiz' : `${plan.sms_limit} ta`}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && !isActivePlan && (
+                                                <p className="mt-2 text-[12px] text-red-500">
+                                                    Balans yetarli emas. Avval balansni to'ldiring.
+                                                </p>
+                                            )}
+
+                                            {isActivePlan ? (
+                                                <div className="mt-3 btn w-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 font-semibold cursor-default flex items-center justify-center gap-2">
+                                                    <Check size={16} />
+                                                    Joriy ta'rif
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    disabled={saving}
+                                                    onClick={() => handleChoosePlan(plan.id)}
+                                                    className="mt-3 btn btn-primary w-full"
+                                                >
+                                                    {saving ? 'Tanlanmoqda...' : "Ushbu ta'rifni tanlash"}
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             )

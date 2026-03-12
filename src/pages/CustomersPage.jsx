@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Drawer } from 'vaul'
 import { customersApi } from '../api/customers.api'
-import { Search, Plus, ChevronRight, Users, User, Phone, X, Loader2 } from 'lucide-react'
+import { debtsApi } from '../api/debts.api'
+import { Search, Plus, ChevronRight, Users, User, Phone, X, Loader2, Clock, MessageSquare } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
@@ -18,6 +19,11 @@ export default function CustomersPage() {
     const [submitting, setSubmitting] = useState(false)
     const [form, setForm] = useState({ name: '', phone: PHONE_PREFIX })
 
+    // Overdue tab state
+    const [overdueList, setOverdueList] = useState([])
+    const [overdueLoading, setOverdueLoading] = useState(false)
+    const [overdueDays, setOverdueDays] = useState(10)
+
     useEffect(() => {
         const params = new URLSearchParams(location.search)
         const filterParam = params.get('filter')
@@ -27,6 +33,23 @@ export default function CustomersPage() {
             window.history.replaceState({}, document.title)
         }
     }, [location.search])
+
+    // Load overdue when tab switches to 'overdue'
+    useEffect(() => {
+        if (filter === 'overdue') loadOverdue()
+    }, [filter, overdueDays])
+
+    const loadOverdue = async () => {
+        setOverdueLoading(true)
+        try {
+            const data = await debtsApi.getOverdue({ days: overdueDays, order: 'desc' })
+            setOverdueList(Array.isArray(data) ? data : (data.data || []))
+        } catch (err) {
+            console.error('Failed to load overdue:', err)
+        } finally {
+            setOverdueLoading(false)
+        }
+    }
 
     useEffect(() => {
         const query = search.trim()
@@ -169,100 +192,175 @@ export default function CustomersPage() {
             </div>
 
             {/* Filter Pills */}
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+            <div className="flex gap-1.5 mb-4">
                 {[
                     { value: '', label: 'Barchasi' },
-                    { value: 'debtors', label: 'Qarzdorlar' },
-                    { value: 'paid', label: 'To\'langan' }
+                    { value: 'debtors', label: 'Qarzdor' },
+                    { value: 'paid', label: "To'langan" },
+                    { value: 'overdue', label: "O'tgan" }
                 ].map(tab => (
                     <button
                         key={tab.value}
                         onClick={() => setFilter(tab.value)}
-                        className={`pill whitespace-nowrap ${filter === tab.value ? 'pill-active' : 'pill-inactive'}`}
+                        className={`px-3 py-2 rounded-full text-[13px] font-medium transition-all ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
                     >
                         {tab.label}
                     </button>
                 ))}
             </div>
 
-            {/* Count */}
-            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-3">
-                {filteredCustomers.length} ta mijoz
-            </p>
-
-            {/* List */}
-            {loading ? (
-                <div className="flex justify-center py-16">
-                    <LoadingSpinner size="lg" />
-                </div>
-            ) : filteredCustomers.length === 0 ? (
-                <EmptyState
-                    icon={Users}
-                    title={
-                        search ? "Topilmadi" :
-                            filter === 'paid' ? "To'langan mijozlar yo'q" :
-                                filter === 'debtors' ? "Qarzdor mijozlar yo'q" :
-                                    "Mijozlar yo'q"
-                    }
-                    description={
-                        search ? `"${search}" bo'yicha natija yo'q` :
-                            filter === 'paid' ? "Hali to'langan mijozlar mavjud emas" :
-                                filter === 'debtors' ? "Hozirda barcha qarzdorlar to'lov qildi" :
-                                    "Hali mijoz qo'shilmagan"
-                    }
-                    action={!search && !filter && (
-                        <button onClick={() => setShowAddDrawer(true)} className="btn btn-primary mt-4">
-                            <Plus size={18} />
-                            Yangi mijoz qo'shish
-                        </button>
-                    )}
-                />
-            ) : (
-                <div className="space-y-3">
-                    {filteredCustomers.map((customer) => (
-                        <Link
-                            key={customer.id}
-                            to={`/customers/${customer.id}`}
-                            className="card flex items-center gap-3 active:scale-[0.98] transition-transform"
+            {/* Overdue Tab Content */}
+            {filter === 'overdue' ? (
+                <>
+                    {/* Days filter */}
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="text-[13px] text-gray-500 dark:text-gray-400">Kundan:</span>
+                        <select
+                            value={overdueDays}
+                            onChange={(e) => setOverdueDays(Number(e.target.value))}
+                            className="input !w-auto !py-1.5 !px-3 text-[13px]"
                         >
-                            <div className="avatar avatar-md">
-                                {customer.name?.charAt(0)?.toLowerCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">
-                                    {search ? highlightText(customer.name, search) : customer.name}
-                                </h3>
-                                <p className="text-[13px] text-gray-400">
-                                    {search && /^\d+$/.test(search.trim())
-                                        ? highlightPhone(customer.phone || 'telefon yo\'q', search)
-                                        : customer.phone || 'telefon yo\'q'}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                {(() => {
-                                    const currentDebt = parseFloat(
-                                        customer.remaining_amount ??
-                                        customer.remaining_debts ??
-                                        customer.debt_sum ??
-                                        customer.balance ??
-                                        customer.total_debt ?? 0
-                                    );
-                                    return (
-                                        <>
-                                            <div className={`text-[15px] font-bold ${currentDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                                {formatCurrency(currentDebt)} so'm
-                                            </div>
-                                            <span className={`badge text-[11px] ${currentDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
-                                                {currentDebt > 0 ? 'Qarzdor' : 'To\'langan'}
-                                            </span>
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                            <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
-                        </Link>
-                    ))}
-                </div>
+                            {[5, 7, 10, 15, 20, 30].map(d => (
+                                <option key={d} value={d}>{d} kun</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {overdueLoading ? (
+                        <div className="flex justify-center py-16">
+                            <LoadingSpinner size="lg" />
+                        </div>
+                    ) : overdueList.length === 0 ? (
+                        <EmptyState
+                            icon={Clock}
+                            title="Muddati o'tgan qarzlar yo'q"
+                            description={`${overdueDays} kundan oshgan ochiq nasiyalar topilmadi`}
+                        />
+                    ) : (
+                        <div className="space-y-2">
+                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-2">
+                                {overdueList.length} ta qarzdor
+                            </p>
+                            {overdueList.map((item, idx) => (
+                                <div
+                                    key={item.customer_id || idx}
+                                    className="card dark:bg-gray-800 active:scale-[0.98] transition-transform"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="avatar avatar-sm bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                                            {item.customer_name?.charAt(0)?.toUpperCase() || '?'}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
+                                                {item.customer_name}
+                                            </h3>
+                                            <p className="text-[12px] text-gray-400">{item.customer_phone || 'Telefon yo\'q'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[14px] font-bold text-red-500">
+                                                {formatCurrency(item.total_remaining || item.remaining_amount || 0)}
+                                            </p>
+                                            <p className="text-[11px] text-orange-500 font-medium">
+                                                {item.days_overdue || item.overdue_days || '?'} kun
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {item.customer_phone && (
+                                        <a
+                                            href={`sms:${item.customer_phone}`}
+                                            className="flex items-center justify-center gap-2 mt-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-500 text-[13px] font-medium"
+                                        >
+                                            <MessageSquare size={14} />
+                                            SMS yuborish
+                                        </a>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            ) : (
+                <>
+                    {/* Count */}
+                    <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-3">
+                        {filteredCustomers.length} ta mijoz
+                    </p>
+
+                    {/* Customer List */}
+                    {loading ? (
+                        <div className="flex justify-center py-16">
+                            <LoadingSpinner size="lg" />
+                        </div>
+                    ) : filteredCustomers.length === 0 ? (
+                        <EmptyState
+                            icon={Users}
+                            title={
+                                search ? "Topilmadi" :
+                                    filter === 'paid' ? "To'langan mijozlar yo'q" :
+                                        filter === 'debtors' ? "Qarzdor mijozlar yo'q" :
+                                            "Mijozlar yo'q"
+                            }
+                            description={
+                                search ? `"${search}" bo'yicha natija yo'q` :
+                                    filter === 'paid' ? "Hali to'langan mijozlar mavjud emas" :
+                                        filter === 'debtors' ? "Hozirda barcha qarzdorlar to'lov qildi" :
+                                            "Hali mijoz qo'shilmagan"
+                            }
+                            action={!search && !filter && (
+                                <button onClick={() => setShowAddDrawer(true)} className="btn btn-primary mt-4">
+                                    <Plus size={18} />
+                                    Yangi mijoz qo'shish
+                                </button>
+                            )}
+                        />
+                    ) : (
+                        <div className="space-y-3">
+                            {filteredCustomers.map((customer) => (
+                                <Link
+                                    key={customer.id}
+                                    to={`/customers/${customer.id}`}
+                                    className="card flex items-center gap-3 active:scale-[0.98] transition-transform"
+                                >
+                                    <div className="avatar avatar-md">
+                                        {customer.name?.charAt(0)?.toLowerCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">
+                                            {search ? highlightText(customer.name, search) : customer.name}
+                                        </h3>
+                                        <p className="text-[13px] text-gray-400">
+                                            {search && /^\d+$/.test(search.trim())
+                                                ? highlightPhone(customer.phone || 'telefon yo\'q', search)
+                                                : customer.phone || 'telefon yo\'q'}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        {(() => {
+                                            const currentDebt = parseFloat(
+                                                customer.remaining_amount ??
+                                                customer.remaining_debts ??
+                                                customer.debt_sum ??
+                                                customer.balance ??
+                                                customer.total_debt ?? 0
+                                            );
+                                            return (
+                                                <>
+                                                    <div className={`text-[15px] font-bold ${currentDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                        {formatCurrency(currentDebt)} so'm
+                                                    </div>
+                                                    <span className={`badge text-[11px] ${currentDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
+                                                        {currentDebt > 0 ? 'Qarzdor' : "To'langan"}
+                                                    </span>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                    <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Add Customer Drawer */}

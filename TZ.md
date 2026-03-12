@@ -1,5 +1,18 @@
 # Daftaron — To‘liq texnik topshiriq (TZ)
 
+## So‘nggi yangilanishlar (2026-03-11)
+
+- **Bildirishnomalar (Web + API)**:
+  - Do‘kon egasiga (tenant owner) `database` notification yuboriladi: **nasiya qo‘shilganda**, **nasiyaga to‘lov kiritilganda**, **balans to‘ldirilganda** (Click/Payme/admin), **obuna/paket sotib olinganda**.
+  - API: `GET /api/v1/notifications`, `GET /api/v1/notifications/{id}` (ochilganda `read_at` belgilanadi).
+  - `notification.data.type`: `debt_created`, `debt_payment`, `balance_topped_up`, `subscription_purchased`.
+- **Ta’rif (obuna) mantiqi**:
+  - Aktiv ta’rifni qayta tanlasa — muddat **uzaytirilmaydi** (Web + API).
+  - Balans yetmasa — qayta aktivlashtirish **taqiqlanadi** (Web + API).
+  - API `GET /subscription/status` javobida `current_plan_id` qaytadi.
+- **Limitdan tashqari narxlar (Admin sozlamalari)**:
+  - Admin panel → Settings’da `extra_sms_price`, `extra_employee_price`, `extra_debt_20_price`, `extra_debt_30_price`, `extra_debt_40_price`, `extra_business_price` dinamik sozlanadi.
+
 ## 1. Umumiy ma’lumot
 
 | Parametr | Qiymat |
@@ -90,8 +103,8 @@
 
 | URL | Metod | Tavsif |
 |-----|--------|--------|
-| `/subscription/status` | GET | Balans, trial, tariflar (nasiya to‘plamlari), tranzaksiyalar |
-| `/subscription/choose/{plan}` | POST | Tarif tanlash (balansdan) |
+| `/subscription/status` | GET | Balans, trial, tariflar (nasiya to‘plamlari), tranzaksiyalar, **current_plan_id** (faol ta’rif ID si) |
+| `/subscription/choose/{plan}` | POST | Tarif tanlash (balansdan). Agar shu ta’rif allaqachon faol bo‘lsa — muddat uzaytirilmaydi, 422 xato qaytadi. |
 | `/subscription/balance-topup` | POST | Balans to‘ldirish — to‘lov tizimini tanlash, redirect |
 | `/subscription/plan-pay/{plan}` | POST | Tarifni to‘lov tizimi orqali to‘lash — body: `payment_system_id`. Backend `PaymentOrder` (type=subscription, plan_id, amount=plan narxi) yaratadi va Click (yoki boshqa tizim) ga redirect qiladi. To‘lov muvaffaqiyatli tugagach callback da shu ta’rif avtomatik faollashadi (7.3 ga q.). |
 | `/payment/return`, `/payment/cancel` | GET | To‘lovdan keyin qaytish |
@@ -100,8 +113,8 @@
 
 | URL | Metod | Auth | Tavsif |
 |-----|--------|------|--------|
-| `/api/v1/subscription/status` | GET | Bearer | Balans, trial_info, plans (nasiya to‘plamlari), transactions (oxirgi 10) |
-| `/api/v1/subscription/choose/{plan}` | POST | Bearer | Tarif tanlash; 422 mablag‘ yetmasa |
+| `/api/v1/subscription/status` | GET | Bearer | Balans, trial_info, plans (nasiya to‘plamlari), transactions (oxirgi 10), **current_plan_id** |
+| `/api/v1/subscription/choose/{plan}` | POST | Bearer | Tarif tanlash; 422 mablag‘ yetmasa yoki tanlangan ta’rif allaqachon faol bo‘lsa |
 
 **Plan (nasiya to‘plami) maydonlari:**
 
@@ -120,6 +133,19 @@
 - `plans` — obuna tugaganda **barcha** mavjud ta’riflar qaytariladi (ta’rif tanlash uchun). Trial davrida esa faqat **Oddiy** plan qaytadi.
 
 MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozish API/Web darajasida xatolik bilan to‘xtatiladi; qo‘shimcha pullik paketlar (limitdan tashqari narxlar) keyingi iteratsiyada qo‘shiladi.
+
+### 6.4. Limitdan tashqari narxlar (admin sozlamalari)
+
+Admin paneldagi `Sozlamalar` bo‘limida quyidagi qiymatlar dinamik saqlanadi (so‘mda):
+
+- `extra_sms_price` — har bir qo‘shimcha SMS uchun narx (hozirda default 200 so‘m).
+- `extra_employee_price` — har bir qo‘shimcha xodim (foydalanuvchi) uchun oylik narx (default 9 900 so‘m/oy).
+- `extra_debt_20_price` — qo‘shimcha 20 ta nasiya limiti uchun oylik narx (default 1 900 so‘m/oy).
+- `extra_debt_30_price` — qo‘shimcha 30 ta nasiya limiti uchun oylik narx (default 2 900 so‘m/oy).
+- `extra_debt_40_price` — qo‘shimcha 40 ta nasiya limiti uchun oylik narx (default 3 900 so‘m/oy).
+- `extra_business_price` — 1 ta yangi biznes/do‘kon qo‘shish uchun oylik narx (default 14 900 so‘m/oy).
+
+Bu qiymatlar hozircha faqat **konfiguratsiya** sifatida saqlanadi; kelgusida qo‘shimcha paketlarni sotib olish (balansdan yechish, limitlarni kengaytirish) logikasi shu sozlamalar asosida quriladi. AI Speech xizmati keyingi bosqichda alohida xizmat sifatida qo‘shilishi rejalashtirilgan.
 
 ---
 
@@ -210,7 +236,7 @@ MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozi
 - **Muddati o‘tganlar:** `/overdue` — har bir mijoz bo‘yicha **muddati o‘tgan qarzdorlar** ro‘yxati. Default bo‘yicha 10 kun; filter 5–30 kun oralig‘ida o‘zgartiriladi. Bir mijozda bir nechta nasiya bo‘lsa, ularning **umumiy qolgan summasi** ko‘rsatiladi va tartib birinchi olingan (eng eski) nasiya sanasiga qarab (eng ko‘p kuni o‘tganlar birinchi).
 - **To‘lovlar tarixi:** `/transaction-history` — tranzaksiyalar + ta’rif sotib olish tarixi.
 - **Do‘kon qo‘shish:** `/shops/create`, `POST /shops` — ta’rif bo‘yicha cheklov (Oddiy da 1 ta).
-- **Bildirishnomalar:** `/notifications`, `/notifications/{id}`.
+- **Bildirishnomalar:** `/notifications`, `/notifications/{id}`. Do‘kon egasi (tenant owner) quyidagi amallarda bildirishnoma oladi: **nasiya qo‘shilganda** (Web/API), **nasiyaga to‘lov qabul qilinganda** (Web/API), **balans to‘ldirilganda** (Click, Payme, admin tomonidan), **obuna yoki paket sotib olinganda** (Web/API, Click, Payme). Web va API da bir xil notification tizimi ishlatiladi.
 
 ---
 

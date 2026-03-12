@@ -1,18 +1,18 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Users, Settings, History, Package, AlertCircle, Bell } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
+import { Home, Users, FileText, History, Settings } from 'lucide-react'
 import { useSubscription } from '../contexts/SubscriptionContext'
 
 const FULL_NAV_ITEMS = [
-    { to: '/', icon: Home, label: 'Bosh sahifa' },
+    { to: '/', icon: Home, label: 'Asosiy' },
     { to: '/customers', icon: Users, label: 'Mijozlar' },
-    { to: '/overdue', icon: AlertCircle, label: 'Qarzdorlar' },
+    { to: '/debts', icon: FileText, label: 'Hisobot' },
     { to: '/payments', icon: History, label: 'Tarix' },
-    { to: '/profile', icon: Settings, label: 'Sozlamalar' }
+    { to: '/profile', icon: Settings, label: 'Sozlama' }
 ]
 
 const BLOCKED_NAV_ITEMS = [
-    { to: '/subscription', icon: Package, label: "Ta'rif" },
-    { to: '/profile', icon: Settings, label: 'Sozlamalar' }
+    { to: '/subscription', icon: FileText, label: "Ta'rif" },
+    { to: '/profile', icon: Settings, label: 'Sozlama' }
 ]
 
 export default function BottomNav() {
@@ -20,31 +20,25 @@ export default function BottomNav() {
     const navItems = blocked ? BLOCKED_NAV_ITEMS : FULL_NAV_ITEMS
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 pb-safe z-50 transition-colors">
-            <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+            <div className="bottom-bar">
                 {navItems.map(item => {
                     const Icon = item.icon
                     return (
                         <NavLink
                             key={item.to}
                             to={item.to}
-                            className={({ isActive }) => `
-                                flex flex-col items-center justify-center flex-1 py-2 transition-all
-                                ${isActive ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'}
-                            `}
+                            end={item.to === '/'}
+                            className={({ isActive }) =>
+                                `bottom-bar-item ${isActive ? 'bottom-bar-item-active' : ''}`
+                            }
                         >
                             {({ isActive }) => (
                                 <>
-                                    {isActive ? (
-                                        <div className="bg-blue-100 dark:bg-blue-900/30 px-3 py-1.5 rounded-full mb-1">
-                                            <Icon size={20} strokeWidth={2} />
-                                        </div>
-                                    ) : (
-                                        <Icon size={22} strokeWidth={1.5} className="mb-1" />
+                                    <Icon size={20} strokeWidth={isActive ? 2.2 : 1.5} />
+                                    {isActive && (
+                                        <span className="bottom-bar-label">{item.label}</span>
                                     )}
-                                    <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-medium'}`}>
-                                        {item.label}
-                                    </span>
                                 </>
                             )}
                         </NavLink>

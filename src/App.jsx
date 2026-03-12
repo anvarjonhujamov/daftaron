@@ -52,7 +52,7 @@ export default function App() {
                     <Route path="/debts" element={<DebtsPage />} />
                     <Route path="/debts/:id" element={<DebtDetailPage />} />
                     <Route path="/payments" element={<HistoryPage />} />
-                    <Route path="/overdue" element={<OverduePage />} />
+                    <Route path="/overdue" element={<Navigate to="/customers?filter=overdue" replace />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/subscription" element={<SubscriptionPage />} />

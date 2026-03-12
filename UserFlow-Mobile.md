@@ -2,6 +2,22 @@
 
 Bu hujjat mobil ilova dasturchisi uchun foydalanuvchi oqimlari va API chaqiriqlar ketma-ketligini tavsiflaydi. Barcha endpointlar **API v1** asosida: `BASE_URL = https://<domen>/api/v1`.
 
+## So‘nggi yangilanishlar (2026-03-11)
+
+- **Bildirishnomalar**:
+  - API: `GET /notifications`, `GET /notifications/{id}`.
+  - Har bir notification `data.type` orqali aniqlanadi:
+    - `debt_created` — yangi nasiya
+    - `debt_payment` — nasiyaga to‘lov
+    - `balance_topped_up` — balans to‘ldirildi (`data.source`: `click|payme|admin`)
+    - `subscription_purchased` — obuna/paket sotib olindi
+  - UI odatda `data.message` ni ko‘rsatadi; detail sahifada `data.tenant_name`, `data.amount`, `data.debt_id` kabi maydonlar ishlatilishi mumkin.
+- **Ta’rif (obuna) tanlash**:
+  - Aktiv ta’rifni qayta tanlasa — server `422` qaytaradi: `"Ushbu ta'rif allaqachon faol."` (muddat uzaytirilmaydi).
+  - `GET /subscription/status` javobida `current_plan_id` bor.
+- **Limitdan tashqari narxlar**:
+  - Narxlar admin sozlamalaridan dinamik boshqariladi (mobile ilovada ko‘rsatish uchun keyinchalik alohida endpoint/fieldlar qo‘shilishi mumkin).
+
 **Autentifikatsiya:** Bearer token. Token olgach har bir so‘rovga `Authorization: Bearer <token>` header qo‘shiladi.
 
 **Telefon formati:** `+998901234567` yoki `998901234567` yoki 9 xonali `901234567` (avtomatik 998 qo‘shiladi).
@@ -101,7 +117,7 @@ Trial tugagach yoki hisob faol emas bo‘lsa, barcha asosiy endpointlar (dashboa
 
 | Metod | Endpoint | Auth | Javob |
 |-------|----------|------|--------|
-| GET | `/subscription/status` | Bearer | **200:** `balance`, `trial_info`, `plans`, `transactions` (oxirgi 10). |
+| GET | `/subscription/status` | Bearer | **200:** `balance`, `trial_info`, `plans`, `transactions` (oxirgi 10), **`current_plan_id`** (faol ta’rif ID si, yo‘q bo‘lsa `null`). |
 
 **trial_info:**
 
@@ -118,9 +134,14 @@ Trial tugagach yoki hisob faol emas bo‘lsa, barcha asosiy endpointlar (dashboa
 
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|--------|
-| POST | `/subscription/choose/{plan}` | — (plan path da: plan ID) | **200:** `message`, `trial_ends_at`, `balance` — obuna yangilandi, asosiy ilovaga o‘tish mumkin. **422:** "Mablag' yetarli emas" — `plan_price`, `balance` ham qaytadi; yoki "Sinov muddati davomida faqat Oddiy ta'rifni tanlash mumkin." |
+| POST | `/subscription/choose/{plan}` | — (plan path da: plan ID) | **200:** `message`, `trial_ends_at`, `balance` — obuna yangilandi, asosiy ilovaga o‘tish mumkin. **422:** `"Mablag' yetarli emas"` — `plan_price`, `balance` ham qaytadi; `"Sinov muddati davomida faqat Oddiy ta'rifni tanlash mumkin."`; yoki `"Ushbu ta'rif allaqachon faol."` (faol obunani qayta uzaytirish bloklangan). |
 
 Trial davrida faqat **Oddiy** ta’rif ruxsat etiladi va Oddiy bepul. Trial tugagach yoki boshqa ta’rif tanlashda narx **balansdan** yechiladi; balans yetmasa 422.
+
+**Limitdan tashqari narxlar (konfiguratsiya):**
+
+- Admin paneldagi `Sozlamalar` sahifasida quyidagi qiymatlar saqlanadi: `extra_sms_price`, `extra_employee_price`, `extra_debt_20_price`, `extra_debt_30_price`, `extra_debt_40_price`, `extra_business_price`.
+- Mobil ilova hozircha bu qiymatlarni faqat informatsion maqsadda (masalan, obuna ekranda matn ko‘rsatish) uchun ishlatishi mumkin; haqiqiy “add-on” sotib olish (limitni kengaytirish) keyingi bosqichda backend logikasi qo‘shilgach yoqiladi.
 
 **Web da ta’rifni Click orqali to‘lash:** `/subscription/plan-pay/{plan}` (POST, body: `payment_system_id`) — backend `PaymentOrder` (type=subscription, plan_id, amount=plan narxi) yaratadi va Click ga redirect qiladi. Foydalanuvchi Click da o‘sha summani to‘laydi. To‘lov muvaffaqiyatli tugagach callback da **shu ta’rif avtomatik faollashadi** (trial_ends_at yangilanadi, PlanPurchase yoziladi, tenant.plan_id yangilanadi); qo‘lda yana ta’rif tanlash shart emas.
 
@@ -186,9 +207,11 @@ Locations: `GET /locations/regions`, `GET /locations/categories`, `GET /location
 
 ### 6.7. Bildirishnomalar
 
+Bildirishnomalar do‘kon egasiga (tenant owner) quyidagi hodisalarda yuboriladi: **yangi nasiya qo‘shilganda**, **nasiyaga to‘lov qabul qilinganda**, **balans to‘ldirilganda** (Click, Payme, admin), **obuna/paket sotib olinganda**. Web va API da bir xil ro‘yxat; `GET /notifications/{id}` ochilganda bildirishnoma “o‘qilgan” deb belgilanadi.
+
 | Metod | Endpoint | Javob |
 |-------|----------|--------|
-| GET | `/notifications` | **200:** bildirishnomalar ro‘yxati. |
+| GET | `/notifications` | **200:** bildirishnomalar ro‘yxati. Har bir elementda `data.type` (debt_created, debt_payment, balance_topped_up, subscription_purchased), `data.message`, `data.tenant_name` (nasiya/to‘lov uchun), `data.amount` va boshqa. |
 | GET | `/notifications/{id}` | **200:** bitta bildirishnoma. **404:** topilmadi. |
 
 ---

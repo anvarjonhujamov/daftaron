@@ -219,11 +219,13 @@ components:
         meta: { $ref: "#/components/schemas/PaginationMeta" }
     Notification:
       type: object
-      description: User notification
+      description: Foydalanuvchi bildirishnomasi (database). Nasiya, to'lov, balans to'ldirish va obuna sotib olish amallarida yuboriladi.
       properties:
-        id: { type: string, description: Notification UUID }
-        type: { type: string, description: Notification class/type }
-        data: { type: object, description: Notification payload }
+        id: { type: string, description: Bildirishnoma UUID }
+        type: { type: string, description: PHP notification class nomi }
+        data:
+          type: object
+          description: "Payload. type bo'yicha: debt_created (yangi nasiya), debt_payment (nasiyaga to'lov), balance_topped_up (balans to'ldirildi), subscription_purchased (obuna sotib olindi). Umumiy maydonlar: message (matn), type (ichki tur). debt_created/debt_payment: tenant_id, tenant_name, debt_id, customer_name, amount. balance_topped_up: amount, source (click|payme|admin). subscription_purchased: plan_id, plan_name, amount."
         read_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
     PaginatedNotifications:
@@ -455,6 +457,120 @@ paths:
           description: Cache muddati tugagan yoki ma'lumot topilmadi
         "422":
           description: Tasdiqlash kodi noto'g'ri
+  /auth/password/forgot:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      summary: Parolni tiklash — 1-bosqich (telefon)
+      description: |
+        Telefon raqami bo'yicha parolni tiklashni boshlaydi. Raqam tizimda bo'lsa, SMS orqali 4 xonali kod yuboriladi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+                  description: "Telefon raqam (+998 yoki 998 bilan). Bazada +998 formatida saqlanadi."
+                  example: "+998901234567"
+      responses:
+        "200":
+          description: SMS yuborildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  phone: { type: string }
+        "404":
+          description: Telefon raqami tizimda topilmadi
+        "500":
+          description: SMS yuborishda xatolik
+  /auth/password/verify:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      summary: Parolni tiklash — 2-bosqich (SMS kod)
+      description: |
+        SMS orqali yuborilgan 4 xonali kodni tasdiqlaydi va parolni yangilash uchun `reset_token` qaytaradi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code]
+              properties:
+                phone:
+                  type: string
+                  description: "Telefon raqam (+998 yoki 998 bilan)."
+                  example: "+998901234567"
+                code:
+                  type: string
+                  description: "4 xonali tasdiqlash kodi"
+                  example: "1234"
+                  minLength: 4
+                  maxLength: 4
+      responses:
+        "200":
+          description: Kod tasdiqlandi, reset_token berildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  reset_token: { type: string }
+        "422":
+          description: Tasdiqlash kodi noto'g'ri yoki muddati tugagan
+  /auth/password/reset:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Auth]
+      summary: Parolni tiklash — 3-bosqich (yangi parol)
+      description: |
+        `reset_token` va yangi parolni qabul qiladi; token bo'yicha user telefon raqami aniqlanadi va parol yangilanadi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reset_token, password, password_confirmation]
+              properties:
+                reset_token:
+                  type: string
+                  description: "2-bosqichda olingan token (10 daqiqa amal qiladi)"
+                password:
+                  type: string
+                  description: "Yangi parol (min 6 belgi)"
+                  minLength: 6
+                password_confirmation:
+                  type: string
+                  description: "Parolni tasdiqlash (password bilan bir xil bo'lishi kerak)"
+      responses:
+        "200":
+          description: Parol muvaffaqiyatli yangilandi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "422":
+          description: Reset token noto'g'ri yoki muddati tugagan, yoki parol validatsiyasi xato
+        "404":
+          description: Foydalanuvchi topilmadi
   /auth/register/complete:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"
@@ -939,6 +1055,10 @@ paths:
                       days_remaining: { type: integer }
                       is_expired: { type: boolean }
                       status: { type: integer, description: "1=faol, 0=bloklangan/yakunlangan" }
+                  current_plan_id:
+                    type: integer
+                    nullable: true
+                    description: "Hozirgi faol ta'rif ID si (tenant.plan_id); obuna yo'q bo'lsa null."
                   plans:
                     type: array
                     description: "Mavjud tariflar (hozircha faqat Oddiy nasiya to'plami). Har bir ta'rifda nasiya limitlari va bepul SMS limiti bo'lishi mumkin."
@@ -988,7 +1108,7 @@ paths:
                     format: float
                     description: Yangilangan balans
         "422":
-          description: Mablag' yetarli emas yoki trial cheklovi
+          description: Mablag' yetarli emas, trial cheklovi yoki tanlangan ta'rif allaqachon faol
         "500":
           description: Ichki server xatosi
   /profile:

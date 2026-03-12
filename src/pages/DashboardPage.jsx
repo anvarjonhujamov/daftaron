@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardApi } from '../api/dashboard.api'
 import { customersApi } from '../api/customers.api'
+import { debtsApi } from '../api/debts.api'
 import {
     TrendingUp, Users, ChevronRight,
     UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp
@@ -12,6 +13,7 @@ import { formatCurrency } from '../utils/format'
 export default function DashboardPage() {
     const [stats, setStats] = useState(null)
     const [customers, setCustomers] = useState([])
+    const [allDebts, setAllDebts] = useState([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -21,9 +23,10 @@ export default function DashboardPage() {
     const loadStats = async () => {
         setLoading(true)
         try {
-            const [statsData, customersData] = await Promise.allSettled([
+            const [statsData, customersData, debtsData] = await Promise.allSettled([
                 dashboardApi.getStats(),
-                customersApi.getCustomers()
+                customersApi.getCustomers(),
+                debtsApi.getDebts()
             ])
 
             if (statsData.status === 'fulfilled') {
@@ -33,6 +36,11 @@ export default function DashboardPage() {
             if (customersData.status === 'fulfilled') {
                 const data = customersData.value
                 setCustomers(Array.isArray(data) ? data : (data.data || []))
+            }
+
+            if (debtsData.status === 'fulfilled') {
+                const data = debtsData.value
+                setAllDebts(Array.isArray(data) ? data : (data.data || []))
             }
         } catch (err) {
             console.error('Failed to load dashboard data:', err)
@@ -77,8 +85,34 @@ export default function DashboardPage() {
 
     const monthlyPercent = Math.min(Math.round((monthlyPaid / (monthlyTotal || 1)) * 100), 100) || 0
 
-    const todayDebts = parseFloat(stats?.today_debts ?? stats?.today_given ?? 0)
-    const todayPayments = parseFloat(stats?.today_payments ?? stats?.today_paid ?? 0)
+    // Today's stats — calculate from real debts data
+    const todayStr = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+
+    const todayDebts = (() => {
+        // First try from debts list
+        const fromDebts = allDebts
+            .filter(d => (d.debt_date || '').slice(0, 10) === todayStr)
+            .reduce((sum, d) => sum + parseFloat(d.total_amount || 0), 0)
+        if (fromDebts > 0) return fromDebts
+        // Fallback to API stats
+        return parseFloat(stats?.today_debts ?? stats?.today_given ?? 0)
+    })()
+
+    const todayPayments = (() => {
+        // Calculate from debts' payments (if debts have nested payments)
+        let sum = 0
+        allDebts.forEach(d => {
+            const payments = d.payments || []
+            payments.forEach(p => {
+                if ((p.paid_at || '').slice(0, 10) === todayStr) {
+                    sum += parseFloat(p.amount || 0)
+                }
+            })
+        })
+        if (sum > 0) return sum
+        // Fallback to API stats
+        return parseFloat(stats?.today_payments ?? stats?.today_paid ?? 0)
+    })()
 
     // Debtors/Customers list source - prefer fetched customers for consistency
     const debtorsSource = customers.length > 0

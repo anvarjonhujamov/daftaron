@@ -144,6 +144,73 @@
   }
 }
 
+/* Bottom Navigation Bar — pill design */
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  margin: 0 auto;
+  border-radius: 9999px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    0 1px 4px rgba(0, 0, 0, 0.03);
+  width: calc(100% - 24px);
+  max-width: 400px;
+}
+
+.dark .bottom-bar {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.bottom-bar-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 9999px;
+  color: #9ca3af;
+  text-decoration: none;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+}
+
+.dark .bottom-bar-item {
+  color: #6b7280;
+}
+
+.bottom-bar-item:not(.bottom-bar-item-active) {
+  flex: 1 1 0%;
+}
+
+.bottom-bar-item-active {
+  background: #3b82f6;
+  color: #ffffff;
+  padding: 10px 16px;
+  box-shadow: 0 2px 8px rgba(31, 41, 55, 0.3);
+  flex: 0 0 auto;
+}
+
+.dark .bottom-bar-item-active {
+  background: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.35);
+}
+
+.bottom-bar-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
 /* Safe area padding */
 .pb-safe {
   padding-bottom: max(16px, env(safe-area-inset-bottom));
