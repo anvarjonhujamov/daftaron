@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Skeleton = ({ className = '', variant = 'rect' }) => {
-    const baseClasses = 'animate-pulse bg-gray-200 dark:bg-gray-700/50';
+    const baseClasses = 'animate-pulse bg-gray-200 dark:bg-gray-700';
     const variantClasses = {
         rect: 'rounded-2xl',
         circle: 'rounded-full',

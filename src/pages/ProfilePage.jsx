@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { ProfileSkeleton } from '../components/Skeleton'
 import { formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import toast from 'react-hot-toast'
