@@ -82,22 +82,30 @@ export default function SubscriptionPage() {
     const mockPlans = [
         {
             id: 'mock_pro',
-            name: "Pro nasiya to'plami",
+            name: "Pro ta'rif",
             price: 59000,
-            description: "O'rta biznes uchun qulay ta'rif",
-            low_amount_limit: 100,
-            high_amount_limit: 50,
-            sms_limit: 50,
+            description: "",
+            features: [
+                "300 ta nasiya qo'shish",
+                "40 ta bepul sms limiti",
+                "3 ta biznes",
+                "Batafsil moliyaviy hisobotlar",
+                "3 ta xodimlar qo'shish"
+            ],
             is_coming_soon: true
         },
         {
             id: 'mock_premium',
-            name: "Premium nasiya to'plami",
-            price: 129000,
-            description: "Katta biznes uchun cheksiz imkoniyatlar",
-            low_amount_limit: 500,
-            high_amount_limit: 200,
-            sms_limit: 200,
+            name: "Premium ta'rif",
+            price: 99000,
+            description: "",
+            features: [
+                "Cheksiz nasiya qo'shish",
+                "10 ta biznes",
+                "100 ta bepul sms limiti",
+                "10 ta xodim qo'shish",
+                "AI Speech bilan ovozli ma'lumot kiritish"
+            ],
             is_coming_soon: true
         }
     ]
@@ -321,6 +329,12 @@ export default function SubscriptionPage() {
                                                         <span className="font-semibold text-gray-900 dark:text-white">{plan.sms_limit === null ? 'Cheksiz' : `${plan.sms_limit} ta`}</span>
                                                     </div>
                                                 )}
+                                                {plan.features && plan.features.map((feature, i) => (
+                                                    <div key={i} className={`flex items-start gap-2 py-1.5 ${i < plan.features.length - 1 ? 'border-b border-gray-50 dark:border-gray-700' : ''}`}>
+                                                        <span className="mt-[6px] w-[5px] h-[5px] rounded-full bg-gray-500 dark:bg-gray-400 flex-shrink-0"></span>
+                                                        <span className="font-medium text-gray-700 dark:text-gray-200">{feature}</span>
+                                                    </div>
+                                                ))}
                                             </div>
 
                                             {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && !isActivePlan && (
@@ -335,13 +349,9 @@ export default function SubscriptionPage() {
                                                     Joriy ta'rif
                                                 </div>
                                             ) : plan.is_coming_soon ? (
-                                                <button
-                                                    type="button"
-                                                    disabled
-                                                    className="mt-3 btn w-full bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 font-semibold cursor-not-allowed"
-                                                >
+                                                <div className="mt-4 py-2 text-center text-[14px] text-gray-500 dark:text-gray-400 font-semibold bg-gray-100 dark:bg-gray-700/50 rounded-lg">
                                                     Tez kunda
-                                                </button>
+                                                </div>
                                             ) : (
                                                 <button
                                                     type="button"
