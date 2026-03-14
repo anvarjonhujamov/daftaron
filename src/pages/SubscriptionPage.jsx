@@ -87,7 +87,8 @@ export default function SubscriptionPage() {
             description: "O'rta biznes uchun qulay ta'rif",
             low_amount_limit: 100,
             high_amount_limit: 50,
-            sms_limit: 50
+            sms_limit: 50,
+            is_coming_soon: true
         },
         {
             id: 'mock_premium',
@@ -96,7 +97,8 @@ export default function SubscriptionPage() {
             description: "Katta biznes uchun cheksiz imkoniyatlar",
             low_amount_limit: 500,
             high_amount_limit: 200,
-            sms_limit: 200
+            sms_limit: 200,
+            is_coming_soon: true
         }
     ]
 
@@ -332,6 +334,14 @@ export default function SubscriptionPage() {
                                                     <Check size={16} />
                                                     Joriy ta'rif
                                                 </div>
+                                            ) : plan.is_coming_soon ? (
+                                                <button
+                                                    type="button"
+                                                    disabled
+                                                    className="mt-3 btn w-full bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 font-semibold cursor-not-allowed"
+                                                >
+                                                    Tez kunda
+                                                </button>
                                             ) : (
                                                 <button
                                                     type="button"

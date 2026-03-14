@@ -337,9 +337,9 @@ export default function CustomerDetailPage() {
             <Drawer.Root open={showDebtDrawer} onOpenChange={setShowDebtDrawer} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none flex flex-col">
-                        <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mt-4 mb-2 shrink-0" />
-                        <div className="p-4 overflow-y-auto flex-1 pb-8">
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
                             <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
@@ -353,76 +353,78 @@ export default function CustomerDetailPage() {
                                     <X size={18} className="text-gray-500" />
                                 </button>
                             </div>
-                            <form onSubmit={handleAddDebt} className="space-y-4">
-                                <div>
-                                    <label className="label">Summa</label>
-                                    <div className="relative">
-                                        <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-4 pb-8">
+                                <form onSubmit={handleAddDebt} className="space-y-4">
+                                    <div>
+                                        <label className="label">Summa</label>
+                                        <div className="relative">
+                                            <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                className="input pl-11 pr-16"
+                                                placeholder="0"
+                                                value={debtForm.amount}
+                                                onChange={(e) => {
+                                                    const digits = e.target.value.replace(/\D/g, '')
+                                                    setDebtForm({
+                                                        ...debtForm,
+                                                        amount: digits ? formatCurrency(digits) : ''
+                                                    })
+                                                }}
+                                                required
+                                            />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="label">Izoh (ixtiyoriy)</label>
+                                        <div className="relative">
+                                            <FileText size={18} className="absolute left-4 top-4 text-gray-400" />
+                                            <textarea
+                                                className="input pl-11 min-h-[80px] resize-none"
+                                                placeholder="Tavsif qo'shish..."
+                                                value={debtForm.description}
+                                                onChange={(e) => setDebtForm({ ...debtForm, description: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="label">Nasiya sanasi (ixtiyoriy)</label>
                                         <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            className="input pl-11 pr-16"
-                                            placeholder="0"
-                                            value={debtForm.amount}
-                                            onChange={(e) => {
-                                                const digits = e.target.value.replace(/\D/g, '')
-                                                setDebtForm({
-                                                    ...debtForm,
-                                                    amount: digits ? formatCurrency(digits) : ''
-                                                })
-                                            }}
-                                            required
+                                            type="date"
+                                            className="input"
+                                            value={debtForm.debt_date}
+                                            min={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                            max={new Date().toISOString().split('T')[0]}
+                                            onChange={(e) => setDebtForm({ ...debtForm, debt_date: e.target.value })}
                                         />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="label">Izoh (ixtiyoriy)</label>
-                                    <div className="relative">
-                                        <FileText size={18} className="absolute left-4 top-4 text-gray-400" />
-                                        <textarea
-                                            className="input pl-11 min-h-[80px] resize-none"
-                                            placeholder="Tavsif qo'shish..."
-                                            value={debtForm.description}
-                                            onChange={(e) => setDebtForm({ ...debtForm, description: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="label">Nasiya sanasi (ixtiyoriy)</label>
-                                    <input
-                                        type="date"
-                                        className="input"
-                                        value={debtForm.debt_date}
-                                        min={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                                        max={new Date().toISOString().split('T')[0]}
-                                        onChange={(e) => setDebtForm({ ...debtForm, debt_date: e.target.value })}
-                                    />
-                                    <p className="text-[12px] text-gray-400 mt-1">
-                                        Bo'sh qolsa bugun olinadi. Oxirgi 1 oy ichida.
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
-                                    <input
-                                        id="customer_send_sms"
-                                        type="checkbox"
-                                        className="w-5 h-5 rounded-md border-gray-300 text-blue-500 focus:ring-blue-500"
-                                        checked={debtForm.send_sms}
-                                        onChange={(e) => setDebtForm({ ...debtForm, send_sms: e.target.checked })}
-                                    />
-                                    <div className="text-[13px] text-gray-600 dark:text-gray-300">
-                                        <label htmlFor="customer_send_sms" className="font-bold">
-                                            Mijozga SMS yuborish
-                                        </label>
-                                        <p className="text-[11px] text-gray-400 opacity-80">
-                                            Limitdan keyin balansdan yechiladi.
+                                        <p className="text-[12px] text-gray-400 mt-1">
+                                            Bo'sh qolsa bugun olinadi. Oxirgi 1 oy ichida.
                                         </p>
                                     </div>
-                                </div>
-                                <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={submitting}>
-                                    {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}
-                                </button>
-                            </form>
+                                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
+                                        <input
+                                            id="customer_send_sms"
+                                            type="checkbox"
+                                            className="w-5 h-5 rounded-md border-gray-300 text-blue-500 focus:ring-blue-500"
+                                            checked={debtForm.send_sms}
+                                            onChange={(e) => setDebtForm({ ...debtForm, send_sms: e.target.checked })}
+                                        />
+                                        <div className="text-[13px] text-gray-600 dark:text-gray-300">
+                                            <label htmlFor="customer_send_sms" className="font-bold">
+                                                Mijozga SMS yuborish
+                                            </label>
+                                            <p className="text-[11px] text-gray-400 opacity-80">
+                                                Limitdan keyin balansdan yechiladi.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={submitting}>
+                                        {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>
@@ -432,9 +434,9 @@ export default function CustomerDetailPage() {
             <Drawer.Root open={showPaymentDrawer} onOpenChange={setShowPaymentDrawer} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-50 max-h-[85vh] outline-none flex flex-col">
-                        <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mt-4 mb-2 shrink-0" />
-                        <div className="p-4 overflow-y-auto flex-1 pb-8">
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
                             <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">

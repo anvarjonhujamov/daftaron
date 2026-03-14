@@ -366,9 +366,9 @@ export default function CustomersPage() {
             <Drawer.Root open={showAddDrawer} onOpenChange={setShowAddDrawer} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none flex flex-col">
-                        <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mt-4 mb-2 shrink-0" />
-                        <div className="p-4 pb-8 overflow-y-auto flex-1">
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50">
+                        <div className="p-4 pb-8">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
                             <div className="flex items-center justify-between mb-6">
                                 <div>
                                     <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
