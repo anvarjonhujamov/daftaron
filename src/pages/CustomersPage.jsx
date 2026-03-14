@@ -268,12 +268,18 @@ export default function CustomersPage() {
                                             </p>
                                         </div>
                                     </div>
+                                    {item.sms_count > 0 && (
+                                        <div className="flex justify-between items-center mt-3 mb-2 px-1">
+                                            <span className="text-[12px] text-gray-500 dark:text-gray-400">Jo'natilgan SMS: {item.sms_count} ta</span>
+                                            {item.last_sms_date && <span className="text-[12px] text-gray-500 dark:text-gray-400">Oxirgi marta: {item.last_sms_date}</span>}
+                                        </div>
+                                    )}
                                     {(item.phone || item.customer_phone) && (
                                         <a
                                             href={`sms:${item.phone || item.customer_phone}`}
-                                            className="flex items-center justify-center gap-2 mt-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-500 text-[13px] font-medium"
+                                            className="flex items-center justify-center gap-2 mt-3 py-2.5 rounded-xl bg-[#1e293b] text-blue-400 hover:bg-[#273549] transition-colors text-[14px] font-medium w-full"
                                         >
-                                            <MessageSquare size={14} />
+                                            <MessageSquare size={16} />
                                             SMS yuborish
                                         </a>
                                     )}
