@@ -91,8 +91,10 @@ export default function CustomersPage() {
         if (search.trim()) {
             const query = search.toLowerCase().trim()
             result = result.filter(c => {
-                const nameMatch = c.name?.toLowerCase().includes(query)
-                const phone = c.phone?.replace(/\D/g, '') || ''
+                const name = c.name || c.customer_name || '';
+                const nameMatch = name.toLowerCase().includes(query)
+                const phoneStr = c.phone || c.customer_phone || '';
+                const phone = phoneStr.replace(/\D/g, '') || ''
                 const last4 = phone.slice(-4)
                 const phoneMatch = last4.includes(query) || phone.includes(query)
                 return nameMatch || phoneMatch
@@ -321,16 +323,16 @@ export default function CustomersPage() {
                                     className="card flex items-center gap-3 active:scale-[0.98] transition-transform"
                                 >
                                     <div className="avatar avatar-md">
-                                        {customer.name?.charAt(0)?.toLowerCase()}
+                                        {(customer.name || customer.customer_name || '?').charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">
-                                            {search ? highlightText(customer.name, search) : customer.name}
+                                            {search ? highlightText(customer.name || customer.customer_name || 'Ism yo\'q', search) : (customer.name || customer.customer_name || 'Ism yo\'q')}
                                         </h3>
                                         <p className="text-[13px] text-gray-400">
                                             {search && /^\d+$/.test(search.trim())
-                                                ? highlightPhone(customer.phone || 'telefon yo\'q', search)
-                                                : customer.phone || 'telefon yo\'q'}
+                                                ? highlightPhone(customer.phone || customer.customer_phone || 'Telefon yo\'q', search)
+                                                : (customer.phone || customer.customer_phone || 'Telefon yo\'q')}
                                         </p>
                                     </div>
                                     <div className="text-right">
