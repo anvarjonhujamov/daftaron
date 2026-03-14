@@ -270,7 +270,12 @@ export default function CustomersPage() {
                                     </div>
                                     {(item.sms_count !== undefined || item.sent_sms_count !== undefined || item.overdue_sms_count !== undefined) && (
                                         <div className="flex justify-between items-center mt-3 mb-2 px-1">
-                                            <span className="text-[12px] text-gray-500 dark:text-gray-400">Jo'natilgan SMS: {item.sms_count ?? item.sent_sms_count ?? item.overdue_sms_count ?? 0} ta</span>
+                                            <span className="text-[12px] text-gray-500 dark:text-gray-400">
+                                                {(item.sms_count ?? item.sent_sms_count ?? item.overdue_sms_count ?? 0) === 0
+                                                    ? "SMS jo'natilmagan"
+                                                    : `Jo'natilgan SMS: ${item.sms_count ?? item.sent_sms_count ?? item.overdue_sms_count} ta`
+                                                }
+                                            </span>
                                             {(item.last_sms_date || item.last_sms || item.overdue_sms_last_sent_at) && (
                                                 <span className="text-[12px] text-gray-500 dark:text-gray-400">
                                                     Oxirgi marta: {
