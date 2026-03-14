@@ -268,16 +268,27 @@ export default function CustomersPage() {
                                             </p>
                                         </div>
                                     </div>
-                                    {(item.sms_count > 0 || item.sent_sms_count > 0) && (
+                                    {(item.sms_count > 0 || item.sent_sms_count > 0 || item.overdue_sms_count > 0) && (
                                         <div className="flex justify-between items-center mt-3 mb-2 px-1">
-                                            <span className="text-[12px] text-gray-500 dark:text-gray-400">Jo'natilgan SMS: {item.sms_count || item.sent_sms_count} ta</span>
-                                            {(item.last_sms_date || item.last_sms) && <span className="text-[12px] text-gray-500 dark:text-gray-400">Oxirgi marta: {item.last_sms_date || item.last_sms}</span>}
+                                            <span className="text-[12px] text-gray-500 dark:text-gray-400">Jo'natilgan SMS: {item.sms_count || item.sent_sms_count || item.overdue_sms_count} ta</span>
+                                            {(item.last_sms_date || item.last_sms || item.overdue_sms_last_sent_at) && (
+                                                <span className="text-[12px] text-gray-500 dark:text-gray-400">
+                                                    Oxirgi marta: {
+                                                        (() => {
+                                                            const rawDate = item.last_sms_date || item.last_sms || item.overdue_sms_last_sent_at;
+                                                            if (!rawDate) return '';
+                                                            const d = new Date(rawDate);
+                                                            return isNaN(d) ? rawDate : `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                                                        })()
+                                                    }
+                                                </span>
+                                            )}
                                         </div>
                                     )}
                                     {(item.phone || item.customer_phone) && (
                                         <a
                                             href={`sms:${item.phone || item.customer_phone}`}
-                                            className="flex items-center justify-center gap-2 mt-3 py-2.5 rounded-xl bg-gray-800 dark:bg-[#1e293b] text-white dark:text-blue-400 hover:bg-gray-700 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium w-full"
+                                            className="flex items-center justify-center gap-2 mt-3 py-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-[#1e293b] dark:text-blue-400 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium w-full"
                                         >
                                             <MessageSquare size={16} />
                                             SMS yuborish
