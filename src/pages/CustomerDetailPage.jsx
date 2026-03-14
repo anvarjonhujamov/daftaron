@@ -337,9 +337,9 @@ export default function CustomerDetailPage() {
             <Drawer.Root open={showDebtDrawer} onOpenChange={setShowDebtDrawer} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
-                        <div className="p-4">
-                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none flex flex-col">
+                        <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mt-4 mb-2 shrink-0" />
+                        <div className="p-4 overflow-y-auto flex-1 pb-8">
                             <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
@@ -432,9 +432,9 @@ export default function CustomerDetailPage() {
             <Drawer.Root open={showPaymentDrawer} onOpenChange={setShowPaymentDrawer} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
-                        <div className="p-4">
-                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-50 max-h-[85vh] outline-none flex flex-col">
+                        <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mt-4 mb-2 shrink-0" />
+                        <div className="p-4 overflow-y-auto flex-1 pb-8">
                             <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
