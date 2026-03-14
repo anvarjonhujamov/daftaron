@@ -48,6 +48,12 @@ export const debtsApi = {
     getOverdue: async (params = {}) => {
         const response = await api.get('/debts/overdue', { params })
         return response.data
+    },
+
+    sendOverdueSms: async (customerIds) => {
+        // As per backend convention, passing selected IDs to send targeted SMS
+        const response = await api.post('/debts/send-sms', { customer_ids: customerIds })
+        return response.data
     }
 }
 

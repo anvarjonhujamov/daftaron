@@ -64,13 +64,10 @@ export default function OverduePage() {
         setSendingSms(true)
 
         try {
-            // SMS yuborish — hozircha har bir tanlangan mijoz uchun
             const ids = Array.from(selectedIds)
-            // Agar backend da bulk SMS endpoint bo'lsa, shu yerda chaqiriladi
-            // Hozircha individual SMS (agar mavjud bo'lsa)
-            toast.success(`${ids.length} ta mijozga SMS yuborish so'rovi yuborildi`)
+            await debtsApi.sendOverdueSms(ids)
+            toast.success(`${ids.length} ta mijozga SMS muvaffaqiyatli yuborildi`)
             setSelectedIds(new Set())
-            // Ro'yxatni yangilash
             await loadOverdue()
         } catch (err) {
             toast.error(err.response?.data?.message || 'SMS yuborishda xatolik')
@@ -79,6 +76,20 @@ export default function OverduePage() {
         }
     }
 
+    const handleSendSmsSingle = async (e, customerId) => {
+        e.stopPropagation()
+        setSendingSms(true)
+
+        try {
+            await debtsApi.sendOverdueSms([customerId])
+            toast.success('SMS muvaffaqiyatli yuborildi')
+            await loadOverdue()
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'SMS yuborishda xatolik')
+        } finally {
+            setSendingSms(false)
+        }
+    }
     const formatDate = (dateString) => {
         if (!dateString) return ''
         const date = new Date(dateString)
@@ -262,6 +273,23 @@ export default function OverduePage() {
                                                         </span>
                                                     </div>
                                                 )}
+                                            </div>
+
+                                            {/* Action icons row */}
+                                            <div className="flex items-center gap-2 mt-4 border-t border-gray-100 dark:border-gray-700 pt-3">
+                                                <button
+                                                    onClick={() => navigate(`/customers/${item.customer_id}`)}
+                                                    className="flex-1 flex justify-center items-center py-2 px-3 bg-gray-100/50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium border border-gray-200 dark:border-gray-700"
+                                                >
+                                                    <span className="mr-1.5">👁</span> Ko'rish
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleSendSmsSingle(e, item.customer_id)}
+                                                    disabled={sendingSms}
+                                                    className="flex-1 flex justify-center items-center py-2 px-3 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg transition-colors text-sm font-medium border border-green-200 dark:border-green-800 disabled:opacity-50"
+                                                >
+                                                    <Send size={15} className="mr-1.5" /> SMS
+                                                </button>
                                             </div>
                                         </div>
                                     </div>

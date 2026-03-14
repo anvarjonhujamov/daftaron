@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/api/v1/debts/overdue/send-sms",
+    "statusCode": 404
+  },
+  {
+    "path": "/api/v1/debts/send-sms",
+    "statusCode": 405
+  },
+  {
+    "path": "/api/v1/customers/send-sms",
+    "statusCode": 405
+  },
+  {
+    "path": "/api/v1/sms/send",
+    "statusCode": 404
+  },
+  {
+    "path": "/api/v1/notifications/send-sms",
+    "statusCode": 405
+  },
+  {
+    "path": "/api/v1/debts/send-overdue-sms",
+    "statusCode": 405
+  }
+]
