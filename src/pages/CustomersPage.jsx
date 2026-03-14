@@ -251,13 +251,13 @@ export default function CustomersPage() {
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="avatar avatar-sm bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                                            {item.customer_name?.charAt(0)?.toUpperCase() || '?'}
+                                            {(item.name || item.customer_name || '?').charAt(0).toUpperCase()}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {item.customer_name}
+                                                {item.name || item.customer_name || 'Ism yo\'q'}
                                             </h3>
-                                            <p className="text-[12px] text-gray-400">{item.customer_phone || 'Telefon yo\'q'}</p>
+                                            <p className="text-[12px] text-gray-400">{item.phone || item.customer_phone || 'Telefon yo\'q'}</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[14px] font-bold text-red-500">
@@ -268,9 +268,9 @@ export default function CustomersPage() {
                                             </p>
                                         </div>
                                     </div>
-                                    {item.customer_phone && (
+                                    {(item.phone || item.customer_phone) && (
                                         <a
-                                            href={`sms:${item.customer_phone}`}
+                                            href={`sms:${item.phone || item.customer_phone}`}
                                             className="flex items-center justify-center gap-2 mt-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-500 text-[13px] font-medium"
                                         >
                                             <MessageSquare size={14} />
