@@ -268,9 +268,9 @@ export default function CustomersPage() {
                                             </p>
                                         </div>
                                     </div>
-                                    {(item.sms_count > 0 || item.sent_sms_count > 0 || item.overdue_sms_count > 0) && (
+                                    {(item.sms_count !== undefined || item.sent_sms_count !== undefined || item.overdue_sms_count !== undefined) && (
                                         <div className="flex justify-between items-center mt-3 mb-2 px-1">
-                                            <span className="text-[12px] text-gray-500 dark:text-gray-400">Jo'natilgan SMS: {item.sms_count || item.sent_sms_count || item.overdue_sms_count} ta</span>
+                                            <span className="text-[12px] text-gray-500 dark:text-gray-400">Jo'natilgan SMS: {item.sms_count ?? item.sent_sms_count ?? item.overdue_sms_count ?? 0} ta</span>
                                             {(item.last_sms_date || item.last_sms || item.overdue_sms_last_sent_at) && (
                                                 <span className="text-[12px] text-gray-500 dark:text-gray-400">
                                                     Oxirgi marta: {
