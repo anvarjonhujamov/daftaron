@@ -5,6 +5,7 @@ import { customersApi } from '../api/customers.api'
 import { debtsApi } from '../api/debts.api'
 import { notificationsApi } from '../api/notifications.api'
 import { paymentsApi } from '../api/payments.api'
+import { profileApi } from '../api/profile.api'
 import {
     TrendingUp, Users, ChevronRight,
     UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp
@@ -20,6 +21,7 @@ export default function DashboardPage() {
     const [allPayments, setAllPayments] = useState([])
     const [unreadNotifs, setUnreadNotifs] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [user, setUser] = useState(null)
 
     useEffect(() => {
         loadStats()
@@ -64,6 +66,22 @@ export default function DashboardPage() {
             console.error('Failed to load dashboard data:', err)
         } finally {
             setLoading(false)
+        }
+
+        // Try to load user from localStorage
+        try {
+            const stored = localStorage.getItem('user')
+            if (stored) {
+                setUser(JSON.parse(stored))
+            } else {
+                // If not in storage, fetch from API
+                const profileData = await profileApi.getProfile()
+                const userData = profileData.user || profileData.data || profileData
+                setUser(userData)
+                localStorage.setItem('user', JSON.stringify(userData))
+            }
+        } catch (e) {
+            console.error('Failed to load user info:', e)
         }
     }
 
@@ -170,7 +188,9 @@ export default function DashboardPage() {
         <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Daftaron</h1>
+                <h1 className="text-[28px] font-bold text-gray-900 dark:text-white truncate pr-4">
+                    {user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}
+                </h1>
                 <div className="flex gap-2">
                     <Link
                         to="/notifications"
