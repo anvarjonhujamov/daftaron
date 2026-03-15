@@ -31,7 +31,9 @@ export default function CustomerDetailPage() {
         debt_date: '',
         send_sms: false
     })
+    const [debtErrors, setDebtErrors] = useState({})
     const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null, paid_at: '' })
+    const [paymentErrors, setPaymentErrors] = useState({})
 
     useEffect(() => {
         loadData()
@@ -65,6 +67,7 @@ export default function CustomerDetailPage() {
         const numericAmount = parseCurrency(debtForm.amount)
         if (!numericAmount) return
         setSubmitting(true)
+        setDebtErrors({})
         try {
             await debtsApi.createDebt({
                 customer_id: parseInt(id),
@@ -74,6 +77,7 @@ export default function CustomerDetailPage() {
                 send_sms: debtForm.send_sms
             })
             setDebtForm({ amount: '', description: '', debt_date: '', send_sms: false })
+            setDebtErrors({})
             setShowDebtDrawer(false)
             toast.success(
                 <div>
@@ -83,7 +87,11 @@ export default function CustomerDetailPage() {
             )
             loadData()
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            if (err.response?.status === 422 && err.response?.data?.errors) {
+                setDebtErrors(err.response.data.errors)
+            } else {
+                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            }
         } finally {
             setSubmitting(false)
         }
@@ -114,6 +122,7 @@ export default function CustomerDetailPage() {
         }
 
         setSubmitting(true)
+        setPaymentErrors({})
         try {
             // Process payments sequentially
             for (const debt of openDebts) {
@@ -133,6 +142,7 @@ export default function CustomerDetailPage() {
             }
 
             setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '' })
+            setPaymentErrors({})
             setShowPaymentDrawer(false)
             toast.success(
                 <div>
@@ -142,7 +152,11 @@ export default function CustomerDetailPage() {
             )
             loadData()
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            if (err.response?.status === 422 && err.response?.data?.errors) {
+                setPaymentErrors(err.response.data.errors)
+            } else {
+                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            }
         } finally {
             setSubmitting(false)
         }
@@ -334,7 +348,15 @@ export default function CustomerDetailPage() {
             </div>
 
             {/* Add Debt Drawer */}
-            <Drawer.Root open={showDebtDrawer} onOpenChange={setShowDebtDrawer} repositionInputs={false}>
+            <Drawer.Root open={showDebtDrawer} onOpenChange={(open) => {
+                setShowDebtDrawer(open)
+                if (!open) {
+                    setTimeout(() => {
+                        setDebtForm({ amount: '', description: '', debt_date: '', send_sms: false })
+                        setDebtErrors({})
+                    }, 300)
+                }
+            }} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
                     <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
@@ -358,11 +380,11 @@ export default function CustomerDetailPage() {
                                     <div>
                                         <label className="label">Summa</label>
                                         <div className="relative">
-                                            <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <CreditCard size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${debtErrors.total_amount ? 'text-red-400' : 'text-gray-400'}`} />
                                             <input
                                                 type="text"
                                                 inputMode="numeric"
-                                                className="input pl-11 pr-16"
+                                                className={`input pl-11 pr-16 ${debtErrors.total_amount ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                                 placeholder="0"
                                                 value={debtForm.amount}
                                                 onChange={(e) => {
@@ -371,34 +393,44 @@ export default function CustomerDetailPage() {
                                                         ...debtForm,
                                                         amount: digits ? formatCurrency(digits) : ''
                                                     })
+                                                    if (debtErrors.total_amount) setDebtErrors({ ...debtErrors, total_amount: null })
                                                 }}
                                                 required
                                             />
                                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
                                         </div>
+                                        {debtErrors.total_amount && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.total_amount[0]}</p>}
                                     </div>
                                     <div>
                                         <label className="label">Izoh (ixtiyoriy)</label>
                                         <div className="relative">
-                                            <FileText size={18} className="absolute left-4 top-4 text-gray-400" />
+                                            <FileText size={18} className={`absolute left-4 top-4 ${debtErrors.description ? 'text-red-400' : 'text-gray-400'}`} />
                                             <textarea
-                                                className="input pl-11 min-h-[80px] resize-none"
+                                                className={`input pl-11 min-h-[80px] resize-none ${debtErrors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                                 placeholder="Tavsif qo'shish..."
                                                 value={debtForm.description}
-                                                onChange={(e) => setDebtForm({ ...debtForm, description: e.target.value })}
+                                                onChange={(e) => {
+                                                    setDebtForm({ ...debtForm, description: e.target.value })
+                                                    if (debtErrors.description) setDebtErrors({ ...debtErrors, description: null })
+                                                }}
                                             />
                                         </div>
+                                        {debtErrors.description && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.description[0]}</p>}
                                     </div>
                                     <div>
                                         <label className="label">Nasiya sanasi (ixtiyoriy)</label>
                                         <input
                                             type="date"
-                                            className="input"
+                                            className={`input ${debtErrors.debt_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                             value={debtForm.debt_date}
                                             min={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
                                             max={new Date().toISOString().split('T')[0]}
-                                            onChange={(e) => setDebtForm({ ...debtForm, debt_date: e.target.value })}
+                                            onChange={(e) => {
+                                                setDebtForm({ ...debtForm, debt_date: e.target.value })
+                                                if (debtErrors.debt_date) setDebtErrors({ ...debtErrors, debt_date: null })
+                                            }}
                                         />
+                                        {debtErrors.debt_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.debt_date[0]}</p>}
                                         <p className="text-[12px] text-gray-400 mt-1">
                                             Bo'sh qolsa bugun olinadi. Oxirgi 1 oy ichida.
                                         </p>
@@ -431,7 +463,15 @@ export default function CustomerDetailPage() {
             </Drawer.Root>
 
             {/* Add Payment Drawer */}
-            <Drawer.Root open={showPaymentDrawer} onOpenChange={setShowPaymentDrawer} repositionInputs={false}>
+            <Drawer.Root open={showPaymentDrawer} onOpenChange={(open) => {
+                setShowPaymentDrawer(open)
+                if (!open) {
+                    setTimeout(() => {
+                        setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '' })
+                        setPaymentErrors({})
+                    }, 300)
+                }
+            }} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
                     <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
@@ -454,11 +494,11 @@ export default function CustomerDetailPage() {
                                 <div>
                                     <label className="label">Summa</label>
                                     <div className="relative">
-                                        <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <CreditCard size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${paymentErrors.amount ? 'text-red-400' : 'text-gray-400'}`} />
                                         <input
                                             type="text"
                                             inputMode="numeric"
-                                            className="input pl-11 pr-16"
+                                            className={`input pl-11 pr-16 ${paymentErrors.amount ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                             placeholder="0"
                                             value={paymentForm.amount}
                                             onChange={(e) => {
@@ -467,21 +507,27 @@ export default function CustomerDetailPage() {
                                                     ...paymentForm,
                                                     amount: digits ? formatCurrency(digits) : ''
                                                 })
+                                                if (paymentErrors.amount) setPaymentErrors({ ...paymentErrors, amount: null })
                                             }}
                                             required
                                         />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
                                     </div>
+                                    {paymentErrors.amount && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{paymentErrors.amount[0]}</p>}
                                 </div>
                                 <div>
                                     <label className="label">To'lov sanasi (ixtiyoriy)</label>
                                     <input
                                         type="date"
-                                        className="input"
+                                        className={`input ${paymentErrors.paid_at ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                         value={paymentForm.paid_at}
                                         max={new Date().toISOString().split('T')[0]}
-                                        onChange={(e) => setPaymentForm({ ...paymentForm, paid_at: e.target.value })}
+                                        onChange={(e) => {
+                                            setPaymentForm({ ...paymentForm, paid_at: e.target.value })
+                                            if (paymentErrors.paid_at) setPaymentErrors({ ...paymentErrors, paid_at: null })
+                                        }}
                                     />
+                                    {paymentErrors.paid_at && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{paymentErrors.paid_at[0]}</p>}
                                 </div>
                                 <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={submitting}>
                                     {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}

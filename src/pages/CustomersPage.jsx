@@ -20,6 +20,7 @@ export default function CustomersPage() {
     const [showAddDrawer, setShowAddDrawer] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [form, setForm] = useState({ name: '', phone: PHONE_PREFIX })
+    const [errors, setErrors] = useState({})
 
     // Overdue tab state
     const [overdueList, setOverdueList] = useState([])
@@ -109,6 +110,7 @@ export default function CustomersPage() {
         if (!form.name.trim()) return
 
         setSubmitting(true)
+        setErrors({})
         try {
             const rawPhone = getRawPhoneNumber(form.phone)
             await customersApi.createCustomer({
@@ -116,11 +118,16 @@ export default function CustomersPage() {
                 phone: rawPhone !== '+998' ? rawPhone : null
             })
             setForm({ name: '', phone: PHONE_PREFIX })
+            setErrors({})
             setShowAddDrawer(false)
             toast.success('Mijoz qo\'shildi')
             loadCustomers()
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            if (err.response?.status === 422 && err.response?.data?.errors) {
+                setErrors(err.response.data.errors)
+            } else {
+                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            }
         } finally {
             setSubmitting(false)
         }
@@ -387,7 +394,13 @@ export default function CustomersPage() {
             )}
 
             {/* Add Customer Drawer */}
-            <Drawer.Root open={showAddDrawer} onOpenChange={setShowAddDrawer} repositionInputs={false}>
+            <Drawer.Root open={showAddDrawer} onOpenChange={(open) => {
+                setShowAddDrawer(open)
+                if (!open) {
+                    setErrors({})
+                    setTimeout(() => setForm({ name: '', phone: PHONE_PREFIX }), 300)
+                }
+            }} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
                     <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50">
@@ -410,16 +423,18 @@ export default function CustomersPage() {
                                 <div>
                                     <label className="label">Mijoz ismi</label>
                                     <div className="relative">
-                                        <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                        <input type="text" className="input pl-11" placeholder="Ism kiriting..." value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required autoFocus />
+                                        <User size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${errors.name ? 'text-red-400' : 'text-gray-400'}`} />
+                                        <input type="text" className={`input pl-11 ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`} placeholder="Ism kiriting..." value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); if (errors.name) setErrors({ ...errors, name: null }); }} required autoFocus />
                                     </div>
+                                    {errors.name && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{errors.name[0]}</p>}
                                 </div>
                                 <div>
                                     <label className="label">Telefon raqami (ixtiyoriy)</label>
                                     <div className="relative">
-                                        <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                                        <input type="text" className="input pl-11" placeholder="+998 XX XXX XX XX" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneNumber(e.target.value) })} />
+                                        <Phone size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-red-400' : 'text-gray-400'}`} />
+                                        <input type="text" className={`input pl-11 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`} placeholder="+998 XX XXX XX XX" value={form.phone} onChange={(e) => { setForm({ ...form, phone: formatPhoneNumber(e.target.value) }); if (errors.phone) setErrors({ ...errors, phone: null }); }} />
                                     </div>
+                                    {errors.phone && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{errors.phone[0]}</p>}
                                 </div>
                                 <button type="submit" className="btn btn-primary w-full" disabled={submitting || !form.name.trim()}>
                                     {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Mijoz qo\'shish'}

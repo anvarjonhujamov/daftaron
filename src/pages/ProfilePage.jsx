@@ -31,12 +31,14 @@ export default function ProfilePage() {
         phone: '',
         email: ''
     })
+    const [profileErrors, setProfileErrors] = useState({})
 
     const [passwordForm, setPasswordForm] = useState({
         current_password: '',
         password: '',
         password_confirmation: ''
     })
+    const [passwordErrors, setPasswordErrors] = useState({})
 
     const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false)
     const [selectedProvider, setSelectedProvider] = useState(null)
@@ -126,10 +128,15 @@ export default function ProfilePage() {
             const updatedUser = data.user || data
             setUser(updatedUser)
             localStorage.setItem('user', JSON.stringify(updatedUser))
+            setProfileErrors({})
             toast.success('Profil yangilandi')
             setShowEditDrawer(false)
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            if (err.response?.status === 422 && err.response?.data?.errors) {
+                setProfileErrors(err.response.data.errors)
+            } else {
+                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            }
         } finally {
             setSaving(false)
         }
@@ -147,9 +154,14 @@ export default function ProfilePage() {
                 password: '',
                 password_confirmation: ''
             })
+            setPasswordErrors({})
             setShowPasswordDrawer(false)
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            if (err.response?.status === 422 && err.response?.data?.errors) {
+                setPasswordErrors(err.response.data.errors)
+            } else {
+                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            }
         } finally {
             setSaving(false)
         }
@@ -410,46 +422,56 @@ export default function ProfilePage() {
                                 <div>
                                     <label className="label dark:text-gray-400">Ism</label>
                                     <div className="relative">
-                                        <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <User size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${profileErrors.name ? 'text-red-400' : 'text-gray-400'}`} />
                                         <input
                                             type="text"
-                                            className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11"
+                                            className={`input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11 ${profileErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                             value={profileForm.name}
-                                            onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                                            onChange={(e) => {
+                                                setProfileForm({ ...profileForm, name: e.target.value })
+                                                if (profileErrors.name) setProfileErrors({ ...profileErrors, name: null })
+                                            }}
                                             required
                                         />
                                     </div>
+                                    {profileErrors.name && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{profileErrors.name[0]}</p>}
                                 </div>
 
                                 <div>
                                     <label className="label dark:text-gray-400">Telefon</label>
                                     <div className="relative">
-                                        <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <Phone size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${profileErrors.phone ? 'text-red-400' : 'text-gray-400'}`} />
                                         <input
                                             type="text"
-                                            className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11"
+                                            className={`input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11 ${profileErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                             placeholder="+998 XX XXX XX XX"
                                             value={profileForm.phone}
                                             onChange={(e) => {
                                                 const formatted = formatPhoneNumber(e.target.value)
                                                 setProfileForm({ ...profileForm, phone: formatted })
+                                                if (profileErrors.phone) setProfileErrors({ ...profileErrors, phone: null })
                                             }}
                                             required
                                         />
                                     </div>
+                                    {profileErrors.phone && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{profileErrors.phone[0]}</p>}
                                 </div>
 
                                 <div>
                                     <label className="label dark:text-gray-400">Email</label>
                                     <div className="relative">
-                                        <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <Mail size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${profileErrors.email ? 'text-red-400' : 'text-gray-400'}`} />
                                         <input
                                             type="email"
-                                            className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11"
+                                            className={`input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11 ${profileErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                             value={profileForm.email}
-                                            onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                                            onChange={(e) => {
+                                                setProfileForm({ ...profileForm, email: e.target.value })
+                                                if (profileErrors.email) setProfileErrors({ ...profileErrors, email: null })
+                                            }}
                                         />
                                     </div>
+                                    {profileErrors.email && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{profileErrors.email[0]}</p>}
                                 </div>
 
                                 <button
@@ -495,21 +517,29 @@ export default function ProfilePage() {
                                     <label className="label dark:text-gray-400">Joriy parol</label>
                                     <input
                                         type="password"
-                                        className="input"
+                                        className={`input ${passwordErrors.current_password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                         value={passwordForm.current_password}
-                                        onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+                                        onChange={(e) => {
+                                            setPasswordForm({ ...passwordForm, current_password: e.target.value })
+                                            if (passwordErrors.current_password) setPasswordErrors({ ...passwordErrors, current_password: null })
+                                        }}
                                         required
                                     />
+                                    {passwordErrors.current_password && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{passwordErrors.current_password[0]}</p>}
                                 </div>
                                 <div>
                                     <label className="label dark:text-gray-400">Yangi parol</label>
                                     <input
                                         type="password"
-                                        className="input"
+                                        className={`input ${passwordErrors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                         value={passwordForm.password}
-                                        onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
+                                        onChange={(e) => {
+                                            setPasswordForm({ ...passwordForm, password: e.target.value })
+                                            if (passwordErrors.password) setPasswordErrors({ ...passwordErrors, password: null })
+                                        }}
                                         required
                                     />
+                                    {passwordErrors.password && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{passwordErrors.password[0]}</p>}
                                 </div>
                                 <div>
                                     <label className="label dark:text-gray-400">Yangi parolni takrorlash</label>

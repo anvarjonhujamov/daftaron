@@ -12,6 +12,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [initialCheck, setInitialCheck] = useState(true)
+    const [errors, setErrors] = useState({})
 
     useEffect(() => {
         // Simulating a brief initial check or just allowing layout to settle
@@ -31,6 +32,7 @@ export default function LoginPage() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
+        setErrors({})
 
         try {
             const rawPhone = getRawPhoneNumber(form.phone)
@@ -45,10 +47,8 @@ export default function LoginPage() {
                 toast.error('Kutilmagan javob. Qaytadan urinib ko\'ring.')
             }
         } catch (err) {
-            if (err.response?.data?.errors) {
-                const errors = err.response.data.errors
-                const messages = Object.values(errors).flat().join(', ')
-                toast.error(messages)
+            if (err.response?.status === 422 && err.response?.data?.errors) {
+                setErrors(err.response.data.errors)
             } else {
                 toast.error(err.response?.data?.message || 'Kirish amalga oshmadi')
             }
@@ -79,31 +79,36 @@ export default function LoginPage() {
                         <div>
                             <label className="label">Telefon raqam</label>
                             <div className="relative">
-                                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <Phone size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-red-400' : 'text-gray-400'}`} />
                                 <input
                                     type="text"
-                                    className="input pl-11"
+                                    className={`input pl-11 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                     placeholder="+998 XX XXX XX XX"
                                     value={form.phone}
                                     onChange={(e) => {
                                         const formatted = formatPhoneNumber(e.target.value)
                                         setForm({ ...form, phone: formatted })
+                                        if (errors.phone) setErrors({ ...errors, phone: null })
                                     }}
                                     required
                                 />
                             </div>
+                            {errors.phone && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{errors.phone[0]}</p>}
                         </div>
 
                         <div>
                             <label className="label">Parol</label>
                             <div className="relative">
-                                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <Lock size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${errors.password ? 'text-red-400' : 'text-gray-400'}`} />
                                 <input
                                     type={showPassword ? "text" : "password"}
-                                    className="input pl-11 pr-12"
+                                    className={`input pl-11 pr-12 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                     placeholder="••••••••"
                                     value={form.password}
-                                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                    onChange={(e) => {
+                                        setForm({ ...form, password: e.target.value })
+                                        if (errors.password) setErrors({ ...errors, password: null })
+                                    }}
                                     required
                                 />
                                 <button
@@ -114,6 +119,7 @@ export default function LoginPage() {
                                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
+                            {errors.password && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{errors.password[0]}</p>}
                         </div>
 
                         <button
