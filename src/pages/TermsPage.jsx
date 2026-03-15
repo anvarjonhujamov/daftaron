@@ -5,10 +5,11 @@ export default function TermsPage() {
     const navigate = useNavigate()
 
     const handleBack = () => {
+        const hasToken = localStorage.getItem('token')
         if (window.history.state && window.history.state.idx > 0) {
             navigate(-1)
         } else {
-            navigate('/register')
+            navigate(hasToken ? '/profile' : '/register')
         }
     }
 

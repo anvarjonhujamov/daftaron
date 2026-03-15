@@ -23,6 +23,7 @@ import ProfilePage from './pages/ProfilePage'
 import SubscriptionPage from './pages/SubscriptionPage'
 import OverduePage from './pages/OverduePage'
 import NotificationsPage from './pages/NotificationsPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 
 export default function App() {
 
@@ -71,6 +72,7 @@ export default function App() {
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/subscription" element={<SubscriptionPage />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 </Route>
 
                 {/* 404 */}

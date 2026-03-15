@@ -5,7 +5,7 @@ import { authApi } from '../api/auth.api'
 import { subscriptionApi } from '../api/subscription.api'
 import {
     User, Phone, Mail, Lock, LogOut, ChevronRight,
-    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle, Store, Bell
+    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle, Store, Bell, ShieldCheck
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -15,6 +15,7 @@ import { formatCurrency, parseCurrency } from '../utils/format'
 import toast from 'react-hot-toast'
 import PaymentMethods from '../components/PaymentMethods'
 import PaymentDrawer from '../components/PaymentDrawer'
+import LegalDrawer from '../components/LegalDrawer'
 
 export default function ProfilePage() {
     const navigate = useNavigate()
@@ -42,6 +43,7 @@ export default function ProfilePage() {
 
     const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false)
     const [selectedProvider, setSelectedProvider] = useState(null)
+    const [showLegalDrawer, setShowLegalDrawer] = useState(false)
 
     const isTrialExpired = user?.trial_ends_at
         ? new Date(user.trial_ends_at) < new Date()
@@ -372,6 +374,20 @@ export default function ProfilePage() {
                     <ChevronRight size={18} className="text-gray-400" />
                 </button>
 
+                {/* Maxfiylik siyosati */}
+                <button
+                    onClick={() => setShowLegalDrawer(true)}
+                    className="w-full flex items-center justify-between py-4"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <ShieldCheck size={18} className="text-blue-500" />
+                        </div>
+                        <span className="text-[15px] font-medium text-gray-900 dark:text-white">Maxfiylik siyosati</span>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-400" />
+                </button>
+
                 {/* Balance top-up */}
                 <div className="py-4">
                     <span className="text-[15px] font-medium text-gray-900 dark:text-white block mb-3">
@@ -569,6 +585,11 @@ export default function ProfilePage() {
                 onClose={() => setPaymentDrawerOpen(false)}
                 user={user}
                 provider={selectedProvider}
+            />
+
+            <LegalDrawer 
+                isOpen={showLegalDrawer}
+                onClose={() => setShowLegalDrawer(false)}
             />
         </div>
     )
