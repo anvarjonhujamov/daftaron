@@ -201,7 +201,7 @@ export default function RegisterPage() {
                                     />
                                 </div>
                                 <label htmlFor="terms" className="ml-2 text-[13px] font-medium text-gray-900 dark:text-gray-300">
-                                    Men <Link to="/terms" target="_blank" className="text-blue-600 hover:underline dark:text-blue-500">Ommaviy oferta foydalanish shartlariga</Link> roziman
+                                    Men <Link to="/terms" className="text-blue-600 hover:underline dark:text-blue-500">Ommaviy oferta foydalanish shartlariga</Link> roziman
                                 </label>
                             </div>
 

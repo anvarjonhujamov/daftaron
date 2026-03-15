@@ -4,11 +4,19 @@ import { useNavigate } from 'react-router-dom'
 export default function TermsPage() {
     const navigate = useNavigate()
 
+    const handleBack = () => {
+        if (window.history.state && window.history.state.idx > 0) {
+            navigate(-1)
+        } else {
+            navigate('/register')
+        }
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto">
                 <button
-                    onClick={() => navigate(-1)}
+                    onClick={handleBack}
                     className="flex items-center gap-2 mb-6 text-blue-500 font-medium active:opacity-60 transition-opacity"
                 >
                     <ArrowLeft size={18} />
