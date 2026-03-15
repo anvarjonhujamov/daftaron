@@ -17,6 +17,7 @@ export default function RegisterPage() {
 
     const [formStep1, setFormStep1] = useState({ name: '', phone: PHONE_PREFIX })
     const [code, setCode] = useState('')
+    const [acceptedTerms, setAcceptedTerms] = useState(false)
 
     const [formComplete, setFormComplete] = useState({
         shop_name: '',
@@ -187,7 +188,24 @@ export default function RegisterPage() {
                                 />
                                 {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone[0]}</p>}
                             </div>
-                            <button type="submit" className="btn btn-primary w-full" disabled={loading}>
+
+                            <div className="flex items-start mb-4">
+                                <div className="flex items-center h-5">
+                                    <input
+                                        id="terms"
+                                        type="checkbox"
+                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                                        checked={acceptedTerms}
+                                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                                        required
+                                    />
+                                </div>
+                                <label htmlFor="terms" className="ml-2 text-[13px] font-medium text-gray-900 dark:text-gray-300">
+                                    Men <Link to="/terms" target="_blank" className="text-blue-600 hover:underline dark:text-blue-500">Ommaviy oferta foydalanish shartlariga</Link> roziman
+                                </label>
+                            </div>
+
+                            <button type="submit" className="btn btn-primary w-full" disabled={loading || !acceptedTerms}>
                                 {loading ? <LoadingSpinner size="sm" /> : 'Davom etish'}
                             </button>
                         </form>
