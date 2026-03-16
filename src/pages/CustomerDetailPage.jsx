@@ -227,37 +227,37 @@ export default function CustomerDetailPage() {
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors">
             {/* Unified Hero Section */}
-            <div className="bg-white dark:bg-gray-800 pt-1 pb-6 rounded-b-[32px] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none border-b border-gray-100 dark:border-gray-700/50 transition-all">
+            <div className="bg-white dark:bg-gray-800 pt-0.5 pb-4 rounded-b-[24px] shadow-[0_4px_15px_-5px_rgba(0,0,0,0.05)] dark:shadow-none border-b border-gray-100 dark:border-gray-700/50 transition-all">
                 {/* Toolbar */}
-                <div className="flex items-center justify-between px-4 py-1 mb-2">
+                <div className="flex items-center justify-between px-4 py-0.5 mb-1">
                     <button 
                         onClick={() => navigate(-1)} 
-                        className="w-9 h-9 rounded-full bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center active:scale-90 transition-transform"
+                        className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform"
                     >
-                        <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" />
+                        <ChevronLeft size={18} className="text-gray-600 dark:text-gray-300" />
                     </button>
                     <button
                         onClick={() => setShowOptionsDrawer(true)}
-                        className="w-9 h-9 rounded-full bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center active:scale-90 transition-transform"
+                        className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform"
                     >
-                        <MoreVertical size={18} className="text-gray-600 dark:text-gray-300" />
+                        <MoreVertical size={16} className="text-gray-600 dark:text-gray-300" />
                     </button>
                 </div>
 
                 {/* Profile & Balance Info */}
                 <div className="flex flex-col items-center text-center px-6">
-                    <h1 className="text-[20px] font-bold text-gray-900 dark:text-white mb-0.5 leading-tight">
+                    <h1 className="text-[18px] font-bold text-gray-900 dark:text-white mb-0 leading-tight">
                         {customer.name}
                     </h1>
-                    <p className="text-gray-400 dark:text-gray-500 text-[13px] font-medium mb-4">
+                    <p className="text-gray-400 dark:text-gray-500 text-[12px] font-medium mb-3">
                         {formatPhone(customer.phone)}
                     </p>
 
-                    <div className={`text-[32px] font-extrabold tracking-tight mb-2 ${totalDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                        {formatCurrency(totalDebt)} <span className="text-[14px] font-bold opacity-70">so'm</span>
+                    <div className={`text-[28px] font-extrabold tracking-tight mb-2 ${totalDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                        {formatCurrency(totalDebt)} <span className="text-[13px] font-bold opacity-70">so'm</span>
                     </div>
 
-                    <div className={`inline-flex items-center px-4 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                    <div className={`inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${
                         totalDebt > 0 
                             ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30' 
                             : 'bg-green-50 dark:bg-green-900/20 text-green-500 border border-green-100 dark:border-green-900/30'
