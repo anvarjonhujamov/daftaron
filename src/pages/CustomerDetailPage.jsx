@@ -226,35 +226,43 @@ export default function CustomerDetailPage() {
 
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors">
-            {/* Header & Profile */}
-            <div className="bg-white dark:bg-gray-800 pb-4 shadow-sm">
-                <div className="flex items-center justify-between px-4 py-4">
-                    <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                        <ChevronLeft size={22} className="text-gray-600 dark:text-gray-300" />
+            {/* Unified Hero Section */}
+            <div className="bg-white dark:bg-gray-800 pt-1 pb-6 rounded-b-[32px] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none border-b border-gray-100 dark:border-gray-700/50 transition-all">
+                {/* Toolbar */}
+                <div className="flex items-center justify-between px-4 py-1 mb-2">
+                    <button 
+                        onClick={() => navigate(-1)} 
+                        className="w-9 h-9 rounded-full bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center active:scale-90 transition-transform"
+                    >
+                        <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" />
                     </button>
-                    <div className="flex flex-col items-center">
-                        <h1 className="text-[18px] font-bold text-gray-900 dark:text-white leading-tight">{customer.name}</h1>
-                        <p className="text-gray-400 text-[13px]">{formatPhone(customer.phone)}</p>
-                    </div>
                     <button
                         onClick={() => setShowOptionsDrawer(true)}
-                        className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center"
+                        className="w-9 h-9 rounded-full bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center active:scale-90 transition-transform"
                     >
-                        <MoreVertical size={20} className="text-gray-600 dark:text-gray-300" />
+                        <MoreVertical size={18} className="text-gray-600 dark:text-gray-300" />
                     </button>
                 </div>
-            </div>
 
-            {/* Balance Card */}
-            <div className="px-4 -mt-4">
-                <div className="card text-center py-6 shadow-md border-0 bg-white dark:bg-gray-800">
-                    <div className={`text-[32px] font-bold mb-2 ${totalDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                        {formatCurrency(totalDebt)} so'm
+                {/* Profile & Balance Info */}
+                <div className="flex flex-col items-center text-center px-6">
+                    <h1 className="text-[20px] font-bold text-gray-900 dark:text-white mb-0.5 leading-tight">
+                        {customer.name}
+                    </h1>
+                    <p className="text-gray-400 dark:text-gray-500 text-[13px] font-medium mb-4">
+                        {formatPhone(customer.phone)}
+                    </p>
+
+                    <div className={`text-[32px] font-extrabold tracking-tight mb-2 ${totalDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                        {formatCurrency(totalDebt)} <span className="text-[14px] font-bold opacity-70">so'm</span>
                     </div>
-                    <div>
-                        <span className={`badge px-4 py-1 rounded-full ${totalDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
-                            {totalDebt > 0 ? 'Qarzdor' : 'To\'langan'}
-                        </span>
+
+                    <div className={`inline-flex items-center px-4 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                        totalDebt > 0 
+                            ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30' 
+                            : 'bg-green-50 dark:bg-green-900/20 text-green-500 border border-green-100 dark:border-green-900/30'
+                    }`}>
+                        {totalDebt > 0 ? 'Qarzdor' : 'To\'langan'}
                     </div>
                 </div>
             </div>
