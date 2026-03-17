@@ -227,7 +227,7 @@ export default function CustomerDetailPage() {
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors">
             {/* Unified Hero Section */}
-            <div className="bg-white dark:bg-gray-800 pt-0.5 pb-3 rounded-b-[24px] shadow-[0_4px_15px_-5px_rgba(0,0,0,0.05)] dark:shadow-none border-b border-gray-100 dark:border-gray-700/50 transition-all">
+            <div className="bg-white dark:bg-gray-800 pt-0.5 pb-6 rounded-b-[32px] shadow-[0_4px_20px_-5px_rgba(0,0,0,0.1)] dark:shadow-none border-b border-gray-100 dark:border-gray-700/50 transition-all mb-6">
                 {/* Toolbar */}
                 <div className="flex items-center justify-between px-4 py-0.5 mb-0.5">
                     <button 
@@ -274,13 +274,13 @@ export default function CustomerDetailPage() {
                     <button onClick={handleMessage} className="btn btn-outline flex-1 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><MessageSquare size={18} />Xabar</button>
                 </div>
                 <div className="flex gap-3">
-                    <button onClick={() => setShowDebtDrawer(true)} className="btn btn-outline-danger flex-1 py-3 bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/20 text-red-600 dark:text-red-400">
+                    <button onClick={() => setShowDebtDrawer(true)} className="btn btn-danger flex-1 py-4 shadow-lg shadow-red-500/20 active:scale-95 transition-all">
                         <Plus size={18} />Nasiya
                     </button>
                     <button
                         onClick={() => setShowPaymentDrawer(true)}
                         disabled={totalDebt <= 0}
-                        className={`btn flex-1 py-3 ${totalDebt > 0 ? 'btn-outline-success bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-900/20 text-green-600 dark:text-green-400' : 'border border-gray-200 text-gray-400 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50 opacity-60 cursor-not-allowed'}`}
+                        className={`btn flex-1 py-4 shadow-lg active:scale-95 transition-all ${totalDebt > 0 ? 'btn-success shadow-green-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'}`}
                     >
                         <Plus size={18} />To'lov
                     </button>
@@ -323,7 +323,7 @@ export default function CustomerDetailPage() {
 
                                 {debt.description && (
                                     <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl mb-4">
-                                        <FileText size={14} className="text-gray-400 mt-0.5" />
+                                        <FileText size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
                                         <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-tight">
                                             {debt.description}
                                         </p>

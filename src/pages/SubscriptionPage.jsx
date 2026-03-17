@@ -87,7 +87,7 @@ export default function SubscriptionPage() {
             description: "",
             features: [
                 "300 ta nasiya qo'shish",
-                "40 ta bepul sms limiti",
+                "50 ta bepul sms limiti",
                 "3 ta biznes",
                 "Batafsil moliyaviy hisobotlar",
                 "3 ta xodimlar qo'shish"
