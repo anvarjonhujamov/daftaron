@@ -138,7 +138,7 @@ MVP da faqat **Oddiy** ta’rif mavjud. Limit tugagandan keyin yangi nasiya yozi
 
 Admin paneldagi `Sozlamalar` bo‘limida quyidagi qiymatlar dinamik saqlanadi (so‘mda):
 
-- `extra_sms_price` — har bir qo‘shimcha SMS uchun narx (hozirda default 200 so‘m).
+- `extra_sms_price` — har bir qo‘shimcha SMS uchun narx (hozirda default 190 so‘m).
 - `extra_employee_price` — har bir qo‘shimcha xodim (foydalanuvchi) uchun oylik narx (default 9 900 so‘m/oy).
 - `extra_debt_20_price` — qo‘shimcha 20 ta nasiya limiti uchun oylik narx (default 1 900 so‘m/oy).
 - `extra_debt_30_price` — qo‘shimcha 30 ta nasiya limiti uchun oylik narx (default 2 900 so‘m/oy).
@@ -146,6 +146,26 @@ Admin paneldagi `Sozlamalar` bo‘limida quyidagi qiymatlar dinamik saqlanadi (s
 - `extra_business_price` — 1 ta yangi biznes/do‘kon qo‘shish uchun oylik narx (default 14 900 so‘m/oy).
 
 Bu qiymatlar hozircha faqat **konfiguratsiya** sifatida saqlanadi; kelgusida qo‘shimcha paketlarni sotib olish (balansdan yechish, limitlarni kengaytirish) logikasi shu sozlamalar asosida quriladi. AI Speech xizmati keyingi bosqichda alohida xizmat sifatida qo‘shilishi rejalashtirilgan.
+
+### 6.5. AI SupportBot (operator yordamchisi)
+
+- **Maqsad:** foydalanuvchiga Daftaron tizimi bo‘yicha tezkor yordam beradigan AI asosidagi “support operator”.
+- **Backend:** Laravel AI + Groq (`GROQ_API_KEY`). (Gemini billing muammolari bo'lsa Groq free tier bilan ishlaydi.)
+
+| Metod | Endpoint | Auth | Body | Javob |
+|-------|----------|------|------|-------|
+| POST | `/support/chat` | Bearer | `message` (string, majburiy), ixtiyoriy `history[]` (`{ role: user\|assistant, content: string }`) | **200:** `message` (foydalanuvchi so‘rovi), `reply` (bot javobi). **422:** validatsiya yoki konfiguratsiya xatosi. |
+
+**Qoidalar:**
+- Bot faqat **Daftaron** funksiyalari, tariflari, nasiya savdosi, qarzdorlik, SMS, profil/obuna va shunga o‘xshash mavzular bo‘yicha yordam beradi.
+- Huquqiy va moliyaviy masalalarda faqat umumiy tavsiyalar beradi, aniq yuridik maslahat emas.
+- Daftaronga aloqador bo‘lmagan savollarda muloyimlik bilan mavzuni chegaralaydi (“Men faqat Daftaron bo‘yicha yordam bera olaman”).
+
+**History ishlatish:**
+- Mobil/web chat interfeyslari bir sessiya davomida avvalgi xabarlarni `history` sifatida yuborishi mumkin, shunda bot kontekstni saqlab, muloqotni davomiy his qiladi.
+
+**Web chat tarixi (sessiya):**
+- Web widget chat tarixini sessiyada saqlaydi va `GET /support/history` orqali qayta yuklaydi.
 
 ---
 

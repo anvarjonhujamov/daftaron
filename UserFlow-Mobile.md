@@ -188,14 +188,20 @@ Barcha quyidagi endpointlar **Bearer** va **trial tekshiruvdan** o‘tadi. Trial
 | DELETE | `/debts/{id}` | — | **200/204:** o‘chirildi. |
 | PATCH | `/debts/{id}/close` | — | **200:** nasiya yopildi (qolgan summa to‘lov sifatida yoziladi). |
 
-**SMS:** `send_sms: true` bo‘lsa mijozga SMS yuboriladi. Ta’rif bo‘yicha bepul SMS limiti (masalan Oddiy da 15 ta) bor; limitdan keyin har bir SMS 200 so‘m — balansdan yechiladi. Balans yetmasa `sms_error` qaytadi, lekin qarz yozuvi yaratiladi.
+**SMS:** `send_sms: true` bo‘lsa mijozga SMS yuboriladi. Ta’rif bo‘yicha bepul SMS limiti (masalan Oddiy da 20 ta) bor; limitdan keyin har bir SMS `extra_sms_price` (default 190 so‘m) balansdan yechiladi. Balans yetmasa `sms_error` qaytadi, lekin qarz yozuvi yaratiladi.
 
 ### 6.5. To‘lovlar (Payments)
 
 | Metod | Endpoint | Body / Param | Javob |
 |-------|----------|--------------|--------|
 | GET | `/payments` | ixtiyoriy `debt_id` | **200:** to‘lovlar ro‘yxati. |
-| POST | `/payments` | `debt_id`, `amount`, ixtiyoriy `paid_at` (ISO8601) | **201:** yaratilgan to‘lov. **422:** validatsiya. |
+| POST | `/payments` | `debt_id`, `amount`, ixtiyoriy `paid_at` (ISO8601), ixtiyoriy `send_sms` (boolean) | **201:** yaratilgan to‘lov. **422:** validatsiya. |
+
+**To'lov SMS (ixtiyoriy):**
+- `send_sms: true` bo'lsa mijozga SMS yuboriladi.
+- SMS shablon:
+  `Abdurahim aka 19.03.2026 sanasida Karavan Market uchun sizdan 300 000 so'm to'lov qabul qilindi. Qolgan miqdor : 240 000 so'm. Do'kon raqami : +998...`
+- **Qolgan miqdor** — mijozning shu do'kondagi barcha ochiq nasiyalaridan qolgan summa (remaining_amount yig'indisi).
 
 ### 6.6. Do‘kon qo‘shish (tenant)
 
@@ -205,7 +211,52 @@ Barcha quyidagi endpointlar **Bearer** va **trial tekshiruvdan** o‘tadi. Trial
 
 Locations: `GET /locations/regions`, `GET /locations/categories`, `GET /locations/districts/{regionId}`, `GET /locations/streets/{districtId}` (authsiz ham ishlaydi).
 
-### 6.7. Bildirishnomalar
+### 6.7. AI SupportBot (chat yordamchi)
+
+**Maqsad:** Ilova ichida foydalanuvchiga tezkor yordam beradigan AI operator (Daftaron bo‘yicha savollarga javob beradi).
+
+**Endpoint:**
+
+| Metod | Endpoint | Auth |
+|-------|----------|------|
+| POST | `/support/chat` | Bearer |
+
+**Request body:**
+
+```json
+{
+  "message": "Bugun qancha to'lov qildim?",
+  "history": [
+    { "role": "user", "content": "Salom" },
+    { "role": "assistant", "content": "Salom, Daftaron bo'yicha qanday yordam bera olaman?" }
+  ]
+}
+```
+
+- `message` — foydalanuvchi yuborgan hozirgi savol (majburiy).
+- `history` — ixtiyoriy, oldingi chat xabarlari:
+  - `role`: `"user"` yoki `"assistant"`.
+  - `content`: matn.
+
+**Response:**
+
+```json
+{
+  "message": "Bugun qancha to'lov qildim?",
+  "reply": "Bugungi to'lovlaringizni Daftaron ilovasida Dashboard → To'lovlar bo'limidan ko'rishingiz mumkin..."
+}
+```
+
+**UI oqimi (mobil):**
+
+1. Foydalanuvchi chat ekranda savol yozadi.
+2. Ilova lokal `history` massivini yuritadi va har bir so‘rovda `message` bilan birga yuboradi.
+3. Javob kelgach, `reply` ni chatga `assistant` xabari sifatida qo‘shadi.
+4. Savollar faqat **Daftaron** bo‘yicha bo‘lishi kerak; boshqa mavzularda bot muloyimlik bilan cheklov qo‘yadi.
+
+---
+
+### 6.8. Bildirishnomalar
 
 Bildirishnomalar do‘kon egasiga (tenant owner) quyidagi hodisalarda yuboriladi: **yangi nasiya qo‘shilganda**, **nasiyaga to‘lov qabul qilinganda**, **balans to‘ldirilganda** (Click, Payme, admin), **obuna/paket sotib olinganda**. Web va API da bir xil ro‘yxat; `GET /notifications/{id}` ochilganda bildirishnoma “o‘qilgan” deb belgilanadi.
 

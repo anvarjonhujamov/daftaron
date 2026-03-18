@@ -32,7 +32,7 @@ export default function CustomerDetailPage() {
         send_sms: false
     })
     const [debtErrors, setDebtErrors] = useState({})
-    const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null, paid_at: '' })
+    const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
     const [paymentErrors, setPaymentErrors] = useState({})
 
     useEffect(() => {
@@ -135,13 +135,14 @@ export default function CustomerDetailPage() {
                     await paymentsApi.createPayment({
                         debt_id: debt.id,
                         amount: paymentForThisDebt,
-                        paid_at: paymentForm.paid_at || null
+                        paid_at: paymentForm.paid_at || null,
+                        send_sms: paymentForm.send_sms
                     })
                     remainingPayment -= paymentForThisDebt
                 }
             }
 
-            setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '' })
+            setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
             setPaymentErrors({})
             setShowPaymentDrawer(false)
             toast.success(
@@ -477,7 +478,7 @@ export default function CustomerDetailPage() {
                 setShowPaymentDrawer(open)
                 if (!open) {
                     setTimeout(() => {
-                        setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '' })
+                        setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
                         setPaymentErrors({})
                     }, 300)
                 }
@@ -538,6 +539,23 @@ export default function CustomerDetailPage() {
                                         }}
                                     />
                                     {paymentErrors.paid_at && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{paymentErrors.paid_at[0]}</p>}
+                                </div>
+                                <div className="flex items-start gap-3 pt-2">
+                                    <input
+                                        id="payment_send_sms"
+                                        type="checkbox"
+                                        className="w-5 h-5 rounded-md border-gray-300 text-blue-500 focus:ring-blue-500"
+                                        checked={paymentForm.send_sms}
+                                        onChange={(e) => setPaymentForm({ ...paymentForm, send_sms: e.target.checked })}
+                                    />
+                                    <div className="text-[13px] text-gray-600 dark:text-gray-300">
+                                        <label htmlFor="payment_send_sms" className="font-bold">
+                                            Mijozga SMS yuborish
+                                        </label>
+                                        <p className="text-[11px] text-gray-400 opacity-80">
+                                            Limitdan keyin balansdan yechiladi.
+                                        </p>
+                                    </div>
                                 </div>
                                 <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={submitting}>
                                     {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}

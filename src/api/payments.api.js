@@ -7,11 +7,17 @@ export const paymentsApi = {
     },
 
     createPayment: async (data) => {
-        const response = await api.post('/payments', {
+        const payload = {
             debt_id: data.debt_id,
             amount: data.amount,
             paid_at: data.paid_at || null
-        })
+        }
+
+        if (typeof data.send_sms === 'boolean') {
+            payload.send_sms = data.send_sms
+        }
+
+        const response = await api.post('/payments', payload)
         return response.data
     }
 }

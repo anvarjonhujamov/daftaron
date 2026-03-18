@@ -1016,6 +1016,10 @@ paths:
                   format: date-time
                   nullable: true
                   description: Optional payment datetime
+                send_sms:
+                  type: boolean
+                  nullable: true
+                  description: "true bo'lsa, to'lov qabul qilinganda mijozga SMS yuboriladi (ixtiyoriy)."
       responses:
         "201":
           description: Created
