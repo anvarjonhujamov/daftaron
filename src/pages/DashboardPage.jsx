@@ -188,9 +188,14 @@ export default function DashboardPage() {
         <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-[28px] font-bold text-gray-900 dark:text-white truncate pr-4">
-                    {user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}
-                </h1>
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
+                        <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
+                    </div>
+                    <h1 className="text-[24px] font-bold text-gray-900 dark:text-white truncate">
+                        {user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}
+                    </h1>
+                </div>
                 <div className="flex gap-2">
                     <Link
                         to="/notifications"

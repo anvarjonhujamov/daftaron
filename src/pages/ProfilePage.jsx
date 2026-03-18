@@ -198,7 +198,12 @@ export default function ProfilePage() {
 
     return (
         <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
-            <h1 className="text-[28px] font-bold text-gray-900 dark:text-white mb-6">Sozlamalar</h1>
+            <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
+                    <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
+                </div>
+                <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Sozlamalar</h1>
+            </div>
 
             {/* Profile Unified Card */}
             <div className="bg-white dark:bg-gray-800 rounded-[24px] p-4 mb-5 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] border border-gray-100 dark:border-gray-700/50">
