@@ -446,22 +446,26 @@ export default function CustomerDetailPage() {
                                             Bo'sh qolsa bugun olinadi. Oxirgi 1 oy ichida.
                                         </p>
                                     </div>
-                                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
-                                        <input
-                                            id="customer_send_sms"
-                                            type="checkbox"
-                                            className="w-5 h-5 rounded-md border-gray-300 text-blue-500 focus:ring-blue-500"
-                                            checked={debtForm.send_sms}
-                                            onChange={(e) => setDebtForm({ ...debtForm, send_sms: e.target.checked })}
-                                        />
-                                        <div className="text-[13px] text-gray-600 dark:text-gray-300">
-                                            <label htmlFor="customer_send_sms" className="font-bold">
+                                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
+                                        <div className="flex-1">
+                                            <label htmlFor="customer_send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
                                                 Mijozga SMS yuborish
                                             </label>
                                             <p className="text-[11px] text-gray-400 opacity-80">
                                                 Limitdan keyin balansdan yechiladi.
                                             </p>
                                         </div>
+                                        <button
+                                            id="customer_send_sms"
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={debtForm.send_sms}
+                                            className="ios-switch"
+                                            data-state={debtForm.send_sms ? 'checked' : 'unchecked'}
+                                            onClick={() => setDebtForm({ ...debtForm, send_sms: !debtForm.send_sms })}
+                                        >
+                                            <span className="ios-switch-thumb" />
+                                        </button>
                                     </div>
                                     <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={submitting}>
                                         {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}
@@ -540,22 +544,26 @@ export default function CustomerDetailPage() {
                                     />
                                     {paymentErrors.paid_at && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{paymentErrors.paid_at[0]}</p>}
                                 </div>
-                                <div className="flex items-start gap-3 pt-2">
-                                    <input
-                                        id="payment_send_sms"
-                                        type="checkbox"
-                                        className="w-5 h-5 rounded-md border-gray-300 text-blue-500 focus:ring-blue-500"
-                                        checked={paymentForm.send_sms}
-                                        onChange={(e) => setPaymentForm({ ...paymentForm, send_sms: e.target.checked })}
-                                    />
-                                    <div className="text-[13px] text-gray-600 dark:text-gray-300">
-                                        <label htmlFor="payment_send_sms" className="font-bold">
+                                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
+                                    <div className="flex-1">
+                                        <label htmlFor="payment_send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
                                             Mijozga SMS yuborish
                                         </label>
                                         <p className="text-[11px] text-gray-400 opacity-80">
                                             Limitdan keyin balansdan yechiladi.
                                         </p>
                                     </div>
+                                    <button
+                                        id="payment_send_sms"
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={paymentForm.send_sms}
+                                        className="ios-switch"
+                                        data-state={paymentForm.send_sms ? 'checked' : 'unchecked'}
+                                        onClick={() => setPaymentForm({ ...paymentForm, send_sms: !paymentForm.send_sms })}
+                                    >
+                                        <span className="ios-switch-thumb" />
+                                    </button>
                                 </div>
                                 <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={submitting}>
                                     {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}

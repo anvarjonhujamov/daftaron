@@ -142,6 +142,28 @@
     @apply text-[12px] font-semibold text-gray-500 uppercase tracking-wider mb-3;
     @apply dark:text-gray-400;
   }
+
+  /* iOS Switch */
+  .ios-switch {
+    @apply relative inline-flex h-[31px] w-[51px] shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none;
+    background-color: #E9E9EB;
+  }
+
+  .dark .ios-switch {
+    background-color: #39393D;
+  }
+
+  .ios-switch[data-state="checked"] {
+    background-color: #007AFF !important;
+  }
+
+  .ios-switch-thumb {
+    @apply pointer-events-none block h-[27px] w-[27px] rounded-full bg-white shadow-md ring-0 transition-transform duration-200 transform translate-x-0.5;
+  }
+
+  .ios-switch[data-state="checked"] .ios-switch-thumb {
+    @apply translate-x-[22px];
+  }
 }
 
 /* Bottom Navigation Bar — Liquid Glass Style */

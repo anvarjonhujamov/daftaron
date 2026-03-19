@@ -164,22 +164,26 @@ export default function DebtFormPage() {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <input
-                            id="send_sms"
-                            type="checkbox"
-                            className="w-5 h-5 rounded-md border-gray-300 text-blue-500 focus:ring-blue-500"
-                            checked={form.send_sms}
-                            onChange={(e) => setForm({ ...form, send_sms: e.target.checked })}
-                        />
-                        <div className="text-[13px] text-gray-600 dark:text-gray-300">
-                            <label htmlFor="send_sms" className="font-medium">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
+                        <div className="flex-1">
+                            <label htmlFor="send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
                                 Mijozga SMS yuborish
                             </label>
-                            <p className="text-[12px] text-gray-400">
+                            <p className="text-[11px] text-gray-400 opacity-80">
                                 Tarifdagi bepul SMS limitidan keyin har bir SMS uchun balansdan yechiladi.
                             </p>
                         </div>
+                        <button
+                            id="send_sms"
+                            type="button"
+                            role="switch"
+                            aria-checked={form.send_sms}
+                            className="ios-switch"
+                            data-state={form.send_sms ? 'checked' : 'unchecked'}
+                            onClick={() => setForm({ ...form, send_sms: !form.send_sms })}
+                        >
+                            <span className="ios-switch-thumb" />
+                        </button>
                     </div>
 
                     <button
