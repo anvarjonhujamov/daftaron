@@ -10,7 +10,7 @@ import {
     Plus, CreditCard, Loader2, FileText, X, Trash2
 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '../utils/format'
-import { useSubscription } from '../contexts/SubscriptionProvider'
+import { useSubscription } from '../contexts/SubscriptionContext'
 import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
 
 

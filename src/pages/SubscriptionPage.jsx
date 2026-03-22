@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { subscriptionApi } from '../api/subscription.api'
-import { useSubscription } from '../contexts/SubscriptionProvider'
+import { useSubscription } from '../contexts/SubscriptionContext'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { buildClickUrl } from '../utils/click'
 import toast from 'react-hot-toast'

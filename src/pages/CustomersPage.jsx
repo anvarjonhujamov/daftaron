@@ -10,7 +10,7 @@ import EmptyState from '../components/EmptyState'
 import toast from 'react-hot-toast'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 import { formatCurrency } from '../utils/format'
-import { useSubscription } from '../contexts/SubscriptionProvider'
+import { useSubscription } from '../contexts/SubscriptionContext'
 import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
 
 export default function CustomersPage() {

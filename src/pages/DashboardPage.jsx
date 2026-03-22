@@ -13,7 +13,7 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton, { DashboardSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
-import { useSubscription } from '../contexts/SubscriptionProvider'
+import { useSubscription } from '../contexts/SubscriptionContext'
 
 export default function DashboardPage() {
     const [stats, setStats] = useState(null)
