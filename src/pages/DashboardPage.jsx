@@ -200,20 +200,6 @@ export default function DashboardPage() {
                     </h1>
                 </div>
                 
-                {remaining != null && (
-                    <div className={`px-3 py-1.5 rounded-full text-[12px] font-bold shadow-sm transition-colors ${subStatus === 'expired'
-                        ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                        : remaining < 10
-                            ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-                            : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-                        }`}>
-                        {subStatus === 'expired' ? (
-                            'Obuna tugagan'
-                        ) : (
-                            `Limit: ${remaining ?? 0} ta`
-                        )}
-                    </div>
-                )}
 
                 <div className="flex gap-2">
                     <Link
