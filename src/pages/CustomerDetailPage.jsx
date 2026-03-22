@@ -35,7 +35,6 @@ export default function CustomerDetailPage() {
     const [debtErrors, setDebtErrors] = useState({})
     const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
     const [paymentErrors, setPaymentErrors] = useState({})
-    const { status: subStatus, remaining } = useSubscription()
     const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
     const [blockedType, setBlockedType] = useState(null) // 'limit' | 'expired'
 
