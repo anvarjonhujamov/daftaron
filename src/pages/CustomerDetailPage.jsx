@@ -9,9 +9,9 @@ import {
     ChevronLeft, MoreVertical, Phone as PhoneIcon, MessageSquare,
     Plus, CreditCard, Loader2, FileText, X, Trash2
 } from 'lucide-react'
-import LoadingSpinner from '../components/LoadingSpinner'
-import { CustomerDetailSkeleton } from '../components/Skeleton'
 import { formatCurrency, parseCurrency } from '../utils/format'
+import { useSubscription } from '../contexts/SubscriptionContext'
+import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
 
 
 export default function CustomerDetailPage() {
@@ -34,6 +34,9 @@ export default function CustomerDetailPage() {
     const [debtErrors, setDebtErrors] = useState({})
     const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
     const [paymentErrors, setPaymentErrors] = useState({})
+    const { status: subStatus, remaining } = useSubscription()
+    const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
+    const [blockedType, setBlockedType] = useState(null) // 'limit' | 'expired'
 
     useEffect(() => {
         loadData()
@@ -168,6 +171,11 @@ export default function CustomerDetailPage() {
     }
 
     const handleMessage = () => {
+        if (subStatus === 'expired') {
+            setBlockedType('expired')
+            setShowBlockedDrawer(true)
+            return
+        }
         if (customer?.phone) window.location.href = `sms:${customer.phone}`
     }
 
@@ -277,7 +285,24 @@ export default function CustomerDetailPage() {
                     <button onClick={handleMessage} className="btn btn-outline flex-1 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><MessageSquare size={18} />Xabar</button>
                 </div>
                 <div className="flex gap-3">
-                    <button onClick={() => setShowDebtDrawer(true)} className="btn btn-danger flex-1 py-3 shadow-lg shadow-red-500/20 active:scale-95 transition-all">
+                    <button 
+                        onClick={() => {
+                            if (subStatus === 'expired') {
+                                setBlockedType('expired')
+                                setShowBlockedDrawer(true)
+                            } else if (remaining === 0) {
+                                setBlockedType('limit')
+                                setShowBlockedDrawer(true)
+                            } else {
+                                setShowDebtDrawer(true)
+                            }
+                        }} 
+                        className={`btn flex-1 py-3 shadow-lg active:scale-95 transition-all ${
+                            subStatus === 'expired' || remaining === 0
+                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 border border-gray-100 dark:border-gray-600'
+                                : 'btn-danger shadow-red-500/20'
+                        }`}
+                    >
                         <Plus size={18} />Nasiya
                     </button>
                     <button
@@ -632,6 +657,74 @@ export default function CustomerDetailPage() {
                                     disabled={submitting}
                                 >
                                     {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Ha'}
+                                </button>
+                            </div>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
+            {/* Blocked Action Drawer */}
+            <Drawer.Root open={showBlockedDrawer} onOpenChange={setShowBlockedDrawer}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 pb-safe outline-none">
+                        <div className="p-6 text-center">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-6" />
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                                blockedType === 'expired' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30'
+                            }`}>
+                                <AlertCircle size={32} className={blockedType === 'expired' ? 'text-red-500' : 'text-amber-500'} />
+                            </div>
+                            
+                            <h3 className="text-[20px] font-bold text-gray-900 dark:text-white mb-2">
+                                {blockedType === 'expired' ? 'Obunangiz tugagan' : 'Limit tugadi'}
+                            </h3>
+                            
+                            <p className="text-gray-500 dark:text-gray-400 mb-8 px-4 leading-relaxed">
+                                {blockedType === 'expired' ? (
+                                    <>
+                                        Obunangiz tugagan. Sizda hali <b>{remaining} ta</b> nasiya limiti mavjud.
+                                        Yo'qotmaslik uchun obunani yangilang.
+                                    </>
+                                ) : (
+                                    <>
+                                        Sizning nasiya limitingiz tugadi.
+                                        Qo'shimcha limit sotib oling yoki Pro tarifga o'ting.
+                                    </>
+                                )}
+                            </p>
+                            
+                            <div className="flex flex-col gap-3">
+                                {blockedType === 'expired' ? (
+                                    <Link
+                                        to="/subscription"
+                                        className="btn btn-primary w-full py-4 text-[16px] font-bold"
+                                    >
+                                        <RefreshCw size={20} className="mr-2" />
+                                        Obunani yangilash
+                                    </Link>
+                                ) : (
+                                    <>
+                                        <Link
+                                            to="/subscription"
+                                            className="btn btn-primary w-full py-4 text-[16px] font-bold"
+                                        >
+                                            <Zap size={20} className="mr-2" />
+                                            Limit sotib olish
+                                        </Link>
+                                        <Link
+                                            to="/subscription"
+                                            className="btn btn-outline w-full py-4 text-[16px] font-bold border-blue-500 text-blue-500"
+                                        >
+                                            Pro tarifga o'tish
+                                        </Link>
+                                    </>
+                                )}
+                                <button
+                                    onClick={() => setShowBlockedDrawer(false)}
+                                    className="p-3 text-gray-400 text-[14px] font-medium"
+                                >
+                                    Bekor qilish
                                 </button>
                             </div>
                         </div>

@@ -304,12 +304,17 @@ Bosqich 1                Bosqich 2               Bosqich 3
     "status": 1
   },
   "usage": {
+    "subscription_status": "active",
     "plan_name": "Oddiy",
     "plan_price": 29000,
-    "debt_limit": 70,
+    "debt_base_limit": 70,
+    "debt_extra_limit": 0,
+    "debt_total_limit": 70,
     "debt_used": 17,
     "debt_remaining": 53,
-    "sms_limit": 20,
+    "sms_base_limit": 20,
+    "sms_extra_limit": 0,
+    "sms_total_limit": 20,
     "sms_used": 8,
     "sms_remaining": 12,
     "extra_sms_price": 190
@@ -322,6 +327,24 @@ Bosqich 1                Bosqich 2               Bosqich 3
       "description": "Kichik do'konlar uchun",
       "debt_limit": 70,
       "sms_limit": 20
+    }
+  ],
+  "extra_packages": [
+    {
+      "id": 1,
+      "type": "debt",
+      "quantity": 50,
+      "price": 15000,
+      "is_active": true,
+      "sort_order": 0
+    },
+    {
+      "id": 2,
+      "type": "sms",
+      "quantity": 50,
+      "price": 25000,
+      "is_active": true,
+      "sort_order": 0
     }
   ],
   "transactions": [
@@ -349,15 +372,51 @@ Bosqich 1                Bosqich 2               Bosqich 3
 
 | Maydon | Tavsif | Ilova harakati |
 |--------|--------|---------------|
+| `subscription_status` | `active` yoki `expired` | Expired bo'lsa ogohlantirish ko'rsatish |
 | `plan_name` | Joriy ta'rif nomi (`null` = tanlanmagan) | Ta'rif nomini ko'rsatish |
 | `plan_price` | Ta'rif narxi (so'm/oy) | Narxni ko'rsatish |
-| `debt_limit` | Umumiy nasiya limiti (`null` = cheksiz) | "17 / 70" formatda ko'rsatish |
+| `debt_base_limit` | Ta'rifdagi nasiya limiti. `null` = cheksiz | |
+| `debt_extra_limit` | Sotib olingan qo'shimcha nasiya miqdori | Agar > 0: "(70 ta'rif + 50 qo'shimcha)" |
+| `debt_total_limit` | Umumiy nasiya limiti (base + extra). `null` = cheksiz | "17 / 120" formatda ko'rsatish |
 | `debt_used` | Ishlatilgan nasiyalar soni | |
 | `debt_remaining` | Qolgan nasiya limiti (`null` = cheksiz) | "Qoldi: 53 ta" |
-| `sms_limit` | Bepul SMS limiti | "8 / 20" formatda ko'rsatish |
+| `sms_base_limit` | Ta'rifdagi bepul SMS limiti | |
+| `sms_extra_limit` | Sotib olingan qo'shimcha SMS miqdori | Agar > 0: "(20 ta'rif + 50 qo'shimcha)" |
+| `sms_total_limit` | Umumiy SMS limiti (base + extra) | "8 / 70" formatda ko'rsatish |
 | `sms_used` | Ishlatilgan SMS soni | |
-| `sms_remaining` | Qolgan bepul SMS | "Qoldi: 12 ta" |
+| `sms_remaining` | Qolgan SMS | "Qoldi: 12 ta" |
 | `extra_sms_price` | Limitdan keyingi SMS narxi (so'm) | "190 so'm/SMS" ko'rsatish |
+
+**Muhim:** `debt_extra_limit` va `sms_extra_limit` obuna tugagandan keyin ham saqlanib qoladi. Obuna qayta faollashtirilganda limitlar qayta hisobga olinadi.
+
+**`extra_packages` — sotib olish mumkin bo'lgan qo'shimcha paketlar:**
+
+| Maydon | Tavsif | Ilova harakati |
+|--------|--------|---------------|
+| `id` | Paket ID | Sotib olish uchun ID |
+| `type` | `debt` yoki `sms` | Turi bo'yicha guruhlash |
+| `quantity` | Miqdori | "50 ta nasiya" ko'rsatish |
+| `price` | Narxi (so'm) | "15 000 so'm" ko'rsatish |
+
+**Paket sotib olish:** `POST /subscription/buy-extra/{extra_package_id}` — balansdan yechiladi.
+
+**Muvaffaqiyat (200):**
+```json
+{
+  "message": "Qo'shimcha 50 ta nasiya paketi sotib olindi!",
+  "purchase": { "id": 1, "type": "debt", "quantity": 50, "price": 15000 },
+  "balance": 35000
+}
+```
+
+**422 — Mablag' yetarli emas:**
+```json
+{
+  "message": "Mablag' yetarli emas.",
+  "package_price": 15000,
+  "balance": 5000
+}
+```
 
 **`plans` qoidalari:**
 - Trial davrida → faqat **Oddiy** ta'rif qaytadi
@@ -410,11 +469,12 @@ Bosqich 1                Bosqich 2               Bosqich 3
               ▼                     ▼
     Trial davomida            Trial tugaganda
     ┌──────────────┐         ┌──────────────┐
-    │ Barcha funk- │         │ 403 xato     │
-    │ siyalar      │         │ Faqat:       │
-    │ ishlaydi     │         │ - /sub/status│
-    │              │         │ - /sub/choose│
-    │ Oddiy bepul  │         │ - /support   │
+    │ Barcha funk- │         │ Read-only    │
+    │ siyalar      │         │ rejim:       │
+    │ ishlaydi     │         │ GET — ruxsat  │
+    │              │         │ POST — 403   │
+    │ Oddiy bepul  │         │ remaining_   │
+    │              │         │ limit bilan  │
     └──────────────┘         └──────────────┘
                                     │
                                     ▼
@@ -596,7 +656,7 @@ Do'kon raqami : +998901234567
 **Narxlash:**
 | Holat | Narx |
 |-------|------|
-| Ta'rif limiti ichida (Oddiy: 20 ta) | Bepul |
+| Ta'rif + paket limiti ichida (Oddiy: 20 ta + sotib olingan SMS paketlari) | Bepul |
 | Limitdan keyin | `extra_sms_price` (190 so'm) balansdan yechiladi |
 | Balans yetmasa | SMS yuborilmaydi, `sms_error` qaytadi, nasiya yaratiladi |
 
@@ -612,9 +672,42 @@ Do'kon raqami : +998901234567
 ### 10.6. Limit tekshiruvi
 
 Nasiya yaratishda ta'rif limiti tekshiriladi:
-- Umumiy nasiyalar soni `debt_limit` bilan solishtiriladi
-- Limit tugasa → **422**: `"Nasiya limiti (70 ta) tugagan."`
-- `debt_limit = null` bo'lsa — cheksiz
+1. Obuna holati tekshiriladi — expired bo'lsa → **403** (`remaining_limit` bilan)
+2. `total_limit = debt_base_limit + debt_extra_limit` hisoblanadi
+3. Umumiy nasiyalar soni `total_limit` bilan solishtiriladi
+4. Limit tugasa → **403**: `remaining_limit: 0`
+5. `debt_base_limit = null` bo'lsa — cheksiz
+
+**Muvaffaqiyatli yaratilganda (201):**
+```json
+{
+  "success": true,
+  "message": "Nasiya muvaffaqiyatli qo'shildi",
+  "debt": { ... },
+  "remaining_limit": 4,
+  "sms_sent": false,
+  "sms_info": null,
+  "sms_error": null
+}
+```
+
+**Limit tugaganda (403):**
+```json
+{
+  "error": true,
+  "message": "Sizning nasiya limitingiz tugadi. Qo'shimcha limit sotib oling yoki Pro tarifga o'ting.",
+  "remaining_limit": 0
+}
+```
+
+**Obuna expired (403):**
+```json
+{
+  "error": true,
+  "message": "Obunangiz tugagan. Sizda hali 7 ta nasiya limiti mavjud. Yo'qotmaslik uchun obunani yangilang.",
+  "remaining_limit": 7
+}
+```
 
 ---
 
@@ -918,7 +1011,7 @@ Hozircha backend Web uchun redirect URL beradi. Mobil ilovada kelajakda Click/Pa
 | **200** | Muvaffaqiyat | Ma'lumotni ko'rsatish |
 | **201** | Yaratildi | Muvaffaqiyat + yangi ma'lumot |
 | **401** | Token eskirgan / noto'g'ri | Token o'chirish → Login ekrani |
-| **403** | Trial tugagan / hisob bloklangan | Obuna sahifasiga yo'naltirish |
+| **403** | Obuna expired (POST/PUT/DELETE) yoki limit tugagan | Javobdagi `remaining_limit` ni ko'rsatish, obuna sahifasiga yo'naltirish |
 | **404** | Resurs topilmadi | "Ma'lumot topilmadi" xabari |
 | **422** | Validatsiya xatosi | Maydon xatolarini ko'rsatish |
 | **500** | Server xatosi | "Xatolik yuz berdi. Keyinroq urinib ko'ring." |
@@ -927,11 +1020,14 @@ Hozircha backend Web uchun redirect URL beradi. Mobil ilovada kelajakda Click/Pa
 
 ```
 403 qaytganda:
-  1. GET /subscription/status chaqirish (403 bermaydi)
-  2. trial_info.is_expired tekshirish
-  3. true bo'lsa → ta'rif tanlash ekrani
-  4. status = 0 bo'lsa → "Hisob faol emas" xabari
+  1. Javobdan `remaining_limit` ni o'qish
+  2. `remaining_limit > 0` bo'lsa → "Sizda hali X ta limit mavjud" ko'rsatish
+  3. GET /subscription/status chaqirish (GET — har doim ishlaydi, 403 bermaydi)
+  4. usage.subscription_status === "expired" bo'lsa → obuna yangilash ekrani
+  5. Limit tugagan bo'lsa → qo'shimcha paket sotib olish taklifi
 ```
+
+**Muhim:** Expired holatda GET requestlar (ro'yxatlar, ma'lumotlar) ishlaydi — faqat POST/PUT/PATCH/DELETE bloklangan.
 
 ### 18.3. 422 javob formati
 
@@ -994,6 +1090,7 @@ Har bir API javobda:
 |--------|-------|----------|
 | Obuna holati + limitlar | GET | `/subscription/status` |
 | Ta'rif tanlash | POST | `/subscription/choose/{plan}` |
+| Qo'shimcha paket sotib olish | POST | `/subscription/buy-extra/{extra_package}` |
 | AI support — xabar | POST | `/support/chat` |
 | AI support — tarix | GET | `/support/history` |
 | AI support — tozalash | DELETE | `/support/history` |

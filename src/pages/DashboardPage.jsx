@@ -13,6 +13,7 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton, { DashboardSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
+import { useSubscription } from '../contexts/SubscriptionContext'
 
 export default function DashboardPage() {
     const [stats, setStats] = useState(null)
@@ -180,6 +181,8 @@ export default function DashboardPage() {
         }))
         .sort((a, b) => b.computed_debt - a.computed_debt) // Descending order
 
+    const { remaining, status: subStatus } = useSubscription()
+
     if (loading) {
         return <DashboardSkeleton />
     }
@@ -196,6 +199,22 @@ export default function DashboardPage() {
                         {user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}
                     </h1>
                 </div>
+                
+                {remaining != null && (
+                    <div className={`px-3 py-1.5 rounded-full text-[12px] font-bold shadow-sm transition-colors ${subStatus === 'expired'
+                        ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                        : remaining < 10
+                            ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                            : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                        }`}>
+                        {subStatus === 'expired' ? (
+                            'Obuna tugagan'
+                        ) : (
+                            `Limit: ${remaining ?? 0} ta`
+                        )}
+                    </div>
+                )}
+
                 <div className="flex gap-2">
                     <Link
                         to="/notifications"

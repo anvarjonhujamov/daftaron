@@ -14,13 +14,17 @@ export const subscriptionApi = {
         return response.data
     },
 
-    /**
-     * POST /subscription/choose/{plan}
-     * planId: number|string – plan identifier in path.
-     * Returns: { message, trial_ends_at, balance, ... } per OpenAPI.
-     */
     choosePlan: async (planId) => {
         const response = await api.post(`/subscription/choose/${planId}`)
+        return response.data
+    },
+
+    /**
+     * POST /subscription/buy-extra/{packageId}
+     * Returns: { message, balance, ... }
+     */
+    buyExtraPackage: async (packageId) => {
+        const response = await api.post(`/subscription/buy-extra/${packageId}`)
         return response.data
     }
 }

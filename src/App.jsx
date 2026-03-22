@@ -5,6 +5,7 @@ import PrivateRoute from './components/PrivateRoute'
 import ScrollToTop from './components/ScrollToTop'
 import { initTelegramWebApp } from './utils/telegram'
 import { Toaster } from 'react-hot-toast'
+import { SubscriptionProvider } from './contexts/SubscriptionContext'
 
 // Auth pages
 import LoginPage from './pages/LoginPage'
@@ -32,7 +33,7 @@ export default function App() {
     }, [])
 
     return (
-        <>
+        <SubscriptionProvider>
             <Toaster
                 position="top-center"
                 toastOptions={{
@@ -78,6 +79,6 @@ export default function App() {
                 {/* 404 */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-        </>
+        </SubscriptionProvider>
     )
 }

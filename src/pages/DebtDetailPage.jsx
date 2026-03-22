@@ -11,6 +11,9 @@ import { CustomerDetailSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
 import EmptyState from '../components/EmptyState'
 import toast from 'react-hot-toast'
+import { useSubscription } from '../contexts/SubscriptionContext'
+import { AlertCircle, RefreshCw } from 'lucide-react'
+import { Drawer } from 'vaul'
 
 export default function DebtDetailPage() {
     const { id } = useParams()
@@ -19,6 +22,8 @@ export default function DebtDetailPage() {
     const [payments, setPayments] = useState([])
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
+    const { status: subStatus, remaining } = useSubscription()
+    const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
 
     useEffect(() => {
         loadData()
@@ -44,6 +49,10 @@ export default function DebtDetailPage() {
 
 
     const handleCloseDebt = async () => {
+        if (subStatus === 'expired') {
+            setShowBlockedDrawer(true)
+            return
+        }
         if (!confirm('Bu nasiyani yopmoqchimisiz?')) return
 
         setSubmitting(true)
@@ -59,6 +68,10 @@ export default function DebtDetailPage() {
     }
 
     const handleDeleteDebt = async () => {
+        if (subStatus === 'expired') {
+            setShowBlockedDrawer(true)
+            return
+        }
         if (!confirm('Bu nasiyani o\'chirmoqchimisiz?')) return
 
         setSubmitting(true)
@@ -231,6 +244,45 @@ export default function DebtDetailPage() {
                     </div>
                 </div>
             )}
+            {/* Blocked Action Drawer */}
+            <Drawer.Root open={showBlockedDrawer} onOpenChange={setShowBlockedDrawer}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 pb-safe outline-none">
+                        <div className="p-6 text-center">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-6" />
+                            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-red-100 dark:bg-red-900/30">
+                                <AlertCircle size={32} className="text-red-500" />
+                            </div>
+                            
+                            <h3 className="text-[20px] font-bold text-gray-900 dark:text-white mb-2">
+                                Obunangiz tugagan
+                            </h3>
+                            
+                            <p className="text-gray-500 dark:text-gray-400 mb-8 px-4 leading-relaxed">
+                                Obunangiz tugagan. Sizda hali <b>{remaining} ta</b> nasiya limiti mavjud.
+                                Yo'qotmaslik uchun obunani yangilang.
+                            </p>
+                            
+                            <div className="flex flex-col gap-3">
+                                <Link
+                                    to="/subscription"
+                                    className="btn btn-primary w-full py-4 text-[16px] font-bold"
+                                >
+                                    <RefreshCw size={20} className="mr-2" />
+                                    Obunani yangilash
+                                </Link>
+                                <button
+                                    onClick={() => setShowBlockedDrawer(false)}
+                                    className="p-3 text-gray-400 text-[14px] font-medium"
+                                >
+                                    Bekor qilish
+                                </button>
+                            </div>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
         </div>
     )
 }

@@ -10,6 +10,8 @@ import EmptyState from '../components/EmptyState'
 import toast from 'react-hot-toast'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 import { formatCurrency } from '../utils/format'
+import { useSubscription } from '../contexts/SubscriptionContext'
+import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
 
 export default function CustomersPage() {
     const location = useLocation()
@@ -19,8 +21,10 @@ export default function CustomersPage() {
     const [filter, setFilter] = useState('')
     const [showAddDrawer, setShowAddDrawer] = useState(false)
     const [submitting, setSubmitting] = useState(false)
-    const [form, setForm] = useState({ name: '', phone: PHONE_PREFIX })
     const [errors, setErrors] = useState({})
+    const { status: subStatus, remaining } = useSubscription()
+    const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
+    const [blockedType, setBlockedType] = useState(null) // 'limit' | 'expired'
 
     // Overdue tab state
     const [overdueList, setOverdueList] = useState([])
@@ -32,7 +36,12 @@ export default function CustomersPage() {
         const filterParam = params.get('filter')
         if (filterParam) setFilter(filterParam)
         if (location.state?.openAddDrawer) {
-            setShowAddDrawer(true)
+            if (subStatus === 'expired') {
+                setBlockedType('expired')
+                setShowBlockedDrawer(true)
+            } else {
+                setShowAddDrawer(true)
+            }
             window.history.replaceState({}, document.title)
         }
     }, [location.search])
@@ -179,8 +188,17 @@ export default function CustomersPage() {
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Mijozlar</h1>
                 <button
-                    onClick={() => setShowAddDrawer(true)}
-                    className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform"
+                    onClick={() => {
+                        if (subStatus === 'expired') {
+                            setBlockedType('expired')
+                            setShowBlockedDrawer(true)
+                        } else {
+                            setShowAddDrawer(true)
+                        }
+                    }}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform ${
+                        subStatus === 'expired' ? 'bg-gray-400' : 'bg-blue-500'
+                    }`}
                 >
                     <Plus size={22} strokeWidth={2.5} />
                 </button>
@@ -298,13 +316,21 @@ export default function CustomersPage() {
                                         </div>
                                     )}
                                     {(item.phone || item.customer_phone) && (
-                                        <a
-                                            href={`sms:${item.phone || item.customer_phone}`}
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault()
+                                                if (subStatus === 'expired') {
+                                                    setBlockedType('expired')
+                                                    setShowBlockedDrawer(true)
+                                                } else {
+                                                    window.location.href = `sms:${item.phone || item.customer_phone}`
+                                                }
+                                            }}
                                             className="flex items-center justify-center gap-2 mt-3 py-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-[#1e293b] dark:text-blue-400 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium w-full"
                                         >
                                             <MessageSquare size={16} />
                                             SMS yuborish
-                                        </a>
+                                        </button>
                                     )}
                                 </div>
                             ))}
@@ -440,6 +466,74 @@ export default function CustomersPage() {
                                     {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Mijoz qo\'shish'}
                                 </button>
                             </form>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
+            {/* Blocked Action Drawer */}
+            <Drawer.Root open={showBlockedDrawer} onOpenChange={setShowBlockedDrawer}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 pb-safe outline-none">
+                        <div className="p-6 text-center">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-6" />
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                                blockedType === 'expired' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30'
+                            }`}>
+                                <AlertCircle size={32} className={blockedType === 'expired' ? 'text-red-500' : 'text-amber-500'} />
+                            </div>
+                            
+                            <h3 className="text-[20px] font-bold text-gray-900 dark:text-white mb-2">
+                                {blockedType === 'expired' ? 'Obunangiz tugagan' : 'Limit tugadi'}
+                            </h3>
+                            
+                            <p className="text-gray-500 dark:text-gray-400 mb-8 px-4 leading-relaxed">
+                                {blockedType === 'expired' ? (
+                                    <>
+                                        Obunangiz tugagan. Sizda hali <b>{remaining} ta</b> nasiya limiti mavjud.
+                                        Yo'qotmaslik uchun obunani yangilang.
+                                    </>
+                                ) : (
+                                    <>
+                                        Sizning nasiya limitingiz tugadi.
+                                        Qo'shimcha limit sotib oling yoki Pro tarifga o'ting.
+                                    </>
+                                )}
+                            </p>
+                            
+                            <div className="flex flex-col gap-3">
+                                {blockedType === 'expired' ? (
+                                    <Link
+                                        to="/subscription"
+                                        className="btn btn-primary w-full py-4 text-[16px] font-bold"
+                                    >
+                                        <RefreshCw size={20} className="mr-2" />
+                                        Obunani yangilash
+                                    </Link>
+                                ) : (
+                                    <>
+                                        <Link
+                                            to="/subscription"
+                                            className="btn btn-primary w-full py-4 text-[16px] font-bold"
+                                        >
+                                            <Zap size={20} className="mr-2" />
+                                            Limit sotib olish
+                                        </Link>
+                                        <Link
+                                            to="/subscription"
+                                            className="btn btn-outline w-full py-4 text-[16px] font-bold border-blue-500 text-blue-500"
+                                        >
+                                            Pro tarifga o'tish
+                                        </Link>
+                                    </>
+                                )}
+                                <button
+                                    onClick={() => setShowBlockedDrawer(false)}
+                                    className="p-3 text-gray-400 text-[14px] font-medium"
+                                >
+                                    Bekor qilish
+                                </button>
+                            </div>
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>

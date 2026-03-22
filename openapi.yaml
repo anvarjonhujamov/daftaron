@@ -75,6 +75,29 @@ components:
           type: integer
           nullable: true
           description: "Oyiga bepul SMS soni. null bo'lsa cheklanmagan."
+    ExtraPackage:
+      type: object
+      description: "Qo'shimcha paket (admin yaratadi, foydalanuvchi sotib oladi)"
+      properties:
+        id:
+          type: integer
+          description: Paket ID
+        type:
+          type: string
+          enum: [debt, sms]
+          description: "Paket turi: debt (nasiya) yoki sms"
+        quantity:
+          type: integer
+          description: "Paketdagi miqdor"
+        price:
+          type: number
+          description: "Narxi (so'm)"
+        is_active:
+          type: boolean
+          description: "Faolmi"
+        sort_order:
+          type: integer
+          description: "Tartib raqami"
     User:
       type: object
       description: Authenticated user
@@ -818,8 +841,20 @@ paths:
               schema:
                 type: object
                 properties:
+                  success:
+                    type: boolean
+                    description: "Muvaffaqiyatli yaratilganini bildiradi (har doim true)"
+                    example: true
+                  message:
+                    type: string
+                    description: "Xabar matni"
+                    example: "Nasiya muvaffaqiyatli qo'shildi"
                   debt:
                     $ref: "#/components/schemas/Debt"
+                  remaining_limit:
+                    type: integer
+                    description: "Qolgan nasiya limiti (total_limit - used). Cheksiz plan da null."
+                    example: 4
                   sms_sent:
                     type: boolean
                     description: "true bo'lsa, SMS muvaffaqiyatli yuborilgan."
@@ -831,6 +866,24 @@ paths:
                     type: string
                     nullable: true
                     description: "SMS yuborishda xatolik bo'lsa, xabar matni."
+        "403":
+          description: "Limit tugagan yoki obuna expired"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    description: "Xatolik matni (limit tugagan yoki obuna expired)"
+                    example: "Sizning nasiya limitingiz tugadi. Qo'shimcha limit sotib oling yoki Pro tarifga o'ting."
+                  remaining_limit:
+                    type: integer
+                    description: "Qolgan nasiya limiti (0 = limit tugagan)"
+                    example: 0
   /debts/{id}:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"
@@ -1055,11 +1108,37 @@ paths:
                     type: integer
                     nullable: true
                     description: "Hozirgi faol ta'rif ID si (tenant.plan_id); obuna yo'q bo'lsa null."
+                  usage:
+                    type: object
+                    description: "Joriy ta'rif limiti va ishlatilgan miqdorlar (sotib olingan paketlar hisobga olingan)"
+                    properties:
+                      subscription_status:
+                        type: string
+                        enum: [active, expired]
+                        description: "Obuna holati: active = faol, expired = muddati tugagan"
+                      plan_name: { type: string, nullable: true, description: "Joriy ta'rif nomi" }
+                      plan_price: { type: number, description: "Ta'rif narxi (so'm/oy)" }
+                      debt_base_limit: { type: integer, nullable: true, description: "Ta'rifdagi nasiya limiti. null = cheksiz" }
+                      debt_extra_limit: { type: integer, description: "Sotib olingan qo'shimcha nasiya miqdori" }
+                      debt_total_limit: { type: integer, nullable: true, description: "Umumiy nasiya limiti (base + extra). null = cheksiz" }
+                      debt_used: { type: integer, description: "Ishlatilgan nasiyalar soni" }
+                      debt_remaining: { type: integer, nullable: true, description: "Qolgan nasiya limiti (total - used)" }
+                      sms_base_limit: { type: integer, description: "Ta'rifdagi bepul SMS limiti" }
+                      sms_extra_limit: { type: integer, description: "Sotib olingan qo'shimcha SMS miqdori" }
+                      sms_total_limit: { type: integer, description: "Umumiy SMS limiti (base + extra)" }
+                      sms_used: { type: integer, description: "Ishlatilgan SMS soni" }
+                      sms_remaining: { type: integer, description: "Qolgan SMS" }
+                      extra_sms_price: { type: integer, description: "Limitdan keyingi har bir SMS narxi (so'm)" }
                   plans:
                     type: array
-                    description: "Mavjud tariflar (hozircha faqat Oddiy nasiya to'plami). Har bir ta'rifda nasiya limitlari va bepul SMS limiti bo'lishi mumkin."
+                    description: "Mavjud tariflar. Har bir ta'rifda nasiya limitlari va bepul SMS limiti bo'lishi mumkin."
                     items:
                       $ref: "#/components/schemas/Plan"
+                  extra_packages:
+                    type: array
+                    description: "Sotib olish mumkin bo'lgan qo'shimcha paketlar (admin yaratadi)"
+                    items:
+                      $ref: "#/components/schemas/ExtraPackage"
                   transactions:
                     type: array
                     description: Oxirgi 10 ta tranzaksiya (balans to'ldirish va obuna to'lovlari)
@@ -1068,7 +1147,7 @@ paths:
                       properties:
                         id: { type: integer }
                         amount: { type: number, description: "Miqdor: balans to'ldirish uchun musbat, obuna uchun manfiy" }
-                        type: { type: string, description: "deposit yoki subscription" }
+                        type: { type: string, description: "deposit, subscription, sms, extra_package" }
                         status: { type: string }
                         description: { type: string, nullable: true }
                         created_at: { type: string, format: date-time }
@@ -1107,6 +1186,47 @@ paths:
           description: Mablag' yetarli emas, trial cheklovi yoki tanlangan ta'rif allaqachon faol
         "500":
           description: Ichki server xatosi
+  /subscription/buy-extra/{extra_package}:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Subscription]
+      security: [{ bearerAuth: [] }]
+      summary: "Qo'shimcha paket sotib olish (balansdan)"
+      description: |
+        Foydalanuvchi qo'shimcha nasiya yoki SMS paketini balansdan sotib oladi.
+        Sotib olingan paketlar umumiy limitga qo'shiladi.
+      parameters:
+        - in: path
+          name: extra_package
+          required: true
+          schema: { type: integer }
+          description: "Qo'shimcha paket ID si"
+      responses:
+        "200":
+          description: "Paket muvaffaqiyatli sotib olindi"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  purchase:
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      type: { type: string, description: "debt yoki sms" }
+                      quantity: { type: integer }
+                      price: { type: number }
+                  balance:
+                    type: number
+                    format: float
+                    description: "Yangilangan balans"
+        "422":
+          description: "Mablag' yetarli emas yoki paket faol emas"
+        "500":
+          description: "Ichki server xatosi"
   /profile:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"

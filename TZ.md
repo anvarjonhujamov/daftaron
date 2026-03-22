@@ -169,12 +169,34 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
 
 ## 6. Obuna va balans tizimi
 
-### 6.1. Trial (sinov muddati)
+### 6.1. Trial va obuna holatlari
 
 - **Davomiyligi:** `Setting::get('trial_days')` — admin tomonidan sozlanadi (default 15 kun, 0 = sinovsiz).
 - Ro'yxatdan o'tganda `trial_ends_at = now + trial_days`.
-- Trial faol — barcha funksiyalar ishlaydi.
-- Trial tugaganda — **403** xato, faqat `GET /subscription/status` ishlaydi.
+
+**Obuna holatlari:**
+
+| Holat | Shart | Ruxsatlar |
+|-------|-------|-----------|
+| `active` | `trial_ends_at > now()` va `status = 1` | Barcha funksiyalar ishlaydi |
+| `expired` | `trial_ends_at < now()` yoki `status = 0` | **Read-only rejim** — faqat GET ruxsat, POST/PUT/PATCH/DELETE bloklangan |
+
+**CheckSubscription middleware (`check.subscription`):**
+- GET requestlarga ruxsat (read-only) — expired bo'lsa ham ma'lumotlarni ko'rish mumkin
+- POST/PUT/PATCH/DELETE — bloklash, 403 qaytarish
+- Admin/manager uchun cheklov yo'q
+- `subscription.*`, `payment.*`, `login`, `register`, `logout` route'lari o'tkazib yuboriladi
+
+**Expired holatda 403 javob formati (API):**
+```json
+{
+  "error": true,
+  "message": "Obunangiz tugagan. Sizda hali 7 ta nasiya limiti mavjud. Yo'qotmaslik uchun obunani yangilang.",
+  "remaining_limit": 7
+}
+```
+
+**Muhim:** `remaining_limit` har doim qaytariladi — expired bo'lsa ham foydalanuvchiga qolgan limiti ko'rsatiladi. Qo'shimcha paketlar orqali sotib olingan limit obuna tugagandan keyin ham saqlanib qoladi.
 
 ### 6.2. Ta'riflar (Plans)
 
@@ -233,12 +255,17 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
     "status": 1
   },
   "usage": {
+    "subscription_status": "active",
     "plan_name": "Oddiy",
     "plan_price": 29000,
-    "debt_limit": 70,
+    "debt_base_limit": 70,
+    "debt_extra_limit": 0,
+    "debt_total_limit": 70,
     "debt_used": 17,
     "debt_remaining": 53,
-    "sms_limit": 20,
+    "sms_base_limit": 20,
+    "sms_extra_limit": 0,
+    "sms_total_limit": 20,
     "sms_used": 8,
     "sms_remaining": 12,
     "extra_sms_price": 190
@@ -250,6 +277,24 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
       "price": 29000,
       "debt_limit": 70,
       "sms_limit": 20
+    }
+  ],
+  "extra_packages": [
+    {
+      "id": 1,
+      "type": "debt",
+      "quantity": 50,
+      "price": 15000,
+      "is_active": true,
+      "sort_order": 0
+    },
+    {
+      "id": 2,
+      "type": "sms",
+      "quantity": 50,
+      "price": 25000,
+      "is_active": true,
+      "sort_order": 0
     }
   ],
   "transactions": []
@@ -265,30 +310,53 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
 
 | `usage` maydon | Tavsif |
 |----------------|--------|
+| `subscription_status` | Obuna holati: `active` yoki `expired` |
 | `plan_name` | Joriy ta'rif nomi (`null` agar tanlanmagan) |
 | `plan_price` | Ta'rif narxi (so'm/oy) |
-| `debt_limit` | Umumiy nasiya limiti (`null` = cheksiz) |
+| `debt_base_limit` | Ta'rifdagi nasiya limiti. `null` = cheksiz |
+| `debt_extra_limit` | Sotib olingan qo'shimcha nasiya miqdori |
+| `debt_total_limit` | Umumiy nasiya limiti (base + extra). `null` = cheksiz |
 | `debt_used` | Ishlatilgan nasiyalar soni |
-| `debt_remaining` | Qolgan nasiya limiti (`null` = cheksiz) |
-| `sms_limit` | Bepul SMS limiti |
+| `debt_remaining` | Qolgan nasiya limiti (total - used). `null` = cheksiz |
+| `sms_base_limit` | Ta'rifdagi bepul SMS limiti |
+| `sms_extra_limit` | Sotib olingan qo'shimcha SMS miqdori |
+| `sms_total_limit` | Umumiy SMS limiti (base + extra) |
 | `sms_used` | Ishlatilgan SMS soni |
-| `sms_remaining` | Qolgan bepul SMS |
+| `sms_remaining` | Qolgan SMS (total - used) |
 | `extra_sms_price` | Limitdan keyingi har bir SMS narxi (so'm) |
 
-### 6.6. Limitdan tashqari narxlar (admin sozlamalari)
+| `extra_packages` maydon | Tavsif |
+|--------------------------|--------|
+| `id` | Paket ID |
+| `type` | `debt` yoki `sms` |
+| `quantity` | Paketdagi miqdor |
+| `price` | Narxi (so'm) |
+| `is_active` | Faolmi |
+| `sort_order` | Tartib raqami |
 
-Admin panelda `Sozlamalar` bo'limida dinamik saqlanadi:
+### 6.6. Qo'shimcha paketlar tizimi
+
+Admin panelda **Qo'shimcha paketlar** (`/admin/extra-packages`) bo'limida istalgan miqdor va narxda paketlar yaratiladi.
+
+**Paket turlari:** `debt` (nasiya) va `sms`.
+
+**Sotib olish:**
+- **Web:** `POST /subscription/buy-extra/{extra_package}` — balansdan yechiladi
+- **API:** `POST /v1/subscription/buy-extra/{extra_package}` — balansdan yechiladi
+
+Sotib olingan paketlar `extra_purchases` jadvaliga yoziladi va foydalanuvchining umumiy limitiga qo'shiladi:
+- Nasiya limiti = `plan.debt_limit` + sotib olingan `debt` paketlar `quantity` yig'indisi
+- SMS limiti = `plan.sms_limit` + sotib olingan `sms` paketlar `quantity` yig'indisi
+
+**Tranzaksiya turi:** `transactions.type = "extra_package"`
+
+### 6.7. SMS narxi (sozlamalar)
+
+Admin panelda `Sozlamalar` bo'limida:
 
 | Sozlama | Default | Tavsif |
 |---------|---------|--------|
-| `extra_sms_price` | 190 so'm | Har bir qo'shimcha SMS narxi |
-| `extra_employee_price` | 9 900 so'm/oy | Qo'shimcha xodim uchun |
-| `extra_debt_20_price` | 1 900 so'm/oy | 20 ta qo'shimcha nasiya limiti |
-| `extra_debt_30_price` | 2 900 so'm/oy | 30 ta qo'shimcha nasiya limiti |
-| `extra_debt_40_price` | 3 900 so'm/oy | 40 ta qo'shimcha nasiya limiti |
-| `extra_business_price` | 14 900 so'm/oy | Yangi do'kon qo'shish |
-
-> Bu qiymatlar hozircha **konfiguratsiya** sifatida saqlanadi. Qo'shimcha paketlarni sotib olish logikasi keyingi bosqichda quriladi.
+| `extra_sms_price` | 190 so'm | Bepul + paket limiti tugagandan keyin har bir SMS narxi |
 
 ---
 
@@ -343,7 +411,7 @@ Har bir mijoz bitta `tenant_id` ga bog'langan.
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
 | GET | `/debts` | `customer_id` (ixtiyoriy filter) | Nasiyalar ro'yxati |
-| POST | `/debts` | `customer_id`, `total_amount`, `debt_date`, `description`, `send_sms` | 201: `debt`, `sms_sent`, `sms_info`, `sms_error` |
+| POST | `/debts` | `customer_id`, `total_amount`, `debt_date`, `description`, `send_sms` | 201: `success`, `message`, `debt`, `remaining_limit`, `sms_sent`, `sms_info`, `sms_error`; 403: `error`, `message`, `remaining_limit` |
 | GET | `/debts/{id}` | — | Bitta nasiya |
 | PUT | `/debts/{id}` | `customer_id`, `total_amount`, `debt_date`, `description` | Yangilangan nasiya |
 | DELETE | `/debts/{id}` | — | O'chirildi (bog'liq to'lovlar ham) |
@@ -352,9 +420,14 @@ Har bir mijoz bitta `tenant_id` ga bog'langan.
 ### 8.4. Limit tekshiruvi
 
 Nasiya yaratishda `DebtService::checkDebtLimit()` ishlaydi:
-1. Foydalanuvchining faol ta'rifi topiladi
-2. Umumiy nasiyalar soni `debt_limit` bilan solishtiriladi
-3. Limit tugagan bo'lsa → **422** xato
+1. Obuna holati tekshiriladi — expired bo'lsa 403 (`remaining_limit` bilan)
+2. Ta'rif va plan topiladi
+3. `total_limit = plan.debt_limit + extra_purchases(debt).sum(quantity)` hisoblanadi
+4. Umumiy nasiyalar soni `total_limit` bilan solishtiriladi
+5. Limit tugagan bo'lsa → **403**: `"Sizning nasiya limitingiz tugadi..."`, `remaining_limit: 0`
+6. `debt_limit = null` bo'lsa — cheksiz, limit tekshiruvi o'tkazib yuboriladi
+
+**Muhim:** Qo'shimcha paketlar orqali sotib olingan limit obuna tugagandan keyin ham saqlanib qoladi va obuna qayta faollashtirilganda qayta hisobga olinadi.
 
 ---
 
@@ -443,7 +516,7 @@ Nasiya bo'yicha to'lovlar — `payments` jadvalida.
 
 | Holat | Narx |
 |-------|------|
-| Ta'rif limiti ichida (masalan Oddiy da 20 ta) | **Bepul** |
+| Ta'rif + paket limiti ichida (masalan Oddiy da 20 ta + sotib olingan SMS paketlari) | **Bepul** |
 | Limitdan keyin har bir SMS | `extra_sms_price` (default **190 so'm**) balansdan yechiladi |
 | Balans yetmasa | SMS yuborilmaydi, `sms_error` qaytadi, lekin nasiya/to'lov yaratiladi |
 | Admin/Manager | SMS uchun to'lov olinmaydi |
@@ -786,7 +859,8 @@ https://checkout.paycom.uz/BASE64(
 | `/admin/categories` | Kategoriyalar CRUD |
 | `/admin/payment-systems` | To'lov tizimlari (ko'rish, tahrirlash) |
 | `/admin/payments` | To'lovlar tarixi |
-| `/admin/settings` | Tizim sozlamalari (trial_days, narxlar) |
+| `/admin/extra-packages` | Qo'shimcha paketlar CRUD (nasiya/SMS) |
+| `/admin/settings` | Tizim sozlamalari (trial_days, SMS narxi) |
 | `/admin/profile` | Admin profil |
 | `/admin/notifications` | Admin bildirishnomalari |
 
@@ -912,6 +986,8 @@ users ──────────┐
 | `categories` | Do'kon kategoriyalari |
 | `expenses` | Xarajatlar (admin) |
 | `settings` | Tizim sozlamalari (key-value) |
+| `extra_packages` | Qo'shimcha paketlar (type, quantity, price, is_active, sort_order) |
+| `extra_purchases` | Foydalanuvchi sotib olgan paketlar (user_id, extra_package_id, type, quantity, price) |
 | `agent_conversations` | AI chat tarixi |
 | `notifications` | Bildirishnomalar |
 | `personal_access_tokens` | Sanctum tokenlar |
@@ -924,6 +1000,7 @@ users ──────────┐
 | `deposit` | Balans to'ldirish (Click/Payme/admin) |
 | `subscription` | Ta'rif sotib olish |
 | `sms` | SMS uchun to'lov |
+| `extra_package` | Qo'shimcha paket sotib olish |
 | `refund` | Qaytarish |
 | `expense` | Xarajat |
 
@@ -1085,6 +1162,7 @@ users ──────────┐
 | `/admin/categories` | resource | Kategoriyalar CRUD |
 | `/admin/payment-systems` | index/edit/update | To'lov tizimlari |
 | `/admin/payments` | GET | To'lovlar tarixi |
+| `/admin/extra-packages` | resource | Qo'shimcha paketlar CRUD |
 | `/admin/settings` | GET/PUT | Sozlamalar |
 | `/admin/profile` | GET | Admin profil |
 | `/admin/notifications` | GET | Admin bildirishnomalari |
@@ -1168,12 +1246,9 @@ GROQ_API_KEY=...
 | Kalit | Default | Tavsif |
 |-------|---------|--------|
 | `trial_days` | 15 | Sinov muddati (kun) |
-| `extra_sms_price` | 190 | Qo'shimcha SMS narxi (so'm) |
-| `extra_employee_price` | 9 900 | Qo'shimcha xodim narxi (so'm/oy) |
-| `extra_debt_20_price` | 1 900 | 20 ta nasiya limiti (so'm/oy) |
-| `extra_debt_30_price` | 2 900 | 30 ta nasiya limiti (so'm/oy) |
-| `extra_debt_40_price` | 3 900 | 40 ta nasiya limiti (so'm/oy) |
-| `extra_business_price` | 14 900 | Yangi do'kon (so'm/oy) |
+| `extra_sms_price` | 190 | Limitdan keyingi har bir SMS narxi (so'm) |
+
+> Qo'shimcha nasiya/SMS paketlari endi `extra_packages` jadvalida admin tomonidan boshqariladi (`/admin/extra-packages`).
 
 ---
 
