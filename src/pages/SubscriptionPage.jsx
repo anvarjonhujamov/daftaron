@@ -307,7 +307,7 @@ export default function SubscriptionPage() {
                                     {/* Accordion content — expanded */}
                                     {isOpen && (
                                         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                                            {plan.description && (
+                                            {plan.description && plan.features && plan.features.length > 0 && (
                                                 <div
                                                     className="text-[14px] text-gray-600 dark:text-gray-300 mb-4 whitespace-pre-line leading-relaxed"
                                                     dangerouslySetInnerHTML={{ __html: plan.description }}
@@ -315,14 +315,24 @@ export default function SubscriptionPage() {
                                             )}
 
                                             <div className="space-y-1">
-                                                {plan.features && plan.features.map((feature, i) => (
-                                                    <div key={i} className="flex items-start gap-3 py-2 border-b border-gray-50/50 dark:border-gray-700/50 last:border-0">
-                                                        <div className="mt-0.5 w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
-                                                            <Check size={12} className="text-blue-600 dark:text-blue-400" />
+                                                {(() => {
+                                                    const features = (plan.features && plan.features.length > 0)
+                                                        ? plan.features
+                                                        : (plan.description
+                                                            ? plan.description.split('\n')
+                                                                .map(line => line.replace(/<[^>]*>/g, '').trim()) // Remove potential HTML tags
+                                                                .filter(line => line.length > 0 && !line.includes('so\'m /oy')) // Filter out header-like lines
+                                                            : [])
+
+                                                    return features.map((feature, i) => (
+                                                        <div key={i} className="flex items-start gap-3 py-2 border-b border-gray-50/50 dark:border-gray-700/50 last:border-0">
+                                                            <div className="mt-0.5 w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                                                                <Check size={12} className="text-blue-600 dark:text-blue-400" />
+                                                            </div>
+                                                            <span className="text-[14px] font-medium text-gray-700 dark:text-gray-200">{feature}</span>
                                                         </div>
-                                                        <span className="text-[14px] font-medium text-gray-700 dark:text-gray-200">{feature}</span>
-                                                    </div>
-                                                ))}
+                                                    ))
+                                                })()}
                                             </div>
 
                                             {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && !isActivePlan && (
