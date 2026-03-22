@@ -27,10 +27,10 @@ export function SubscriptionProvider({ children }) {
 
         setSubscription(prev => ({
             ...prev,
-            status: data.subscription_status || data.status || prev.status,
-            remaining: data.remaining_limit ?? data.remaining ?? prev.remaining,
-            total: data.total_limit ?? data.total ?? prev.total,
-            sms_remaining: trial.sms_remaining ?? data.remaining_sms ?? prev.sms_remaining,
+            status: data.subscription_status || data.status || trial.status || prev.status,
+            remaining: data.remaining_limit ?? data.remaining ?? trial.remaining_limit ?? trial.remaining ?? prev.remaining,
+            total: data.total_limit ?? data.total ?? trial.total_limit ?? trial.total ?? prev.total,
+            sms_remaining: data.remaining_sms ?? data.sms_remaining ?? trial.remaining_sms ?? trial.sms_remaining ?? prev.sms_remaining,
             blocked: isBlocked
         }))
     }, [])
