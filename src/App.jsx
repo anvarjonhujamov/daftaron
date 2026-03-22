@@ -5,7 +5,7 @@ import PrivateRoute from './components/PrivateRoute'
 import ScrollToTop from './components/ScrollToTop'
 import { initTelegramWebApp } from './utils/telegram'
 import { Toaster } from 'react-hot-toast'
-import { SubscriptionProvider } from './contexts/SubscriptionContext'
+import { SubscriptionProvider } from './contexts/SubscriptionProvider'
 
 // Auth pages
 import LoginPage from './pages/LoginPage'

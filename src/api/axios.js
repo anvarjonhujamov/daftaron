@@ -21,47 +21,19 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 )
 
-let subscriptionListener = null
-
-export const setSubscriptionListener = (listener) => {
-    subscriptionListener = listener
-}
-
-// Response interceptor - handle 401 / 403 / metadata
+// Response interceptor - handle 401
 api.interceptors.response.use(
-    (response) => {
-        // Extract subscription/limit metadata if present
-        if (response.data && response.data.subscription_status !== undefined) {
-            if (subscriptionListener) {
-                subscriptionListener(response.data)
-            }
-        }
-        return response
-    },
+    (response) => response,
     (error) => {
         if (error.response?.status === 401) {
             localStorage.removeItem('token')
             localStorage.removeItem('user')
             window.location.href = '/login'
         }
-        
-        // Check for limit/subscription errors in error response
-        if (error.response?.data && error.response.data.subscription_status !== undefined) {
-            const { subscription_status, remaining_limit } = error.response.data
-            
-            if (subscription_status === 'expired') {
-                toast.error('Obunangiz tugagan')
-            } else if (remaining_limit === 0) {
-                toast.error('Limit tugadi')
-            }
-
-            if (subscriptionListener) {
-                subscriptionListener(error.response.data)
-            }
-        }
-
         return Promise.reject(error)
     }
 )
+
+export const setSubscriptionListener = () => {}
 
 export default api

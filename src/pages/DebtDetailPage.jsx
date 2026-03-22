@@ -11,7 +11,7 @@ import { CustomerDetailSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
 import EmptyState from '../components/EmptyState'
 import toast from 'react-hot-toast'
-import { useSubscription } from '../contexts/SubscriptionContext'
+import { useSubscription } from '../contexts/SubscriptionProvider'
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { Drawer } from 'vaul'
 
