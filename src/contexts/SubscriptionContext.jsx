@@ -1,12 +1,6 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { useContext, useState, useCallback, useEffect } from 'react'
 import { setSubscriptionListener } from '../api/axios'
-
-export const SubscriptionContext = createContext({
-    status: 'active', // 'active' | 'expired'
-    remaining: null,
-    total: null,
-    updateSubscriptionData: () => { }
-})
+import { SubscriptionContext } from './SubscriptionContext'
 
 export function SubscriptionProvider({ children }) {
     const [subscription, setSubscription] = useState({
@@ -25,7 +19,6 @@ export function SubscriptionProvider({ children }) {
             total: data.total_limit ?? data.total ?? prev.total ?? 50
         }))
     }, [])
-
 
     useEffect(() => {
         setSubscriptionListener(updateSubscriptionData)
