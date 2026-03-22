@@ -7,12 +7,11 @@ import { useContext } from 'react'
 import { AppLoadingSkeleton } from './Skeleton'
 
 export default function PrivateRoute({ children }) {
-    const { updateSubscriptionData } = useContext(SubscriptionContext)
+    const { updateSubscriptionData, blocked } = useContext(SubscriptionContext)
     const token = localStorage.getItem('token')
     const location = useLocation()
     const navigate = useNavigate()
     const [checking, setChecking] = useState(!!token)
-    const [blocked, setBlocked] = useState(false)
     const hasChecked = useRef(false)
 
     const checkSubscription = useCallback(async () => {
