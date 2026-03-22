@@ -3,10 +3,8 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { subscriptionApi } from '../api/subscription.api'
 import { authApi } from '../api/auth.api'
 import { SubscriptionContext } from '../contexts/SubscriptionContext'
-import { AppLoadingSkeleton } from './Skeleton'
-
-import { SubscriptionContext } from '../contexts/SubscriptionContext'
 import { useContext } from 'react'
+import { AppLoadingSkeleton } from './Skeleton'
 
 export default function PrivateRoute({ children }) {
     const { updateSubscriptionData } = useContext(SubscriptionContext)
