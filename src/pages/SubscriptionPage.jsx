@@ -15,7 +15,7 @@ import {
 
 export default function SubscriptionPage() {
     const navigate = useNavigate()
-    const { recheckSubscription, remaining, status: subStatus } = useSubscription()
+    const { remaining, status: subStatus } = useSubscription()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [status, setStatus] = useState(null)
@@ -51,11 +51,6 @@ export default function SubscriptionPage() {
 
             // Status ni qayta yuklash
             await loadStatus()
-
-            // PrivateRoute da blocked state ni yangilash
-            if (recheckSubscription) {
-                await recheckSubscription()
-            }
 
             // 2 sekunddan keyin bosh sahifaga yo'naltirish
             setTimeout(() => {
@@ -495,11 +490,6 @@ export default function SubscriptionPage() {
                                             const data = await subscriptionApi.buyExtraPackage(pkg.id)
                                             toast.success(data.message || 'Paket muvaffaqiyatli sotib olindi')
                                             await loadStatus()
-                                            
-                                            // App state ni yangilash
-                                            if (recheckSubscription) {
-                                                await recheckSubscription()
-                                            }
                                         } catch (err) {
                                             console.error('Failed to buy package:', err)
                                             toast.error(err.response?.data?.message || 'Sotib olishda xatolik yuz berdi')
