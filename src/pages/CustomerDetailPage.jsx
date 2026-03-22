@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { useSubscription } from '../contexts/SubscriptionContext'
+import { CustomerDetailSkeleton } from '../components/Skeleton'
 import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
 
 
