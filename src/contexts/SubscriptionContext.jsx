@@ -25,12 +25,13 @@ export function SubscriptionProvider({ children }) {
         const trial = data.trial_info || data.trial || {}
         const isBlocked = !!(trial.is_expired || trial.status === 0)
 
+        const usage = data.usage || {}
         setSubscription(prev => ({
             ...prev,
             status: data.subscription_status || data.status || trial.status || prev.status,
-            remaining: data.remaining_limit ?? data.remaining ?? trial.remaining_limit ?? trial.remaining ?? prev.remaining,
-            total: data.total_limit ?? data.total ?? trial.total_limit ?? trial.total ?? prev.total,
-            sms_remaining: data.remaining_sms ?? data.sms_remaining ?? trial.remaining_sms ?? trial.sms_remaining ?? prev.sms_remaining,
+            remaining: data.remaining_limit ?? data.remaining ?? trial.remaining_limit ?? trial.remaining ?? usage.debt_remaining ?? (usage.debt_limit !== undefined ? Math.max(0, usage.debt_limit - usage.debt_used) : prev.remaining),
+            total: data.total_limit ?? data.total ?? trial.total_limit ?? trial.total ?? usage.debt_limit ?? prev.total,
+            sms_remaining: data.remaining_sms ?? data.sms_remaining ?? trial.remaining_sms ?? trial.sms_remaining ?? usage.sms_remaining ?? (usage.sms_limit !== undefined ? Math.max(0, usage.sms_limit - usage.sms_used) : prev.sms_remaining),
             blocked: isBlocked
         }))
     }, [])
