@@ -40,11 +40,12 @@ export default function PrivateRoute({ children }) {
 
             setBlocked(isBlocked)
 
-            // Agar blocked — faqat subscription va profile ga ruxsat
-            const allowedWhenBlocked = ['/subscription', '/profile']
-            if (isBlocked && !allowedWhenBlocked.includes(window.location.pathname)) {
-                navigate('/subscription', { replace: true })
-            }
+            // Agar blocked — faqat subscription va profile ga ruxsat 
+            // (Lekin hozirda Read-only uchun bosh sahifa va boshqalarni ham ochishga ruxsat beramiz)
+            // const allowedWhenBlocked = ['/subscription', '/profile']
+            // if (isBlocked && !allowedWhenBlocked.includes(window.location.pathname)) {
+            //     navigate('/subscription', { replace: true })
+            // }
         } catch (err) {
             console.error('Subscription check failed:', err)
         } finally {
@@ -73,10 +74,11 @@ export default function PrivateRoute({ children }) {
         return <AppLoadingSkeleton />
     }
 
-    const allowedWhenBlocked = ['/subscription', '/profile']
-    if (blocked && !allowedWhenBlocked.includes(location.pathname)) {
-        return <Navigate to="/subscription" replace />
-    }
+    // Read-only uchun blocked bo'lganda ham sahifani ko'rishga ruxsat beramiz
+    // const allowedWhenBlocked = ['/subscription', '/profile']
+    // if (blocked && !allowedWhenBlocked.includes(location.pathname)) {
+    //     return <Navigate to="/subscription" replace />
+    // }
 
     return children
 }
