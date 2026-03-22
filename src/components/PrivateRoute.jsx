@@ -5,7 +5,11 @@ import { authApi } from '../api/auth.api'
 import { SubscriptionContext } from '../contexts/SubscriptionContext'
 import { AppLoadingSkeleton } from './Skeleton'
 
+import { SubscriptionContext } from '../contexts/SubscriptionContext'
+import { useContext } from 'react'
+
 export default function PrivateRoute({ children }) {
+    const { updateSubscriptionData } = useContext(SubscriptionContext)
     const token = localStorage.getItem('token')
     const location = useLocation()
     const navigate = useNavigate()
@@ -35,6 +39,12 @@ export default function PrivateRoute({ children }) {
 
             // 2) Subscription holatini tekshirish
             const data = await subscriptionApi.getStatus()
+            
+            // Global state ni yangilash
+            if (updateSubscriptionData) {
+                updateSubscriptionData(data)
+            }
+
             const trial = data.trial_info || data.trial || {}
             const isBlocked = !!(trial.is_expired || trial.status === 0)
 
