@@ -481,6 +481,16 @@ export default function CustomerDetailPage() {
                                                 {sms_remaining != null ? `Qolgan SMS: ${sms_remaining} ta` : 'Limitdan keyin balansdan yechiladi.'}
                                             </p>
                                         </div>
+                                        <button
+                                            id="customer_send_sms"
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={debtForm.send_sms}
+                                            className="ios-switch"
+                                            data-state={debtForm.send_sms ? 'checked' : 'unchecked'}
+                                            onClick={() => setDebtForm({ ...debtForm, send_sms: !debtForm.send_sms })}
+                                        >
+                                            <span className="ios-switch-thumb" />
                                         </button>
                                     </div>
 
