@@ -27,6 +27,7 @@ export default function ProfilePage() {
     const [darkMode, setDarkMode] = useState(false)
     const [balance, setBalance] = useState(0)
     const [currentPlan, setCurrentPlan] = useState(null)
+    const [usage, setUsage] = useState(null)
 
     const [profileForm, setProfileForm] = useState({
         name: '',
@@ -110,6 +111,10 @@ export default function ProfilePage() {
                 if (plan) {
                     setCurrentPlan(plan)
                 }
+            }
+            // Set usage if available
+            if (subData?.usage) {
+                setUsage(subData.usage)
             }
         } catch (balanceErr) {
             console.error('Failed to load balance:', balanceErr)
@@ -325,7 +330,7 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {currentPlan.sms_limit || 'Cheksiz'} SMS
+                                                {usage ? `${usage.sms_used}/${usage.sms_limit}` : (currentPlan.sms_limit || 'Cheksiz')} SMS
                                             </p>
                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Oylik bepul xabarlar</p>
                                         </div>
@@ -337,7 +342,7 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {currentPlan.low_amount_limit || 'Cheksiz'} ta nasiya
+                                                {usage ? `${usage.low_debt_used}/${usage.low_debt_limit}` : `${currentPlan.low_amount_limit || 'Cheksiz'} ta`} nasiya
                                             </p>
                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                                                 {formatCurrency(currentPlan.low_amount_threshold)} gacha bo'lganlar
@@ -351,7 +356,7 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {currentPlan.high_amount_limit || 'Cheksiz'} ta nasiya
+                                                {usage ? `${usage.high_debt_used}/${usage.high_debt_limit}` : `${currentPlan.high_amount_limit || 'Cheksiz'} ta`} nasiya
                                             </p>
                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                                                 {formatCurrency(currentPlan.low_amount_threshold)} dan yuqori bo'lganlar
