@@ -322,7 +322,7 @@ export default function ProfilePage() {
                         {/* Plan Limits Section */}
                         {currentPlan && !isTrialExpired && (
                             <div className="mt-4 pt-4 border-t border-orange-200/50 dark:border-orange-800/50">
-                                <p className="text-[12px] font-bold text-orange-800 dark:text-orange-300 mb-3 uppercase tracking-wider opacity-60">Ta'rif imkoniyatlari</p>
+                                <p className="text-[12px] font-bold text-orange-800 dark:text-orange-300 mb-3 uppercase tracking-wider opacity-60">Qolgan limitlar</p>
                                 <div className="grid grid-cols-1 gap-3">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-white/50 dark:bg-black/20 flex items-center justify-center shrink-0">
@@ -330,7 +330,7 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {usage ? `${usage.sms_used}/${usage.sms_limit}` : (currentPlan.sms_limit || 'Cheksiz')} SMS
+                                                {usage ? (usage.sms_remaining !== undefined ? usage.sms_remaining : Math.max(0, usage.sms_limit - usage.sms_used)) : (currentPlan.sms_limit || 'Cheksiz')} ta SMS
                                             </p>
                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Oylik bepul xabarlar</p>
                                         </div>
@@ -342,7 +342,7 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {usage ? `${usage.low_debt_used}/${usage.low_debt_limit}` : `${currentPlan.low_amount_limit || 'Cheksiz'} ta`} nasiya
+                                                {usage ? Math.max(0, usage.low_debt_limit - usage.low_debt_used) : (currentPlan.low_amount_limit || 'Cheksiz')} ta nasiya
                                             </p>
                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                                                 {formatCurrency(currentPlan.low_amount_threshold)} gacha bo'lganlar
@@ -356,7 +356,7 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {usage ? `${usage.high_debt_used}/${usage.high_debt_limit}` : `${currentPlan.high_amount_limit || 'Cheksiz'} ta`} nasiya
+                                                {usage ? Math.max(0, usage.high_debt_limit - usage.high_debt_used) : (currentPlan.high_amount_limit || 'Cheksiz')} ta nasiya
                                             </p>
                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                                                 {formatCurrency(currentPlan.low_amount_threshold)} dan yuqori bo'lganlar
