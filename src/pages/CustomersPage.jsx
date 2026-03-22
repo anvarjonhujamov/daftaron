@@ -25,6 +25,7 @@ export default function CustomersPage() {
     const { status: subStatus, remaining } = useSubscription()
     const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
     const [blockedType, setBlockedType] = useState(null) // 'limit' | 'expired'
+    const [form, setForm] = useState({ name: '', phone: PHONE_PREFIX })
 
     // Overdue tab state
     const [overdueList, setOverdueList] = useState([])
