@@ -2,7 +2,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { subscriptionApi } from '../api/subscription.api'
 import { authApi } from '../api/auth.api'
-import { SubscriptionContext } from '../contexts/SubscriptionContextObject.js'
+import { SubscriptionContext } from '../contexts/SubscriptionContext'
 import { useContext } from 'react'
 import { AppLoadingSkeleton } from './Skeleton'
 
