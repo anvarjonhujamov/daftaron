@@ -1,6 +1,6 @@
 import { useContext, useState, useCallback, useEffect } from 'react'
 import { setSubscriptionListener } from '../api/axios'
-import { SubscriptionContext } from './SubscriptionContext'
+import { SubscriptionContext } from './SubscriptionContextObject'
 
 export function SubscriptionProvider({ children }) {
     const [subscription, setSubscription] = useState({
