@@ -5,7 +5,7 @@ import { authApi } from '../api/auth.api'
 import { subscriptionApi } from '../api/subscription.api'
 import {
     User, Phone, Mail, Lock, LogOut, ChevronRight,
-    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle, Store, Bell, ShieldCheck
+    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle, Store, Bell, ShieldCheck, TrendingUp, BarChart3
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -26,6 +26,7 @@ export default function ProfilePage() {
     const [showEditDrawer, setShowEditDrawer] = useState(false)
     const [darkMode, setDarkMode] = useState(false)
     const [balance, setBalance] = useState(0)
+    const [currentPlan, setCurrentPlan] = useState(null)
 
     const [profileForm, setProfileForm] = useState({
         name: '',
@@ -98,10 +99,18 @@ export default function ProfilePage() {
             } catch (e) { /* ignore */ }
         }
 
-        // 2) Balansni ALOHIDA yuklash — profil xato bersa ham balans ko'rinadi
+        // 2) Balansni va tarif limitlarini yuklash
         try {
             const subData = await subscriptionApi.getStatus()
             setBalance(parseFloat(subData?.balance) || 0)
+
+            // Find current plan from status plans
+            if (subData?.current_plan_id && subData?.plans) {
+                const plan = subData.plans.find(p => p.id === subData.current_plan_id)
+                if (plan) {
+                    setCurrentPlan(plan)
+                }
+            }
         } catch (balanceErr) {
             console.error('Failed to load balance:', balanceErr)
         }
@@ -298,12 +307,60 @@ export default function ProfilePage() {
                                         : 'text-orange-600 dark:text-orange-400')
                                 }
                             >
-                                {isTrialExpired
-                                    ? "Muddati tugagan. Ta'rif tanlang."
-                                    : `${formatDate(user.trial_ends_at)} gacha amal qiladi`}
-                            </p>
+                                    {isTrialExpired
+                                        ? "Muddati tugagan. Ta'rif tanlang."
+                                        : `${formatDate(user.trial_ends_at)} gacha amal qiladi`}
+                                </p>
+                            </div>
                         </div>
-                    </div>
+
+                        {/* Plan Limits Section */}
+                        {currentPlan && !isTrialExpired && (
+                            <div className="mt-4 pt-4 border-t border-orange-200/50 dark:border-orange-800/50">
+                                <p className="text-[12px] font-bold text-orange-800 dark:text-orange-300 mb-3 uppercase tracking-wider opacity-60">Ta'rif imkoniyatlari</p>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-white/50 dark:bg-black/20 flex items-center justify-center shrink-0">
+                                            <MessageCircle size={15} className="text-orange-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+                                                {currentPlan.sms_limit || 'Cheksiz'} SMS
+                                            </p>
+                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Oylik bepul xabarlar</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-white/50 dark:bg-black/20 flex items-center justify-center shrink-0">
+                                            <TrendingUp size={15} className="text-orange-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+                                                {currentPlan.low_amount_limit || 'Cheksiz'} ta nasiya
+                                            </p>
+                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                                                {formatCurrency(currentPlan.low_amount_threshold)} gacha bo'lganlar
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-white/50 dark:bg-black/20 flex items-center justify-center shrink-0">
+                                            <BarChart3 size={15} className="text-orange-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+                                                {currentPlan.high_amount_limit || 'Cheksiz'} ta nasiya
+                                            </p>
+                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                                                {formatCurrency(currentPlan.low_amount_threshold)} dan yuqori bo'lganlar
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                 </div>
             )}
 
