@@ -306,10 +306,9 @@ Bosqich 1                Bosqich 2               Bosqich 3
   "usage": {
     "plan_name": "Oddiy",
     "plan_price": 29000,
-    "low_debt_limit": 30,
-    "low_debt_used": 5,
-    "high_debt_limit": 50,
-    "high_debt_used": 12,
+    "debt_limit": 70,
+    "debt_used": 17,
+    "debt_remaining": 53,
     "sms_limit": 20,
     "sms_used": 8,
     "sms_remaining": 12,
@@ -321,10 +320,8 @@ Bosqich 1                Bosqich 2               Bosqich 3
       "name": "Oddiy",
       "price": 29000,
       "description": "Kichik do'konlar uchun",
-      "low_amount_limit": 30,
-      "high_amount_limit": 50,
-      "sms_limit": 20,
-      "low_amount_threshold": 30000
+      "debt_limit": 70,
+      "sms_limit": 20
     }
   ],
   "transactions": [
@@ -354,10 +351,9 @@ Bosqich 1                Bosqich 2               Bosqich 3
 |--------|--------|---------------|
 | `plan_name` | Joriy ta'rif nomi (`null` = tanlanmagan) | Ta'rif nomini ko'rsatish |
 | `plan_price` | Ta'rif narxi (so'm/oy) | Narxni ko'rsatish |
-| `low_debt_limit` | Past summali nasiya limiti (`null` = cheksiz) | "5 / 30" formatda ko'rsatish |
-| `low_debt_used` | Ishlatilgan past summali nasiyalar | |
-| `high_debt_limit` | Yuqori summali nasiya limiti (`null` = cheksiz) | "12 / 50" formatda ko'rsatish |
-| `high_debt_used` | Ishlatilgan yuqori summali nasiyalar | |
+| `debt_limit` | Umumiy nasiya limiti (`null` = cheksiz) | "17 / 70" formatda ko'rsatish |
+| `debt_used` | Ishlatilgan nasiyalar soni | |
+| `debt_remaining` | Qolgan nasiya limiti (`null` = cheksiz) | "Qoldi: 53 ta" |
 | `sms_limit` | Bepul SMS limiti | "8 / 20" formatda ko'rsatish |
 | `sms_used` | Ishlatilgan SMS soni | |
 | `sms_remaining` | Qolgan bepul SMS | "Qoldi: 12 ta" |
@@ -616,9 +612,9 @@ Do'kon raqami : +998901234567
 ### 10.6. Limit tekshiruvi
 
 Nasiya yaratishda ta'rif limiti tekshiriladi:
-- **Past summa** (< 30 000 so'm): `low_amount_limit` tekshiriladi
-- **Yuqori summa** (≥ 30 000 so'm): `high_amount_limit` tekshiriladi
-- Limit tugasa → **422**: `"Nasiya limiti tugagan"`
+- Umumiy nasiyalar soni `debt_limit` bilan solishtiriladi
+- Limit tugasa → **422**: `"Nasiya limiti (70 ta) tugagan."`
+- `debt_limit = null` bo'lsa — cheksiz
 
 ---
 

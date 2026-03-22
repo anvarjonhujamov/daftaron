@@ -67,22 +67,14 @@ components:
           type: string
           nullable: true
           description: "HTML tavsif (chegirmalar va imkoniyatlar ro'yxati)"
-        low_amount_limit:
+        debt_limit:
           type: integer
           nullable: true
-          description: "Past summali nasiyalar soni limiti (<= low_amount_threshold). null bo'lsa cheklanmagan."
-        high_amount_limit:
-          type: integer
-          nullable: true
-          description: "Yuqori summali nasiyalar soni limiti (> low_amount_threshold). null bo'lsa cheklanmagan."
+          description: "Umumiy nasiyalar soni limiti. null bo'lsa cheklanmagan."
         sms_limit:
           type: integer
           nullable: true
-          description: "Oyiga bepul SMS soni (nasiyalar, eslatmalar va h.k.). null bo'lsa cheklanmagan."
-        low_amount_threshold:
-          type: number
-          format: float
-          description: "Past va yuqori nasiya chegarasi (so'm). Masalan, 30000 so'm."
+          description: "Oyiga bepul SMS soni. null bo'lsa cheklanmagan."
     User:
       type: object
       description: Authenticated user

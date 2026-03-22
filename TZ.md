@@ -182,15 +182,13 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
 |--------|--------|---------------|
 | `name` | Ta'rif nomi | Oddiy |
 | `price` | Oylik narx (so'm) | 29 000 |
-| `low_amount_limit` | Past summali nasiyalar limiti | 30 |
-| `high_amount_limit` | Yuqori summali nasiyalar limiti | 20 |
-| `low_amount_threshold` | Past/yuqori chegara (so'm) | 30 000 |
+| `debt_limit` | Umumiy nasiya limiti (`null` = cheksiz) | 70 |
 | `sms_limit` | Bepul SMS soni (oyiga) | 20 |
 
 **Limit tekshiruvi (DebtService):**
-- Nasiya summasi < `low_amount_threshold` → past hisoblanadi → `low_amount_limit` tekshiriladi
-- Nasiya summasi ≥ `low_amount_threshold` → yuqori hisoblanadi → `high_amount_limit` tekshiriladi
+- Barcha nasiyalar umumiy hisoblanadi — `debt_limit` bilan solishtiriladi
 - Limit tugasa — 422 xato, yangi nasiya yozib bo'lmaydi
+- `debt_limit = null` bo'lsa — cheksiz
 
 ### 6.3. Ta'rif tanlash qoidalari
 
@@ -237,10 +235,9 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
   "usage": {
     "plan_name": "Oddiy",
     "plan_price": 29000,
-    "low_debt_limit": 30,
-    "low_debt_used": 5,
-    "high_debt_limit": 50,
-    "high_debt_used": 12,
+    "debt_limit": 70,
+    "debt_used": 17,
+    "debt_remaining": 53,
     "sms_limit": 20,
     "sms_used": 8,
     "sms_remaining": 12,
@@ -251,10 +248,8 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
       "id": 1,
       "name": "Oddiy",
       "price": 29000,
-      "low_amount_limit": 30,
-      "high_amount_limit": 50,
-      "sms_limit": 20,
-      "low_amount_threshold": 30000
+      "debt_limit": 70,
+      "sms_limit": 20
     }
   ],
   "transactions": []
@@ -272,10 +267,9 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
 |----------------|--------|
 | `plan_name` | Joriy ta'rif nomi (`null` agar tanlanmagan) |
 | `plan_price` | Ta'rif narxi (so'm/oy) |
-| `low_debt_limit` | Past summali nasiya limiti (`null` = cheksiz) |
-| `low_debt_used` | Past summali nasiyalar ishlatilgan soni |
-| `high_debt_limit` | Yuqori summali nasiya limiti (`null` = cheksiz) |
-| `high_debt_used` | Yuqori summali nasiyalar ishlatilgan soni |
+| `debt_limit` | Umumiy nasiya limiti (`null` = cheksiz) |
+| `debt_used` | Ishlatilgan nasiyalar soni |
+| `debt_remaining` | Qolgan nasiya limiti (`null` = cheksiz) |
 | `sms_limit` | Bepul SMS limiti |
 | `sms_used` | Ishlatilgan SMS soni |
 | `sms_remaining` | Qolgan bepul SMS |
@@ -359,9 +353,8 @@ Har bir mijoz bitta `tenant_id` ga bog'langan.
 
 Nasiya yaratishda `DebtService::checkDebtLimit()` ishlaydi:
 1. Foydalanuvchining faol ta'rifi topiladi
-2. Nasiya summasi `low_amount_threshold` bilan solishtiriladi
-3. Mos limit (low/high) tekshiriladi
-4. Limit tugagan bo'lsa → **422** xato
+2. Umumiy nasiyalar soni `debt_limit` bilan solishtiriladi
+3. Limit tugagan bo'lsa → **422** xato
 
 ---
 

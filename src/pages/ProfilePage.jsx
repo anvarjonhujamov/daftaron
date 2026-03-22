@@ -338,29 +338,13 @@ export default function ProfilePage() {
 
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-white/50 dark:bg-black/20 flex items-center justify-center shrink-0">
-                                            <TrendingUp size={15} className="text-orange-500" />
+                                            <Package size={15} className="text-orange-500" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {usage ? Math.max(0, usage.low_debt_limit - usage.low_debt_used) : (currentPlan.low_amount_limit || 'Cheksiz')} ta nasiya
+                                                {usage ? (usage.debt_remaining !== undefined ? usage.debt_remaining : Math.max(0, usage.debt_limit - usage.debt_used)) : (currentPlan.debt_limit || 'Cheksiz')} ta nasiya
                                             </p>
-                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                                                {formatCurrency(currentPlan.low_amount_threshold)} gacha bo'lganlar
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-white/50 dark:bg-black/20 flex items-center justify-center shrink-0">
-                                            <BarChart3 size={15} className="text-orange-500" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {usage ? Math.max(0, usage.high_debt_limit - usage.high_debt_used) : (currentPlan.high_amount_limit || 'Cheksiz')} ta nasiya
-                                            </p>
-                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-                                                {formatCurrency(currentPlan.low_amount_threshold)} dan yuqori bo'lganlar
-                                            </p>
+                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Umumiy nasiyalar limiti</p>
                                         </div>
                                     </div>
                                 </div>
