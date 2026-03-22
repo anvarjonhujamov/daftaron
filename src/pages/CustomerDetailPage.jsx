@@ -20,6 +20,7 @@ export default function CustomerDetailPage() {
     const [customer, setCustomer] = useState(null)
     const [debts, setDebts] = useState([])
     const [loading, setLoading] = useState(true)
+    const { status: subStatus, remaining, sms_remaining } = useSubscription()
     const [showDebtDrawer, setShowDebtDrawer] = useState(false)
     const [showPaymentDrawer, setShowPaymentDrawer] = useState(false)
     const [showOptionsDrawer, setShowOptionsDrawer] = useState(false)
@@ -477,20 +478,26 @@ export default function CustomerDetailPage() {
                                                 Mijozga SMS yuborish
                                             </label>
                                             <p className="text-[11px] text-gray-400 opacity-80">
-                                                Limitdan keyin balansdan yechiladi.
+                                                {sms_remaining != null ? `Qolgan SMS: ${sms_remaining} ta` : 'Limitdan keyin balansdan yechiladi.'}
                                             </p>
                                         </div>
-                                        <button
-                                            id="customer_send_sms"
-                                            type="button"
-                                            role="switch"
-                                            aria-checked={debtForm.send_sms}
-                                            className="ios-switch"
-                                            data-state={debtForm.send_sms ? 'checked' : 'unchecked'}
-                                            onClick={() => setDebtForm({ ...debtForm, send_sms: !debtForm.send_sms })}
-                                        >
-                                            <span className="ios-switch-thumb" />
                                         </button>
+                                    </div>
+
+                                    {/* Limits Info */}
+                                    <div className="grid grid-cols-2 gap-3 mb-2">
+                                        <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-900/20">
+                                            <p className="text-[11px] text-blue-500 uppercase font-bold tracking-wider mb-0.5">Nasiya Limiti</p>
+                                            <p className="text-[14px] font-bold text-blue-600 dark:text-blue-400">
+                                                {remaining ?? 0} ta qoldi
+                                            </p>
+                                        </div>
+                                        <div className="p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
+                                            <p className="text-[11px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
+                                            <p className="text-[14px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                {sms_remaining ?? 0} ta qoldi
+                                            </p>
+                                        </div>
                                     </div>
                                     <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={submitting}>
                                         {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}
