@@ -86,12 +86,13 @@ export default function SubscriptionPage() {
             price: 59000,
             description: "",
             features: [
-                "300 ta nasiya qo'shish",
+                "Cheksiz nasiya qo'shish",
                 "50 ta bepul sms limiti",
                 "3 ta biznes",
                 "Batafsil moliyaviy hisobotlar",
                 "3 ta xodimlar qo'shish"
             ],
+            is_popular: true,
             is_coming_soon: true
         },
         {
@@ -252,14 +253,23 @@ export default function SubscriptionPage() {
                             const isActivePlan = activePlanId && activePlanId === plan.id && isSubscriptionActive
                             const isOpen = openPlanId === plan.id
 
-                            return (
+                             return (
                                 <div
                                     key={plan.id}
-                                    className={`card dark:bg-gray-800 transition-all ${isActivePlan
+                                    className={`card dark:bg-gray-800 transition-all relative ${isActivePlan
                                         ? 'border-2 border-green-400 dark:border-green-600'
-                                        : 'border border-gray-100 dark:border-gray-700'
+                                        : plan.is_popular
+                                            ? 'border-2 border-blue-500 dark:border-blue-700 shadow-md shadow-blue-500/10'
+                                            : 'border border-gray-100 dark:border-gray-700'
                                         }`}
                                 >
+                                    {plan.is_popular && (
+                                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
+                                            <span className="bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
+                                                Eng ommabob
+                                            </span>
+                                        </div>
+                                    )}
                                     {/* Accordion header — always visible */}
                                     <button
                                         type="button"
