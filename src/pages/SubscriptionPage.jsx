@@ -310,13 +310,22 @@ export default function SubscriptionPage() {
                                             <div className="space-y-1">
                                                 {(() => {
                                                     // Get features from plan.features OR extract from plan.description
-                                                    const featuresArray = (plan.features && Array.isArray(plan.features) && plan.features.length > 0)
-                                                        ? plan.features
-                                                        : (plan.description
-                                                            ? plan.description.split(/\r?\n/)
-                                                                .map(line => line.replace(/<[^>]*>/g, '').trim())
-                                                                .filter(line => line.length > 0 && !line.includes('so\'m /oy'))
-                                                            : [])
+                                                    let featuresArray = []
+                                                    
+                                                    if (plan.features && Array.isArray(plan.features) && plan.features.length > 0) {
+                                                        featuresArray = plan.features
+                                                    } else if (plan.description) {
+                                                        // Replace HTML line breaks with newlines, then split
+                                                        const cleanDesc = plan.description
+                                                            .replace(/<\/p>|<\/div>|<br\s*\/?>|<li>/gi, '\n')
+                                                            .replace(/<[^>]*>/g, '') // Remove remaining tags
+                                                        
+                                                        featuresArray = cleanDesc.split(/\r?\n/)
+                                                            .map(line => line.trim())
+                                                            .filter(line => line.length > 0 && !line.includes('so\'m /oy') && !line.toLowerCase().includes('oddiy reja'))
+                                                    }
+
+                                                    if (featuresArray.length === 0) return null
 
                                                     return featuresArray.map((feature, i) => (
                                                         <div key={i} className="flex items-start gap-3 py-2 border-b border-gray-50/50 dark:border-gray-700/50 last:border-0">
