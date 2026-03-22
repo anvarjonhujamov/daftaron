@@ -78,9 +78,5 @@ export default function PrivateRoute({ children }) {
         return <Navigate to="/subscription" replace />
     }
 
-    return (
-        <SubscriptionContext.Provider value={{ blocked, recheckSubscription }}>
-            {children}
-        </SubscriptionContext.Provider>
-    )
+    return children
 }

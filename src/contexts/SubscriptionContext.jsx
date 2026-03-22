@@ -5,7 +5,8 @@ export const SubscriptionContext = createContext({
     status: 'active', // 'active' | 'expired'
     remaining: null,
     total: null,
-    updateSubscriptionData: () => { }
+    updateSubscriptionData: () => { },
+    recheckSubscription: async () => { }
 })
 
 export function SubscriptionProvider({ children }) {
@@ -26,13 +27,25 @@ export function SubscriptionProvider({ children }) {
         }))
     }, [])
 
+    const recheckSubscription = useCallback(async () => {
+        // This will be populated or handled by PrivateRoute usually, 
+        // but we can trigger a manual fetch from subscriptionApi here if we want global sync
+        try {
+            const { subscriptionApi } = await import('../api/subscription.api')
+            const data = await subscriptionApi.getStatus()
+            updateSubscriptionData(data)
+        } catch (err) {
+            console.error('Failed to recheck subscription:', err)
+        }
+    }, [updateSubscriptionData])
+
     useEffect(() => {
         setSubscriptionListener(updateSubscriptionData)
         return () => setSubscriptionListener(null)
     }, [updateSubscriptionData])
 
     return (
-        <SubscriptionContext.Provider value={{ ...subscription, updateSubscriptionData }}>
+        <SubscriptionContext.Provider value={{ ...subscription, updateSubscriptionData, recheckSubscription }}>
             {children}
         </SubscriptionContext.Provider>
     )
