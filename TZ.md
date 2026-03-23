@@ -1,5 +1,4 @@
 # Daftaron — Texnik Topshiriq (TZ)
-
 > So'nggi yangilanish: 2026-03-22
 
 ## Mundarija
