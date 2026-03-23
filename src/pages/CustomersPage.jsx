@@ -22,7 +22,7 @@ export default function CustomersPage() {
     const [showAddDrawer, setShowAddDrawer] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [errors, setErrors] = useState({})
-    const { status: subStatus, remaining } = useSubscription()
+    const { status: subStatus, remaining, sms_remaining } = useSubscription()
     const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
     const [blockedType, setBlockedType] = useState(null) // 'limit' | 'expired'
     const [form, setForm] = useState({ name: '', phone: PHONE_PREFIX })
@@ -31,6 +31,7 @@ export default function CustomersPage() {
     const [overdueList, setOverdueList] = useState([])
     const [overdueLoading, setOverdueLoading] = useState(false)
     const [overdueDays, setOverdueDays] = useState(10)
+    const [sendingSms, setSendingSms] = useState(null)
 
     useEffect(() => {
         const params = new URLSearchParams(location.search)
@@ -114,6 +115,33 @@ export default function CustomersPage() {
 
         return result
     }, [customers, filter, search])
+
+    const handleSendSms = async (item) => {
+        const customerId = item.id || item.customer_id
+        if (!customerId) {
+            toast.error('Mijoz ID si topilmadi')
+            return
+        }
+
+        if (subStatus === 'expired') {
+            setBlockedType('expired')
+            setShowBlockedDrawer(true)
+            return
+        }
+
+        setSendingSms(customerId)
+        try {
+            await debtsApi.sendOverdueSms([customerId])
+            toast.success('SMS muvaffaqiyatli yuborildi')
+            // Refresh overdue list to update "last sent" info
+            loadOverdue()
+        } catch (err) {
+            console.error('Failed to send SMS:', err)
+            toast.error(err.response?.data?.message || 'SMS yuborishda xatolik yuz berdi')
+        } finally {
+            setSendingSms(null)
+        }
+    }
 
     const handleAddCustomer = async (e) => {
         e.preventDefault()
@@ -317,21 +345,21 @@ export default function CustomersPage() {
                                         </div>
                                     )}
                                     {(item.phone || item.customer_phone) && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault()
-                                                if (subStatus === 'expired') {
-                                                    setBlockedType('expired')
-                                                    setShowBlockedDrawer(true)
-                                                } else {
-                                                    window.location.href = `sms:${item.phone || item.customer_phone}`
-                                                }
-                                            }}
-                                            className="flex items-center justify-center gap-2 mt-3 py-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-[#1e293b] dark:text-blue-400 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium w-full"
-                                        >
-                                            <MessageSquare size={16} />
-                                            SMS yuborish
-                                        </button>
+                                                <button
+                                                    disabled={sendingSms === (item.id || item.customer_id)}
+                                                    onClick={(e) => {
+                                                        e.preventDefault()
+                                                        handleSendSms(item)
+                                                    }}
+                                                    className="flex items-center justify-center gap-2 mt-3 py-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-[#1e293b] dark:text-blue-400 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium w-full disabled:opacity-50"
+                                                >
+                                                    {sendingSms === (item.id || item.customer_id) ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <MessageSquare size={16} />
+                                                    )}
+                                                    SMS yuborish
+                                                </button>
                                     )}
                                 </div>
                             ))}
