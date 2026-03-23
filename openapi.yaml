@@ -1022,6 +1022,44 @@ paths:
                       format: date-time
                       nullable: true
                       description: "Oxirgi eslatma SMS yuborilgan sana-vaqt (UTC)."
+  /debts/overdue/{customer}/send-sms:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Debts]
+      security: [{ bearerAuth: [] }]
+      summary: Muddati o'tgan mijozga eslatma SMS yuborish
+      description: |
+        Muddati o'tgan nasiyasi bo'lgan mijozga eslatma SMS yuboradi.
+        SMS matni: "{ism} aka siz {sana} sanasida {do'kon} dan {summa} so'm qarzdor bo'ldingiz..."
+        Mijozning `overdue_sms_count` va `overdue_sms_last_sent_at` yangilanadi.
+      parameters:
+        - in: path
+          name: customer
+          required: true
+          schema: { type: integer }
+          description: Mijoz ID si
+        - in: query
+          name: days
+          schema: { type: integer, default: 10, minimum: 1 }
+          description: "Necha kundan oshgan nasiyalarni hisoblash (default: 10)"
+      responses:
+        "200":
+          description: SMS muvaffaqiyatli yuborildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "SMS muvaffaqiyatli yuborildi." }
+                  overdue_sms_count: { type: integer, description: "Jami yuborilgan eslatma SMS soni" }
+                  overdue_sms_last_sent_at: { type: string, format: date-time, description: "Oxirgi SMS yuborilgan vaqt" }
+        "404":
+          description: Mijoz topilmadi yoki muddati o'tgan nasiya yo'q
+        "500":
+          description: SMS yuborishda xatolik
   /payments:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"

@@ -60,6 +60,18 @@ export default defineConfig({
     ],
     server: {
         port: 5173,
-        host: true
+        host: true,
+        proxy: {
+            '/overdue': {
+                target: 'https://daftaron.firstcoder.uz',
+                changeOrigin: true,
+                secure: true
+            },
+            '/sanctum': {
+                target: 'https://daftaron.firstcoder.uz',
+                changeOrigin: true,
+                secure: true
+            }
+        }
     }
 })

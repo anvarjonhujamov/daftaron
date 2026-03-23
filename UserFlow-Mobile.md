@@ -792,6 +792,7 @@ Do'kon raqami : +998901234567
 | Metod | Endpoint | Param | Javob |
 |-------|----------|-------|-------|
 | GET | `/debts/overdue` | `days` (default 10, oraliq 5–30) | `200`: qarzdorlar ro'yxati |
+| POST | `/debts/overdue/{customer}/send-sms` | `days` (default 10) | `200`: SMS yuborildi |
 
 **Javob:**
 
@@ -809,6 +810,32 @@ Do'kon raqami : +998901234567
   }
 ]
 ```
+
+### 12.3. SMS yuborish
+
+```
+POST /debts/overdue/{customer_id}/send-sms?days=10
+```
+
+**Javob (200):**
+```json
+{
+  "success": true,
+  "message": "SMS muvaffaqiyatli yuborildi.",
+  "overdue_sms_count": 3,
+  "overdue_sms_last_sent_at": "2026-03-23T14:00:00Z"
+}
+```
+
+**Xatolar:**
+- `404` — mijoz topilmadi yoki muddati o'tgan nasiya yo'q
+- `500` — SMS yuborishda xatolik
+
+**Ilova harakati:**
+1. Qarzdorlar ro'yxatida har bir mijoz yonida "SMS yuborish" tugmasi
+2. Tugma bosilganda tasdiqlash dialogi
+3. Muvaffaqiyat → `overdue_sms_count` ni yangilash
+4. Xatolik → xabar ko'rsatish
 
 **Qoidalar:**
 - Har bir mijoz uchun **bitta satr** (bir nechta nasiya bo'lsa umumiy summa)
@@ -1114,6 +1141,7 @@ Har bir API javobda:
 | Nasiya o'chirish | DELETE | `/debts/{id}` |
 | Nasiyani yopish | PATCH | `/debts/{id}/close` |
 | Muddati o'tganlar | GET | `/debts/overdue` |
+| Eslatma SMS yuborish | POST | `/debts/overdue/{customer}/send-sms` |
 | To'lovlar ro'yxati | GET | `/payments` |
 | To'lov yaratish | POST | `/payments` |
 | Profil | GET | `/profile` |

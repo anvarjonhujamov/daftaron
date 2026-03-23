@@ -484,10 +484,21 @@ Nasiya bo'yicha to'lovlar — `payments` jadvalida.
 ### SMS yuborish
 
 **Web:** `POST /overdue/{customer}/send-sms`
+**API:** `POST /debts/overdue/{customer}/send-sms?days=10`
 
 - Mijozga eslatma SMS yuboriladi
 - `customer.overdue_sms_count` oshiriladi
 - `customer.overdue_sms_last_sent_at` yangilanadi
+
+**API javob (200):**
+```json
+{
+  "success": true,
+  "message": "SMS muvaffaqiyatli yuborildi.",
+  "overdue_sms_count": 3,
+  "overdue_sms_last_sent_at": "2026-03-23T14:00:00Z"
+}
+```
 
 ---
 
@@ -1065,6 +1076,7 @@ users ──────────┐
 | DELETE | `/debts/{id}` | Nasiya o'chirish |
 | PATCH | `/debts/{id}/close` | Nasiyani yopish |
 | GET | `/debts/overdue` | Muddati o'tgan qarzdorlar |
+| POST | `/debts/overdue/{customer}/send-sms` | Muddati o'tganga eslatma SMS |
 | GET | `/payments` | To'lovlar ro'yxati |
 | POST | `/payments` | To'lov yaratish |
 | GET | `/profile` | Profil |

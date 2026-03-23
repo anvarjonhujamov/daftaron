@@ -131,7 +131,7 @@ export default function CustomersPage() {
 
         setSendingSms(customerId)
         try {
-            await debtsApi.sendOverdueSms([customerId])
+            await debtsApi.sendOverdueSms(customerId, overdueDays)
             toast.success('SMS muvaffaqiyatli yuborildi')
             // Refresh overdue list to update "last sent" info
             loadOverdue()

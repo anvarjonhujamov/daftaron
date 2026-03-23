@@ -65,7 +65,7 @@ export default function OverduePage() {
 
         try {
             const ids = Array.from(selectedIds)
-            await debtsApi.sendOverdueSms(ids)
+            await Promise.all(ids.map(id => debtsApi.sendOverdueSms(id, days)))
             toast.success(`${ids.length} ta mijozga SMS muvaffaqiyatli yuborildi`)
             setSelectedIds(new Set())
             await loadOverdue()
@@ -81,7 +81,7 @@ export default function OverduePage() {
         setSendingSms(true)
 
         try {
-            await debtsApi.sendOverdueSms([customerId])
+            await debtsApi.sendOverdueSms(customerId, days)
             toast.success('SMS muvaffaqiyatli yuborildi')
             await loadOverdue()
         } catch (err) {
