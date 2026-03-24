@@ -84,6 +84,7 @@ export default function SubscriptionPage() {
             features: [
                 "Cheksiz nasiya qo'shish",
                 "50 ta bepul sms limiti",
+                "Limitdan tashqari har bir SMS 170 so'm",
                 "3 ta biznes",
                 "Batafsil moliyaviy hisobotlar",
                 "3 ta xodimlar qo'shish"
@@ -347,61 +348,6 @@ export default function SubscriptionPage() {
                                                     ))
                                                 })()}
                                             </div>
-            {/* Extra Packages */}
-            <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 mt-8">
-                    <h2 className="text-[18px] font-semibold text-gray-900 dark:text-white">
-                        Bir martalik to'plamlar
-                    </h2>
-                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                        Tejamkor
-                    </span>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-3">
-                    {extraPackages.map((pkg) => (
-                        <div 
-                            key={pkg.id}
-                            className="card dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-between p-4 active:scale-[0.98] transition-all hover:border-blue-200 dark:hover:border-blue-900/50"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
-                                    <Zap size={18} className="text-blue-500" />
-                                </div>
-                                <div>
-                                    <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
-                                        {pkg.name}
-                                    </p>
-                                    <p className="text-[13px] text-gray-400">
-                                        Bir martalik xarid
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="text-right flex flex-col items-end gap-2">
-                                <p className="text-[16px] font-bold text-gray-900 dark:text-white">
-                                    {formatCurrency(pkg.price)} <span className="text-[12px] font-normal text-gray-400">so'm</span>
-                                </p>
-                                <button 
-                                    onClick={() => {
-                                        if (numericBalance < pkg.price) {
-                                            toast.error('Balans yetarli emas')
-                                        } else {
-                                            toast.success('Tez kunda: Limit sotib olish funksiyasi ishga tushadi')
-                                        }
-                                    }}
-                                    className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-[12px] font-bold rounded-lg transition-colors"
-                                >
-                                    Sotib olish
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                
-                <p className="mt-4 text-[12px] text-gray-400 text-center px-4">
-                    Ushbu to'plamlar obunangiz holatidan qat'iy nazar jami limitingizga qo'shiladi va muddatsiz saqlanadi.
-                </p>
-            </div>
 
                                             {!hasEnoughBalance && (trialInfo.is_expired || trialInfo.status === 0) && !isActivePlan && (
                                                 <p className="mt-2 text-[12px] text-red-500">
