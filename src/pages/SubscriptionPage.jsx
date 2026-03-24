@@ -80,14 +80,15 @@ export default function SubscriptionPage() {
             id: 'mock_pro',
             name: "Pro ta'rif",
             price: 59000,
-            description: "",
+            description: "Biznesini jiddiy yuritayotganlar uchun",
             features: [
                 "Cheksiz nasiya qo'shish",
-                "50 ta bepul sms limiti",
-                "Limitdan tashqari har bir SMS 170 so'm",
                 "3 ta biznes",
                 "Batafsil moliyaviy hisobotlar",
-                "3 ta xodimlar qo'shish"
+                "50 ta bepul SMS",
+                "Limitdan tashqari sms 170 so'm",
+                "3 ta xodim qo'shish",
+                "Tezkor qo'llab-quvvatlash"
             ],
             is_popular: true,
             is_coming_soon: true
@@ -96,13 +97,15 @@ export default function SubscriptionPage() {
             id: 'mock_premium',
             name: "Premium ta'rif",
             price: 99000,
-            description: "",
+            description: "Katta hajmdagi bizneslar uchun",
             features: [
-                "Cheksiz nasiya qo'shish",
-                "100 ta bepul sms limiti",
+                "Cheksiz nasiya",
                 "10 ta biznes",
+                "100 ta bepul SMS",
                 "10 ta xodim qo'shish",
-                "AI Speech bilan ovozli ma'lumot kiritish"
+                "Advanced analytics (chuqur hisobotlar)",
+                "AI orqali ovoz bilan ma'lumot kiritish",
+                "Avtomatik SMS yuborish (schedule)"
             ],
             is_coming_soon: true
         }
