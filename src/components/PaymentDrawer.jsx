@@ -3,24 +3,28 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { buildClickUrl } from '../utils/click'
+import { buildPaymeUrl } from '../utils/payme'
 import toast from 'react-hot-toast'
 
 export default function PaymentDrawer({ isOpen, onClose, user, provider }) {
     const [amount, setAmount] = useState('')
 
     const handleTopUp = () => {
-        if (provider !== 'click') {
-            toast.error("Hozircha faqat Click orqali to'lov qabul qilinadi")
-            return
-        }
-
         const amountNumber = parseCurrency(amount)
         if (!amountNumber || isNaN(amountNumber) || amountNumber <= 0) {
             toast.error("Iltimos, to'g'ri summa kiriting.")
             return
         }
         try {
-            const url = buildClickUrl(user, amountNumber)
+            let url
+            if (provider === 'click') {
+                url = buildClickUrl(user, amountNumber)
+            } else if (provider === 'payme') {
+                url = buildPaymeUrl(user, amountNumber)
+            } else {
+                toast.error("Bu to'lov usuli hozircha mavjud emas")
+                return
+            }
             window.location.href = url
         } catch (err) {
             toast.error(err.message || "Xatolik yuz berdi")

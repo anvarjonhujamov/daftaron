@@ -25,40 +25,25 @@ export default function PrivateRoute({ children }) {
                 }
             } catch (meErr) {
                 if (meErr.response?.status === 401) {
-                    // Token eskirgan
                     localStorage.removeItem('token')
                     localStorage.removeItem('user')
                     window.location.href = '/login'
                     return
                 }
-                // 403 kelsa — trial expired, lekin davom etamiz subscription tekshirish uchun
             }
 
             // 2) Subscription holatini tekshirish
             const data = await subscriptionApi.getStatus()
-            
-            // Global state ni yangilash
+
             if (updateSubscriptionData) {
                 updateSubscriptionData(data)
             }
-
-            const trial = data.trial_info || data.trial || {}
-            const isBlocked = !!(trial.is_expired || trial.status === 0)
-
-            setBlocked(isBlocked)
-
-            // Agar blocked — faqat subscription va profile ga ruxsat 
-            // (Lekin hozirda Read-only uchun bosh sahifa va boshqalarni ham ochishga ruxsat beramiz)
-            // const allowedWhenBlocked = ['/subscription', '/profile']
-            // if (isBlocked && !allowedWhenBlocked.includes(window.location.pathname)) {
-            //     navigate('/subscription', { replace: true })
-            // }
         } catch (err) {
             console.error('Subscription check failed:', err)
         } finally {
             setChecking(false)
         }
-    }, [token, navigate])
+    }, [token, updateSubscriptionData])
 
     useEffect(() => {
         if (!token || hasChecked.current) return
@@ -66,26 +51,19 @@ export default function PrivateRoute({ children }) {
         checkSubscription()
     }, [token, checkSubscription])
 
-    const recheckSubscription = useCallback(async () => {
-        setChecking(true)
-        hasChecked.current = false
-        await checkSubscription()
-    }, [checkSubscription])
-
     if (!token) {
         return <Navigate to="/login" state={{ from: location }} replace />
     }
 
-    const allowedWhenChecking = ['/subscription', '/profile']
-    if (checking && !allowedWhenChecking.includes(location.pathname)) {
+    const allowedWhenBlocked = ['/subscription', '/profile']
+    if (checking && !allowedWhenBlocked.includes(location.pathname)) {
         return <AppLoadingSkeleton />
     }
 
-    // Read-only uchun blocked bo'lganda ham sahifani ko'rishga ruxsat beramiz
-    // const allowedWhenBlocked = ['/subscription', '/profile']
-    // if (blocked && !allowedWhenBlocked.includes(location.pathname)) {
-    //     return <Navigate to="/subscription" replace />
-    // }
+    // Obunasiz user faqat subscription va profile sahifalariga kira oladi
+    if (blocked && !allowedWhenBlocked.includes(location.pathname)) {
+        return <Navigate to="/subscription" replace />
+    }
 
     return children
 }

@@ -14,8 +14,14 @@ export const subscriptionApi = {
         return response.data
     },
 
-    choosePlan: async (planId) => {
-        const response = await api.post(`/subscription/choose/${planId}`)
+    choosePlan: async (planId, promoCode = null) => {
+        const body = promoCode ? { promo_code: promoCode } : {}
+        const response = await api.post(`/subscription/choose/${planId}`, body)
+        return response.data
+    },
+
+    checkPromoCode: async (code) => {
+        const response = await api.post('/promo-codes/check', { code })
         return response.data
     },
 

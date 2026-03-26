@@ -25,6 +25,7 @@ tags:
   - name: Subscription
   - name: Profile
   - name: Notifications
+  - name: Promo Codes
   - name: Locations
 components:
   securitySchemes:
@@ -1189,6 +1190,40 @@ paths:
                         status: { type: string }
                         description: { type: string, nullable: true }
                         created_at: { type: string, format: date-time }
+  /promo-codes/check:
+    parameters:
+      - $ref: "#/components/parameters/AcceptJson"
+      - $ref: "#/components/parameters/ContentTypeJson"
+    post:
+      tags: [Subscription]
+      security: [{ bearerAuth: [] }]
+      summary: "Promocode tekshirish (2026-03-26)"
+      description: |
+        Promocode amal qiladimi tekshiradi. Bitta user bitta promocode dan faqat 1 marta foydalana oladi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  example: "SALE20"
+      responses:
+        "200":
+          description: "Tekshirish natijasi"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid: { type: boolean }
+                  message: { type: string }
+                  discount_label: { type: string, description: "Faqat valid=true da" }
+                  type: { type: string, enum: [percent, fixed], description: "Faqat valid=true da" }
+                  amount: { type: number, description: "Faqat valid=true da" }
   /subscription/choose/{plan}:
     parameters:
       - $ref: "#/components/parameters/AcceptJson"
@@ -1196,16 +1231,26 @@ paths:
     post:
       tags: [Subscription]
       security: [{ bearerAuth: [] }]
-      summary: Tarif tanlash (balansdan yechiladi)
+      summary: "Tarif tanlash (balansdan, promocode qo'llab-quvvatlanadi)"
       description: |
         Foydalanuvchi uchun tarifni faollashtiradi. Agar trial davom etayotgan bo'lsa va tarif "Oddiy" bo'lsa, balansdan pul yechilmaydi.
         Boshqa hollarda tarif narxi balansdan yechiladi; mablag' yetarli bo'lmasa 422 "Mablag' yetarli emas" qaytadi.
+        Ixtiyoriy `promo_code` yuborilsa — chegirma qo'llanadi (2026-03-26).
       parameters:
         - in: path
           name: plan
           required: true
           schema: { type: integer }
           description: Tarif ID si
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                promo_code:
+                  type: string
+                  description: "Ixtiyoriy. Promocode kodi (masalan: SALE20)"
       responses:
         "200":
           description: Tarif muvaffaqiyatli faollashtirildi

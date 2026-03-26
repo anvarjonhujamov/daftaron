@@ -426,7 +426,13 @@ Bosqich 1                Bosqich 2               Bosqich 3
 
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
-| POST | `/subscription/choose/{plan_id}` | — | Quyiga qarang |
+| POST | `/subscription/choose/{plan_id}` | `{promo_code?}` | Quyiga qarang |
+
+**Promocode bilan ta'rif sotib olish:**
+```json
+POST /subscription/choose/3
+{ "promo_code": "SALE20" }
+```
 
 **Muvaffaqiyat (200):**
 ```json
@@ -444,6 +450,40 @@ Bosqich 1                Bosqich 2               Bosqich 3
 | `"Mablag' yetarli emas."` | Balans yetmaydi (+ `plan_price`, `balance`) | Balans to'ldirish sahifasiga |
 | `"Ushbu ta'rif allaqachon faol."` | Shu ta'rif faol | Xabar ko'rsatish |
 | `"Sinov muddati davomida faqat Oddiy ta'rifni tanlash mumkin."` | Trial davri cheklov | Oddiy tanlash yoki kutish |
+
+### 6.2.1. Promocode tekshirish (2026-03-26)
+
+Ta'rif tanlash oldidan promocode ni tekshirish:
+
+| Metod | Endpoint | Body | Javob |
+|-------|----------|------|-------|
+| POST | `/promo-codes/check` | `{code}` | Quyiga qarang |
+
+**Amal qiladi:**
+```json
+{
+  "valid": true,
+  "message": "Promocode amal qiladi!",
+  "discount_label": "20% chegirma",
+  "type": "percent",
+  "amount": 20
+}
+```
+
+**Amal qilmaydi:**
+```json
+{
+  "valid": false,
+  "message": "Siz bu promocode dan allaqachon foydalangansiz."
+}
+```
+
+**Ilova harakati:**
+1. Ta'rif tanlash ekranida `Promocode` input maydoni ko'rsatiladi
+2. User kodni kiritib "Tekshirish" bosadi → `/promo-codes/check` chaqiriladi
+3. `valid: true` bo'lsa — chegirma miqdori ko'rsatiladi, `promo_code` ta'rif tanlashda yuboriladi
+4. `valid: false` bo'lsa — xabar ko'rsatiladi
+5. Bitta user bitta promocode dan **faqat 1 marta** foydalana oladi
 
 ### 6.3. Trial/Obuna logika diagrammasi
 
@@ -990,14 +1030,25 @@ Mobil ilovada balans to'ldirish uchun ikkita usul:
 
 ### 16.1. Click/Payme ilovasidan to'g'ridan-to'g'ri
 
-Foydalanuvchiga **public_id** (masalan 1042) yoki **telefon raqam** ni ko'rsating.
+Foydalanuvchiga **user_id**, **public_id** (masalan 1042) yoki **telefon raqam** ni ko'rsating.
 Foydalanuvchi Click yoki Payme ilovasida Daftaron xizmatini topib, shu ID yoki telefon bilan to'lov qiladi.
+
+**Payme ilovasidan to'lov flow:**
+1. Foydalanuvchi Payme ilovasida "Daftaron" xizmatini topadi
+2. `user_id` (yoki public_id/telefon) va summani kiritadi
+3. Payme server `CheckPerformTransaction` chaqiradi → backend user ni tekshiradi, **pending PaymentOrder avtomatik yaratadi**
+4. Payme `CreateTransaction` → backend orderni `external_id` bilan bog'laydi
+5. Payme `PerformTransaction` → backend balansni to'ldiradi
+6. Foydalanuvchiga push notification keladi
+
+> **Muhim:** Mobile uchun oldindan web orqali order yaratish shart emas — `CheckPerformTransaction` o'zi avtomatik `PaymentOrder(type=balance_deposit, status=pending)` yaratadi.
 
 ```
 ┌──────────────────────────┐
 │   BALANS TO'LDIRISH       │
 │                          │
 │  Sizning ID: 1042        │
+│  User ID: 42             │
 │  Telefon: +998901234567  │
 │                          │
 │  Click yoki Payme        │
@@ -1011,7 +1062,20 @@ Foydalanuvchi Click yoki Payme ilovasida Daftaron xizmatini topib, shu ID yoki t
 └──────────────────────────┘
 ```
 
-### 16.2. Web redirect (kelajakda mobil SDK)
+### 16.2. Payme Merchant API — tranzaksiya holatlari
+
+| State | Tavsif | Reason |
+|-------|--------|--------|
+| `1` | Yaratilgan (pending) | `null` |
+| `2` | Yakunlangan (completed) | `null` |
+| `-1` | Bekor qilingan (pending dan) | `3` |
+| `-2` | Bekor qilingan (completed dan, refund) | `5` |
+
+**CancelTransaction:** Completed tranzaksiya bekor qilinganda balansdan summa ayiriladi va refund yozuvi yaratiladi.
+
+**GetStatement:** `from`/`to` (millisekund) oralig'idagi barcha tranzaksiyalar ro'yxatini qaytaradi.
+
+### 16.3. Web redirect (kelajakda mobil SDK)
 
 Hozircha backend Web uchun redirect URL beradi. Mobil ilovada kelajakda Click/Payme SDK yoki Deep Link integratsiyasi qo'shilishi mumkin.
 
@@ -1117,6 +1181,7 @@ Har bir API javobda:
 |--------|-------|----------|
 | Obuna holati + limitlar | GET | `/subscription/status` |
 | Ta'rif tanlash | POST | `/subscription/choose/{plan}` |
+| Promocode tekshirish | POST | `/promo-codes/check` |
 | Qo'shimcha paket sotib olish | POST | `/subscription/buy-extra/{extra_package}` |
 | AI support — xabar | POST | `/support/chat` |
 | AI support — tarix | GET | `/support/history` |

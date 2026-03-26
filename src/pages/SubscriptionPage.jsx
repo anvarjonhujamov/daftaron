@@ -10,19 +10,21 @@ import PaymentDrawer from '../components/PaymentDrawer'
 import { SubscriptionSkeleton } from '../components/Skeleton'
 import {
     CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight,
-    Package, Clock, Receipt, Check, ChevronDown, ChevronUp, Zap
+    Package, Clock, Receipt, Check, ChevronDown, ChevronUp, Zap, Tag, Loader2
 } from 'lucide-react'
 
 export default function SubscriptionPage() {
     const navigate = useNavigate()
-    const { remaining, status: subStatus } = useSubscription()
+    const { updateSubscriptionData } = useSubscription()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [status, setStatus] = useState(null)
-    const [clickAmount, setClickAmount] = useState('')
     const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false)
     const [selectedProvider, setSelectedProvider] = useState(null)
     const [openPlanId, setOpenPlanId] = useState(null)
+    const [promoCode, setPromoCode] = useState('')
+    const [promoResult, setPromoResult] = useState(null)
+    const [promoChecking, setPromoChecking] = useState(false)
 
     useEffect(() => {
         loadStatus()
@@ -33,6 +35,7 @@ export default function SubscriptionPage() {
         try {
             const data = await subscriptionApi.getStatus()
             setStatus(data)
+            updateSubscriptionData(data)
         } catch (err) {
             console.error('Failed to load subscription status:', err)
             toast.error(err.response?.data?.message || 'Obuna holatini yuklashda xatolik yuz berdi')
@@ -41,16 +44,41 @@ export default function SubscriptionPage() {
         }
     }
 
+    const handleCheckPromo = async () => {
+        if (!promoCode.trim() || promoChecking) return
+        setPromoChecking(true)
+        setPromoResult(null)
+        try {
+            const data = await subscriptionApi.checkPromoCode(promoCode.trim())
+            setPromoResult(data)
+            if (data.valid) {
+                toast.success(data.message || `Chegirma: ${data.discount_label}`)
+            } else {
+                toast.error(data.message || 'Promocode yaroqsiz')
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Promocode tekshirishda xatolik')
+            setPromoResult(null)
+        } finally {
+            setPromoChecking(false)
+        }
+    }
+
     const handleChoosePlan = async (planId) => {
         if (!planId || saving) return
         setSaving(true)
 
         try {
-            const data = await subscriptionApi.choosePlan(planId)
+            const code = promoResult?.valid ? promoCode.trim() : null
+            const data = await subscriptionApi.choosePlan(planId, code)
             toast.success(data.message || "Ta'rif muvaffaqiyatli tanlandi")
 
             // Status ni qayta yuklash
             await loadStatus()
+
+            // Promo ni tozalash
+            setPromoCode('')
+            setPromoResult(null)
 
             // 2 sekunddan keyin bosh sahifaga yo'naltirish
             setTimeout(() => {
@@ -368,14 +396,46 @@ export default function SubscriptionPage() {
                                                     Tez kunda
                                                 </div>
                                             ) : (
-                                                <button
-                                                    type="button"
-                                                    disabled={saving}
-                                                    onClick={() => handleChoosePlan(plan.id)}
-                                                    className="mt-3 btn btn-primary w-full"
-                                                >
-                                                    {saving ? 'Tanlanmoqda...' : "Ushbu ta'rifni tanlash"}
-                                                </button>
+                                                <>
+                                                    {/* Promocode */}
+                                                    <div className="mt-3 flex gap-2">
+                                                        <div className="relative flex-1">
+                                                            <Tag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Promocode"
+                                                                value={promoCode}
+                                                                onChange={(e) => {
+                                                                    setPromoCode(e.target.value.toUpperCase())
+                                                                    setPromoResult(null)
+                                                                }}
+                                                                className="w-full pl-9 pr-3 py-2.5 text-[13px] rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            disabled={!promoCode.trim() || promoChecking}
+                                                            onClick={handleCheckPromo}
+                                                            className="px-4 py-2.5 text-[12px] font-semibold rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                                                        >
+                                                            {promoChecking ? <Loader2 size={14} className="animate-spin" /> : 'Tekshirish'}
+                                                        </button>
+                                                    </div>
+                                                    {promoResult && (
+                                                        <p className={`mt-1.5 text-[12px] font-medium ${promoResult.valid ? 'text-green-500' : 'text-red-500'}`}>
+                                                            {promoResult.valid ? `Chegirma: ${promoResult.discount_label}` : promoResult.message}
+                                                        </p>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={saving}
+                                                        onClick={() => handleChoosePlan(plan.id)}
+                                                        className="mt-3 btn btn-primary w-full"
+                                                    >
+                                                        {saving ? 'Tanlanmoqda...' : "Ushbu ta'rifni tanlash"}
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     )}

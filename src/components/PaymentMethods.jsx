@@ -1,7 +1,7 @@
 export default function PaymentMethods({ onSelect }) {
     const methods = [
         { id: 'click', name: 'Click', icon: '/icons/click.png', disabled: false },
-        { id: 'payme', name: 'Payme', icon: '/icons/payme.png', disabled: true },
+        { id: 'payme', name: 'Payme', icon: '/icons/payme.png', disabled: false },
         { id: 'xazna', name: 'Xazna', icon: '/icons/xazna.png', disabled: true },
         { id: 'uzumbank', name: 'Uzum', icon: '/icons/uzumbank.png', disabled: true },
     ]

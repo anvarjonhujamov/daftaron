@@ -1,4 +1,5 @@
 # Daftaron — Texnik Topshiriq (TZ)
+
 > So'nggi yangilanish: 2026-03-22
 
 ## Mundarija
@@ -357,6 +358,46 @@ Admin panelda `Sozlamalar` bo'limida:
 |---------|---------|--------|
 | `extra_sms_price` | 190 so'm | Bepul + paket limiti tugagandan keyin har bir SMS narxi |
 
+### 6.8. Promocodlar tizimi (2026-03-26)
+
+Promocodlar managerga biriktiriladi va obuna sotib olishda chegirma beradi.
+
+**Promocode maydonlari:**
+
+| Maydon | Tur | Tavsif |
+|--------|-----|--------|
+| `manager_id` | FK users | Qaysi managerga biriktirilgan |
+| `code` | string(50) | Unikal kod (uppercase) |
+| `type` | enum | `percent` — foiz chegirma, `fixed` — aniq summa |
+| `amount` | decimal | Chegirma miqdori (foiz yoki so'm) |
+| `expires_at` | date, null | Amal qilish muddati. null = cheksiz |
+| `usage_limit` | int, null | Necha marta foydalanish mumkin. null = cheksiz |
+| `usage_count` | int | Necha marta foydalanilgan |
+| `is_active` | bool | Faol/nofaol |
+
+**Qoidalar:**
+1. Bitta user bitta promocode dan faqat **1 marta** foydalana oladi (`promo_usages` jadvalda unique constraint)
+2. `expires_at` sanasi o'tgan bo'lsa — amal qilmaydi
+3. `usage_limit` ga yetgan bo'lsa — amal qilmaydi
+4. `is_active = false` bo'lsa — amal qilmaydi
+5. Chegirma faqat **ta'rif narxiga** qo'llanadi (balans to'ldirishga emas)
+6. Foiz chegirmada: `discount = price * amount / 100`
+7. Summa chegirmada: `discount = min(amount, price)` — narxdan oshmasligi kerak
+
+**API endpointlar:**
+
+| Metod | Endpoint | Body | Javob |
+|-------|----------|------|-------|
+| POST | `/promo-codes/check` | `{code}` | `{valid, message, discount_label, type, amount}` |
+
+Obuna sotib olishda (`/subscription/choose/{plan}`) `promo_code` parametri qo'shiladi:
+```json
+POST /subscription/choose/3
+{ "promo_code": "SALE20" }
+```
+
+**Admin panel:** `/admin/promo-codes` — CRUD + foydalanish tarixi (show sahifasida).
+
 ---
 
 ## 7. Mijozlar (Customers)
@@ -631,7 +672,7 @@ Click ilovasida `merchant_trans_id` ga quyidagilarni kiritish mumkin:
 | `PAYME_MERCHANT_TEST_KEY` | Test muhit kaliti |
 | `PAYME_MERCHANT_KEY` | Production kaliti |
 | `PAYME_CHECKOUT_URL` | `https://checkout.paycom.uz` |
-| `PAYME_CHECKOUT_ACCOUNT_FIELD` | `order_id` (Payme kabinetidagi account maydoni nomi) |
+| `PAYME_CHECKOUT_ACCOUNT_FIELD` | `user_id` (Payme kabinetidagi account maydoni nomi) |
 
 ### 13.2. Web checkout oqimi (redirect)
 
@@ -660,12 +701,15 @@ Foydalanuvchi                    Backend                         Payme
 ```
 https://checkout.paycom.uz/BASE64(
   m={PAYME_MERCHANT_ID};
-  ac.order_id={payment_orders.id};
+  ac.user_id={users.id};
   a={summa_tiyinda};
-  c={APP_URL}/payment/return;
-  l=uz
+  c={APP_URL}/payment/return
 )
 ```
+
+> **Muhim:** `ac.user_id` — Payme kabinetida sozlangan account maydoni. Checkout URL da
+> `user_id` yuboriladi, Merchant API da Payme shu qiymatni `account.user_id` sifatida qaytaradi.
+> Backend pending `PaymentOrder` ni `user_id + amount` orqali topadi.
 
 > **Muhim:** Summa **tiyin** da (×100). Masalan 29 000 so'm = 2 900 000 tiyin.
 
@@ -681,29 +725,99 @@ https://checkout.paycom.uz/BASE64(
 
 | Metod | Tavsif |
 |-------|--------|
-| `CheckPerformTransaction` | Tranzaksiyani bajarish mumkinmi — order mavjudligi, status va summa tekshiriladi |
-| `CreateTransaction` | Tranzaksiya yaratish — PaymentOrder bilan bog'lash |
+| `CheckPerformTransaction` | Tranzaksiyani bajarish mumkinmi — user mavjudligi va summa tekshiriladi. Pending order topilmasa **avtomatik yaratadi** (mobile/API to'lov uchun) |
+| `CreateTransaction` | Tranzaksiya yaratish — PaymentOrder bilan bog'lash (external_id yozish) |
 | `PerformTransaction` | Tranzaksiyani yakunlash — balans/obuna yangilash |
-| `CancelTransaction` | Bekor qilish (faqat pending holatda) |
-| `CheckTransaction` | Tranzaksiya holatini tekshirish |
+| `CancelTransaction` | Bekor qilish — pending (`state: -1`) yoki completed (`state: -2`, balansdan refund) |
+| `CheckTransaction` | Tranzaksiya holatini tekshirish (`state`, `reason`, `perform_time`, `cancel_time`) |
+| `GetStatement` | Vaqt oralig'idagi barcha tranzaksiyalar ro'yxati (`from`, `to` — millisekund) |
 
 #### Account maydonlari (foydalanuvchini aniqlash)
 
 | Maydon | Tavsif |
 |--------|--------|
-| `account.order_id` | `PaymentOrder.id` (web checkout) — **asosiy usul** |
-| `account.user_id` | `User.id` (legacy) |
+| `account.user_id` | `User.id` (web checkout) — **asosiy usul**. Payme kabinetida shu nom bilan sozlangan. Backend `user_id + amount` orqali pending `PaymentOrder` ni topadi |
+| `account.order_id` | `PaymentOrder.id` (legacy/backup) — to'g'ridan-to'g'ri order ID bilan ishlaydi |
 | `account.public_id` | `User.id + 1000` |
 | `account.phone` | Telefon raqam (normalizatsiya) |
+
+#### Tranzaksiya holatlari (state)
+
+| State | Tavsif |
+|-------|--------|
+| `1` | Yaratilgan (pending) |
+| `2` | Yakunlangan (completed) |
+| `-1` | Bekor qilingan (pending dan) — `reason: 3` |
+| `-2` | Bekor qilingan (completed dan) — `reason: 5`, balansdan refund |
+
+#### CheckPerformTransaction — avtomatik order yaratish
+
+Mobile ilovadan to'lov qilganda (Payme ilovasi orqali), foydalanuvchi `account.user_id` va `amount` bilan keladi. Agar mos pending order topilmasa, `CheckPerformTransaction` **avtomatik yangi PaymentOrder yaratadi**:
+
+```
+PaymentOrder::create([
+    'user_id'           => $user->id,
+    'payment_system_id' => payme_id,
+    'type'              => 'balance_deposit',
+    'amount'            => amount / 100,
+    'status'            => 'pending',
+])
+```
+
+Keyin `CreateTransaction` shu orderni topib `external_id` ni yozadi.
+
+#### CancelTransaction — completed tranzaksiya bekor qilish
+
+Completed tranzaksiya bekor qilinganda:
+1. Foydalanuvchi balansidan summa ayiriladi (`max(0, balance - amount)`)
+2. Refund tranzaksiya yoziladi (`type: refund`, `amount: -X`)
+3. `cancelled_after_complete = true` belgilanadi
+4. `state: -2`, `reason: 5` qaytariladi
+
+#### GetStatement
+
+Ma'lum vaqt oralig'idagi barcha tranzaksiyalar ro'yxati:
+
+**Request:**
+```json
+{
+  "method": "GetStatement",
+  "params": { "from": 1774354361000, "to": 1774354861000 }
+}
+```
+
+**Response:**
+```json
+{
+  "result": {
+    "transactions": [
+      {
+        "id": "payme_transaction_id",
+        "time": 1774354250000,
+        "amount": 5000000,
+        "account": { "order_id": "70" },
+        "create_time": 1774354250000,
+        "perform_time": 1774354254000,
+        "cancel_time": 0,
+        "transaction": "70",
+        "state": 2,
+        "reason": null
+      }
+    ]
+  }
+}
+```
 
 #### Xato kodlari
 
 | Kod | Tavsif |
 |-----|--------|
-| `-31001` | Foydalanuvchi topilmadi |
-| `-31003` | Noto'g'ri summa |
-| `-31008` | Tranzaksiya yakunlanmaydi |
+| `-31001` | Noto'g'ri summa |
+| `-31003` | Tranzaksiya topilmadi |
+| `-31008` | Tranzaksiya yakunlanmaydi / ichki xatolik |
+| `-31050` | Foydalanuvchi topilmadi |
 | `-32504` | Autentifikatsiya xatosi |
+| `-32601` | Metod topilmadi |
 
 #### Javob formati
 
@@ -718,12 +832,14 @@ https://checkout.paycom.uz/BASE64(
 {
   "id": "<request_id>",
   "error": {
-    "code": -31001,
-    "message": { "uz": "Foydalanuvchi topilmadi", "ru": "...", "en": "..." },
-    "data": "user_not_found"
+    "code": -31050,
+    "message": "Пользователь не найден",
+    "data": null
   }
 }
 ```
+
+> **Muhim:** Success javobda `error` kaliti bo'lmasligi, error javobda `result` kaliti bo'lmasligi kerak (JSON-RPC 2.0 spec).
 
 ### 13.5. Click va Payme taqqoslash
 
@@ -732,8 +848,8 @@ https://checkout.paycom.uz/BASE64(
 | Autentifikatsiya | MD5 sign har chaqiriqda | HTTP Basic Auth |
 | Summa formati | Float (so'm) | Integer (tiyin, ×100) |
 | Redirect | GET parametrlar | BASE64 kodlangan |
-| Callback | 2 bosqich (Prepare → Complete) | 5 metod (JSON-RPC) |
-| Account ID | `merchant_trans_id` | `account.order_id` / `phone` / `public_id` |
+| Callback | 2 bosqich (Prepare → Complete) | 6 metod (JSON-RPC) |
+| Account ID | `merchant_trans_id` | `account.user_id` / `order_id` / `phone` / `public_id` |
 
 ---
 
@@ -870,6 +986,7 @@ https://checkout.paycom.uz/BASE64(
 | `/admin/payment-systems` | To'lov tizimlari (ko'rish, tahrirlash) |
 | `/admin/payments` | To'lovlar tarixi |
 | `/admin/extra-packages` | Qo'shimcha paketlar CRUD (nasiya/SMS) |
+| `/admin/promo-codes` | Promocodlar CRUD + foydalanish tarixi (2026-03-26) |
 | `/admin/settings` | Tizim sozlamalari (trial_days, SMS narxi) |
 | `/admin/profile` | Admin profil |
 | `/admin/notifications` | Admin bildirishnomalari |
@@ -998,6 +1115,8 @@ users ──────────┐
 | `settings` | Tizim sozlamalari (key-value) |
 | `extra_packages` | Qo'shimcha paketlar (type, quantity, price, is_active, sort_order) |
 | `extra_purchases` | Foydalanuvchi sotib olgan paketlar (user_id, extra_package_id, type, quantity, price) |
+| `promo_codes` | Promocodlar (manager_id, code, type, amount, expires_at, usage_limit, usage_count, is_active) — 2026-03-26 |
+| `promo_usages` | Promocode foydalanish tarixi (promo_code_id, user_id, discount/original/final_amount) — 2026-03-26 |
 | `agent_conversations` | AI chat tarixi |
 | `notifications` | Bildirishnomalar |
 | `personal_access_tokens` | Sanctum tokenlar |
@@ -1051,7 +1170,9 @@ users ──────────┐
 | Metod | Endpoint | Tavsif |
 |-------|----------|--------|
 | GET | `/subscription/status` | Obuna holati + usage limiti (trial tugaganda ham ishlaydi) |
-| POST | `/subscription/choose/{plan}` | Ta'rif tanlash |
+| POST | `/subscription/choose/{plan}` | Ta'rif tanlash (promo_code qo'llab-quvvatlanadi) |
+| POST | `/subscription/buy-extra/{extra_package}` | Qo'shimcha paket sotib olish |
+| POST | `/promo-codes/check` | Promocode tekshirish (2026-03-26) |
 | POST | `/support/chat` | AI support bot — xabar yuborish |
 | GET | `/support/history` | AI support bot — chat tarixi |
 | DELETE | `/support/history` | AI support bot — tarixni tozalash |
@@ -1246,7 +1367,7 @@ PAYME_MERCHANT_ID=...
 PAYME_MERCHANT_TEST_KEY=...
 PAYME_MERCHANT_KEY=...
 PAYME_CHECKOUT_URL=https://checkout.paycom.uz
-PAYME_CHECKOUT_ACCOUNT_FIELD=order_id
+PAYME_CHECKOUT_ACCOUNT_FIELD=user_id
 
 # AI
 GROQ_API_KEY=...
