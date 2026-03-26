@@ -427,6 +427,35 @@ export default function SubscriptionPage() {
                                                         </p>
                                                     )}
 
+                                                    {/* Narx */}
+                                                    <div className="mt-3 py-3 px-4 rounded-xl bg-gray-50 dark:bg-gray-700/50 flex items-center justify-between">
+                                                        <span className="text-[13px] text-gray-500 dark:text-gray-400">Narxi:</span>
+                                                        <div className="flex items-center gap-2">
+                                                            {promoResult?.valid && (() => {
+                                                                const original = planPriceAmount
+                                                                const discount = promoResult.type === 'percent'
+                                                                    ? Math.round(original * promoResult.amount / 100)
+                                                                    : promoResult.amount
+                                                                const final = Math.max(0, original - discount)
+                                                                return (
+                                                                    <>
+                                                                        <span className="text-[14px] text-gray-400 line-through">
+                                                                            {formatCurrency(original)}
+                                                                        </span>
+                                                                        <span className="text-[16px] font-bold text-green-500">
+                                                                            {formatCurrency(final)} <span className="text-[12px] font-normal">so'm</span>
+                                                                        </span>
+                                                                    </>
+                                                                )
+                                                            })()}
+                                                            {!promoResult?.valid && (
+                                                                <span className="text-[16px] font-bold text-gray-900 dark:text-white">
+                                                                    {formatCurrency(plan.price || 0)} <span className="text-[12px] font-normal text-gray-400">so'm</span>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
                                                     <button
                                                         type="button"
                                                         disabled={saving}
