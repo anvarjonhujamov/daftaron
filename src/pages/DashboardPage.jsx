@@ -230,7 +230,7 @@ export default function DashboardPage() {
                 <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-medium opacity-90">Jami nasiya</span>
+                            <span className="text-[12px] font-medium opacity-90">Jami nasiya soni</span>
                             <div className="p-1.5 bg-white/20 rounded-lg">
                                 <Users size={16} className="text-white" />
                             </div>
