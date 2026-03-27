@@ -226,16 +226,16 @@ export default function DashboardPage() {
 
             {/* Main Stats Grid */}
             <div className="grid grid-cols-2 gap-3 mb-6">
-                {/* Jami mijozlar */}
+                {/* Jami nasiya */}
                 <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-medium opacity-90">Jami mijozlar</span>
+                            <span className="text-[12px] font-medium opacity-90">Jami nasiya</span>
                             <div className="p-1.5 bg-white/20 rounded-lg">
                                 <Users size={16} className="text-white" />
                             </div>
                         </div>
-                        <p className="text-[24px] font-bold leading-none">{totalCustomers}</p>
+                        <p className="text-[24px] font-bold leading-none">{allDebts.length}</p>
                     </div>
                 </div>
 
