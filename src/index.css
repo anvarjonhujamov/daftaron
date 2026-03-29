@@ -67,6 +67,12 @@
     @apply dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-900/50;
   }
 
+  /* Avoid duplicate password-eye icons on Windows (Edge/WebView). */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+
   /* Cards */
   .card {
     @apply bg-white rounded-2xl p-4 shadow-sm;
