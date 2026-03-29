@@ -1,6 +1,29 @@
 // Payme checkout URL builder (TZ.md section 13.3)
 // Format: https://checkout.paycom.uz/BASE64(m=MERCHANT_ID;ac.user_id=USER_ID;a=AMOUNT_TIYIN;c=RETURN_URL)
 
+const PAYME_CHECKOUT_HOST = 'checkout.paycom.uz'
+
+function getPaymeCheckoutBaseUrl() {
+  const envBase = import.meta.env.VITE_PAYME_CHECKOUT_URL?.trim()
+  const fallback = `https://${PAYME_CHECKOUT_HOST}`
+
+  if (!envBase) return fallback
+
+  try {
+    const withProtocol = /^https?:\/\//i.test(envBase) ? envBase : `https://${envBase}`
+    const parsed = new URL(withProtocol)
+
+    // Misconfigured values like payme.uz should still resolve to Paycom checkout.
+    if (parsed.hostname === 'payme.uz' || parsed.hostname.endsWith('.payme.uz')) {
+      return fallback
+    }
+
+    return `${parsed.protocol}//${parsed.host}`
+  } catch {
+    return fallback
+  }
+}
+
 export function buildPaymeUrl(user, amount) {
   const merchantId = import.meta.env.VITE_PAYME_MERCHANT_ID ?? '699c0a9d882f0c65c9213c26'
 
@@ -20,5 +43,5 @@ export function buildPaymeUrl(user, amount) {
   const raw = `m=${merchantId};ac.user_id=${user.id};a=${amountTiyin};c=${returnUrl}`
   const encoded = btoa(raw)
 
-  return `https://checkout.paycom.uz/${encoded}`
+  return `${getPaymeCheckoutBaseUrl()}/${encoded}`
 }
