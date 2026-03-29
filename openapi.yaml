@@ -16,6 +16,7 @@ info:
     - Complete da: order type=balance_deposit bo'lsa summa user balansiga qo'shiladi; order type=subscription va plan_id bor bo'lsa ta'rif avtomatik sotib olinadi (qo'lda yana tanlash shart emas).
 servers:
   - url: /api/v1
+  
 tags:
   - name: Auth
   - name: Dashboard
