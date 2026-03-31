@@ -9,3 +9,6 @@ ios
 .env
 *.keystore
 *.jks
+*.pem
+credentials.json
+keys/
