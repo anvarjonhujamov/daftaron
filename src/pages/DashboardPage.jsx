@@ -8,7 +8,7 @@ import { paymentsApi } from '../api/payments.api'
 import { profileApi } from '../api/profile.api'
 import {
     TrendingUp, Users, ChevronRight,
-    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp
+    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton, { DashboardSkeleton } from '../components/Skeleton'
@@ -23,6 +23,8 @@ export default function DashboardPage() {
     const [unreadNotifs, setUnreadNotifs] = useState(0)
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState(null)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [isSearchActive, setIsSearchActive] = useState(false)
 
     useEffect(() => {
         loadStats()
@@ -181,6 +183,11 @@ export default function DashboardPage() {
         }))
         .sort((a, b) => b.computed_debt - a.computed_debt) // Descending order
 
+    const searchResults = searchQuery.trim() === '' ? [] : debtorsSource.filter(c =>
+        (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (c.phone && c.phone.includes(searchQuery))
+    ).slice(0, 5)
+
     const { remaining, status: subStatus } = useSubscription()
 
     if (loading) {
@@ -188,41 +195,108 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors relative">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <Link to="/shops" className="flex items-center gap-3 overflow-hidden active:opacity-70 transition-opacity" title="Do'konni o'zgartirish">
-                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
-                        <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
-                    </div>
-                    <h1 className="text-[24px] font-bold text-gray-900 dark:text-white truncate flex items-center gap-1.5">
-                        {user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}
-                        <ChevronRight size={20} className="text-gray-400 mt-1 shrink-0" />
-                    </h1>
-                </Link>
-                
-
-                <div className="flex gap-2">
-                    <Link
-                        to="/notifications"
-                        className="relative w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
-                        title="Bildirishnomalar"
-                    >
-                        <Bell size={22} />
-                        {unreadNotifs > 0 && (
-                            <span className="absolute top-1.5 right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-gray-800">
-                                {unreadNotifs > 99 ? '99+' : unreadNotifs}
-                            </span>
+            <div className="relative flex items-center justify-between mb-6 h-10 min-h-[40px]">
+                {isSearchActive ? (
+                    <div className="absolute inset-0 z-20 flex items-center gap-2 bg-gray-50 dark:bg-gray-900 w-full animate-in fade-in slide-in-from-right-4 duration-200">
+                        <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="p-2 -ml-2 text-gray-500 rounded-full active:bg-gray-200 dark:active:bg-gray-800 transition-colors">
+                            <ArrowLeft size={22} />
+                        </button>
+                        <div className="flex-1 relative">
+                            <input
+                                type="text"
+                                autoFocus
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Ism yoki raqam..."
+                                className="w-full h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-4 pr-10 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-[15px] text-gray-900 dark:text-white transition-all"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </div>
+                        
+                        {/* Search Dropdown */}
+                        {searchQuery && (
+                            <div className="fixed top-[88px] left-4 right-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-30 animate-in fade-in slide-in-from-top-2">
+                                {searchResults.length > 0 ? (
+                                    <div className="max-h-[300px] overflow-y-auto w-full">
+                                        {searchResults.map(user => (
+                                            <Link
+                                                key={user.id}
+                                                to={`/customers/${user.id}`}
+                                                className="flex items-center gap-3 p-3 border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors last:border-0 w-full active:bg-gray-100 dark:active:bg-gray-700"
+                                            >
+                                                <div className="w-10 h-10 min-w-[40px] rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-bold text-[16px]">
+                                                    {user.name?.charAt(0)?.toUpperCase()}
+                                                </div>
+                                                <div className="flex-1 min-w-0 pr-2">
+                                                    <h4 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate w-full">{user.name}</h4>
+                                                    <p className="text-[12px] text-gray-500 flex items-center gap-1 mt-0.5 truncate w-full">
+                                                        <Phone size={10} className="shrink-0" />
+                                                        {user.phone}
+                                                    </p>
+                                                </div>
+                                                <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                                            </Link>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-5 text-center text-gray-500 text-[14px]">
+                                        "<b>{searchQuery}</b>" bo'yicha mijoz topilmadi
+                                    </div>
+                                )}
+                            </div>
                         )}
-                    </Link>
-                    <Link
-                        to="/payments"
-                        className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
-                        title="To'lovlar tarixi"
-                    >
-                        <History size={22} />
-                    </Link>
-                </div>
+                    </div>
+                ) : (
+                    <>
+                        <Link to="/shops" className="flex items-center gap-3 overflow-hidden active:opacity-70 transition-opacity flex-1 min-w-0 mr-2" title="Do'konni o'zgartirish">
+                            <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
+                                <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
+                            </div>
+                            <h1 className="text-[20px] xs:text-[24px] font-bold text-gray-900 dark:text-white truncate flex items-center gap-1">
+                                <span className="truncate">{user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}</span>
+                                <ChevronRight size={18} className="text-gray-400 mt-1 shrink-0" />
+                            </h1>
+                        </Link>
+
+                        <div className="flex gap-1.5 shrink-0">
+                            <button
+                                onClick={() => setIsSearchActive(true)}
+                                className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
+                                title="Qidirish"
+                            >
+                                <Search size={22} />
+                            </button>
+                            <Link
+                                to="/notifications"
+                                className="relative w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
+                                title="Bildirishnomalar"
+                            >
+                                <Bell size={22} />
+                                {unreadNotifs > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-gray-800">
+                                        {unreadNotifs > 99 ? '99+' : unreadNotifs}
+                                    </span>
+                                )}
+                            </Link>
+                            <Link
+                                to="/payments"
+                                className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
+                                title="To'lovlar tarixi"
+                            >
+                                <History size={22} />
+                            </Link>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Main Stats Grid */}
