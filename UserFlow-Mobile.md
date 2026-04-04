@@ -31,6 +31,7 @@ Bu hujjat **mobil ilova dasturchisi** uchun yozilgan. Har bir ekran, API chaqiri
 17. [Chiqish](#17-chiqish)
 18. [Xato kodlari va umumiy ishlov](#18-xato-kodlari-va-umumiy-ishlov)
 19. [Endpoint qisqa jadvali](#19-endpoint-qisqa-jadvali)
+20. [Lokatsiya Ma'lumotlari — Viloyat, Tuman, Ko'cha](#20-lokatsiya-malumotlari--viloyat-tuman-kocha)
 
 ---
 
@@ -586,6 +587,19 @@ Ta'rif tanlash oldidan promocode ni tekshirish:
 
 ---
 
+## 8.1. Multi-do'kon tanlash (active shop)
+
+Bir userda bir nechta do'kon bo'lsa, ilova active do'konni tanlab ishlaydi. Tanlangan do'kon `users.tenant_id` ga saqlanadi.
+
+| Metod | Endpoint | Body | Javob |
+|-------|----------|------|-------|
+| GET | `/tenants` | — | `200`: `active_tenant_id`, `tenants[]` |
+| PUT | `/tenants/active` | `tenant_id` | `200`: `active_tenant` |
+
+`/auth/me` javobida ham `active_tenant` va `available_tenants` qaytadi.
+
+---
+
 ## 9. Mijozlar
 
 ### 9.1. Ro'yxat
@@ -889,6 +903,8 @@ POST /debts/overdue/{customer_id}/send-sms?days=10
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
 | POST | `/tenants` | `name`, `category_id`, `region_id`, `district_id`, `street_id` | `201`: yangi do'kon |
+| GET | `/tenants` | — | `200`: do'konlar ro'yxati + active do'kon |
+| PUT | `/tenants/active` | `tenant_id` | `200`: active do'kon yangilanadi |
 
 **Lokatsiya endpointlari (authsiz):**
 
@@ -1183,6 +1199,8 @@ Har bir API javobda:
 | Ta'rif tanlash | POST | `/subscription/choose/{plan}` |
 | Promocode tekshirish | POST | `/promo-codes/check` |
 | Qo'shimcha paket sotib olish | POST | `/subscription/buy-extra/{extra_package}` |
+| Do'konlar ro'yxati + active | GET | `/tenants` |
+| Active do'konni almashtirish | PUT | `/tenants/active` |
 | AI support — xabar | POST | `/support/chat` |
 | AI support — tarix | GET | `/support/history` |
 | AI support — tozalash | DELETE | `/support/history` |
@@ -1209,6 +1227,11 @@ Har bir API javobda:
 | Eslatma SMS yuborish | POST | `/debts/overdue/{customer}/send-sms` |
 | To'lovlar ro'yxati | GET | `/payments` |
 | To'lov yaratish | POST | `/payments` |
+| Xodimlar ro'yxati | GET | `/workers` |
+| Xodim yaratish | POST | `/workers` |
+| Xodim detail | GET | `/workers/{id}` |
+| Xodim yangilash | PUT | `/workers/{id}` |
+| Xodim o'chirish | DELETE | `/workers/{id}` |
 | Profil | GET | `/profile` |
 | Profil yangilash | PUT | `/profile` |
 | Parol o'zgartirish | PUT | `/profile/password` |
@@ -1218,5 +1241,193 @@ Har bir API javobda:
 
 ---
 
+## 20. Lokatsiya Ma'lumotlari — Viloyat, Tuman, Ko'cha
+
+Mobile ilova ro'yxatdan o'tish vaqtida do'konning joylashuv ma'lumotlarini so'rash kerak: viloyat, tuman, ko'cha. Quyida API endpointlari va ma'lumot manbalarining batafsil tavsifi keltirilgan.
+
+### 20.1. API Endpointlari (Authsiz)
+
+Bu endpointlar **ro'yxatdan o'tus** jarayonida chaqiriladi — foydalanuvchi viloyat, tuman, ko'chani tanlashi kerak.
+
+| Qadam | Metod | Endpoint | Javob | Tavsif |
+|-------|-------|----------|-------|--------|
+| 1 | GET | `/locations/regions` | `[{ id, name, name_translations }]` | Viloyatlar ro'yxati (14 ta) |
+| 2 | GET | `/locations/categories` | `[{ id, name, name_translations }]` | Do'kon kategoriyalari |
+| 3 | GET | `/locations/districts/{regionId}` | `[{ id, region_id, name, ... }]` | Tanlangan viloyat tumanlari |
+| 4 | GET | `/locations/streets/{districtId}` | `[{ id, district_id, name, ... }]` | Tanlangan tuman ko'chalari |
+
+**Query parametr (ixtiyoriy):** `?locale=uz|en|ru|oz` — bu qiymat berilsa `name` maydoni shu tilda qaytadi.
+
+### 20.2. Viloyatlar (14 ta)
+
+O'zbekiston Respublikasida:
+- **12 ta viloyat** (Andijon, Buxoro, Farg'ona, Qashqadarya, Navoi, Samarqand, Surxondarya, Toshkent viloyati, Xorazm, Qoraqalpog'iston Respublikasi) + **Tashkent shahri** + **Tashkentning to'rtinchi shahri** = **14 ta region**.
+
+**Misol Response:**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Tashkent",
+      "name_translations": {
+        "uz": "Toshkent",
+        "ru": "Ташкент",
+        "en": "Tashkent"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Andijon",
+      "name_translations": { ... }
+    }
+  ]
+}
+```
+
+### 20.3. Do'kon Kategoriyalari
+
+Dasturchilari yo'lda ikkita yo'lda kategoriyalar o'zgarishi bo'lishi mumkin:
+1. **Mahalliy:** `categories` jadvalisida admin tomonidan qo'shiladi.
+2. **Global:** o'zbekiston bo'ylab umumiy kategoriyalar (masalan, "Oziq-ovqat", "Maishiy texnika", "Butiklar").
+
+**Misol Response:**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Oziq-ovqat",
+      "name_translations": { "uz": "Oziq-ovqat", "ru": "Продукты", ... }
+    },
+    {
+      "id": 2,
+      "name": "Maishiy texnika",
+      "name_translations": { ... }
+    }
+  ]
+}
+```
+
+### 20.4. Tumanlar
+
+Har bir viloyatda tumanlar va viloyat markaziy shahrlari bor. Ilova foydalanuvchi viloyat tanlagach, shu viloyat tumanlarini so'rashi kerak.
+
+**Misol: TashkentViloyati (region_id=1) tumanlari:**
+```json
+{
+  "data": [
+    {
+      "id": 5,
+      "region_id": 1,
+      "name": "Yunusobod",
+      "name_translations": { ... }
+    },
+    {
+      "id": 6,
+      "region_id": 1,
+      "name": "Uchtepa",
+      "name_translations": { ... }
+    }
+  ]
+}
+```
+
+### 20.5. Ko'chalar
+
+Har bir tuman tanlangach, shu tumandagi ko'chalarni so'rash mumkin. Loyihada ko'chalar quyidagi usulda saqlanadi:
+
+**Opsiyalar:**
+1. **Seedlangan umumiy ro'yxat:** `StreetSeeder` tomonidan qo'shilgan standart ko'cha nomlari.
+2. **Erkin matn kiritish:** Agar loyihada aniq street ro'yxati o'rnatilmagan bo'lsa, ilova foydalanuvchiga erkin matn kirish imkonini beradi.
+3. **Aralash:** Seedlangan ro'yxat + erkin matn.
+
+**Misol Response:**
+```json
+{
+  "data": [
+    {
+      "id": 120,
+      "district_id": 5,
+      "name": "Amir Temur ko'chasi",
+      "name_translations": { "uz": "Amir Temur", "ru": "Амира Темура", ... }
+    },
+    {
+      "id": 121,
+      "district_id": 5,
+      "name": "Mustaqillik ko'chasi",
+      "name_translations": { ... }
+    }
+  ]
+}
+```
+
+### 20.6. Ma'lumot Manbalarini Qo'l Bilan Yangilash
+
+Agar ma'lumot tarafdorlariga qo'l bilan yangilash kerak bo'lsa, quyidagi manbalar tafsiya qilinadi:
+
+| Jadval | Fayl | Manba |
+|--------|------|-------|
+| `regions` | `database/data/regions.json` | [Ibratbek — regions.json](https://raw.githubusercontent.com/Ibratbek/regions-districts-json/master/regions.json) |
+| `districts` | `database/data/districts.json` | [Ibratbek — districts.json](https://raw.githubusercontent.com/Ibratbek/regions-districts-json/master/districts.json) yoki [MIMAXUZ — districts.json](https://raw.githubusercontent.com/MIMAXUZ/uzbekistan-regions-data/master/JSON/districts.json) |
+| `streets` | `StreetSeeder` orqali | Erkin kiritish yoki StreetSeeder da umumiy nomlari o'zgartirish |
+
+**Yangilash qadamlari:**
+1. Yuqoridagi manba linkidan JSON faylni yuklab oling.
+2. `database/data/<fayl_nomi>.json` ga joylashtiring.
+3. Terminalda qayta seed qiling:
+   ```bash
+   php artisan db:seed --class=LocationsSeeder
+   ```
+
+### 20.7. Frontend Ro'yxatdan O'tish Oqimi
+
+```
+┌─────────────────────────────────────────────┐
+│ 1. Viloyatlar API'dan olinadi               │
+│    GET /locations/regions                   │
+├─────────────────────────────────────────────┤
+│ 2. Foydalanuvchi viloyat tanlaydi           │
+│    region_id = tanlangan                    │
+├─────────────────────────────────────────────┤
+│ 3. Tumanlar shu viloyat bo'yicha olinadi    │
+│    GET /locations/districts/{regionId}      │
+├─────────────────────────────────────────────┤
+│ 4. Foydalanuvchi tuman tanlaydi             │
+│    district_id = tanlangan                  │
+├─────────────────────────────────────────────┤
+│ 5. Ko'chalar shu tuman bo'yicha olinadi     │
+│    GET /locations/streets/{districtId}      │
+├─────────────────────────────────────────────┤
+│ 6. Foydalanuvchi ko'cha tanlaydi            │
+│    street_id = tanlangan                    │
+├─────────────────────────────────────────────┤
+│ 7. Kategorialar API'dan olinadi             │
+│    GET /locations/categories                │
+├─────────────────────────────────────────────┤
+│ 8. Foydalanuvchi kategoriya tanlaydi        │
+│    category_id = tanlangan                  │
+├─────────────────────────────────────────────┤
+│ 9. Do'kon va parol kiritliydi               │
+│    POST /auth/register/complete             │
+│    Jami: shop_name, category_id, region_id,│
+│    district_id, street_id, password         │
+├─────────────────────────────────────────────┤
+│ ✅ Ro'yxatdan o'tish yakunlandi             │
+│    Token saqlandi                           │
+└─────────────────────────────────────────────┘
+```
+
+### 20.8. Xato Holatlari
+
+| Holat | Javob | Sabab |
+|-------|-------|-------|
+| `regionId` noto'g'ri | `404` | Viloyat topilmadi |
+| `districtId` noto'g'ri | `404` | Tuman topilmadi |
+| Tumanlar bo'sh | `200`: `{ data: [] }` | Viloyatda tumanlar yo'q |
+| Ko'chalar bo'sh | `200`: `{ data: [] }` | Tumanida ko'chalar yo'q |
+
+---
+
 *Hujjat TZ.md va kodga asosan tuzilgan. API o'zgarishi bo'lsa ushbu UserFlow ham yangilanadi.*
-*So'nggi yangilanish: 2026-03-22*
+*So'nggi yangilanish: 2026-04-03*

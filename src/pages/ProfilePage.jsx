@@ -380,6 +380,38 @@ export default function ProfilePage() {
                     </button>
                 </div>
 
+                {/* Do'konlar */}
+                <button
+                    onClick={() => navigate('/shops')}
+                    className="w-full flex items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700/50"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                            <Store size={18} className="text-emerald-500" />
+                        </div>
+                        <span className="text-[15px] font-medium text-gray-900 dark:text-white">
+                            Mening do'konlarim
+                        </span>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-400" />
+                </button>
+
+                {/* Xodimlar */}
+                <button
+                    onClick={() => navigate('/staff')}
+                    className="w-full flex items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700/50"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <User size={18} className="text-blue-500" />
+                        </div>
+                        <span className="text-[15px] font-medium text-gray-900 dark:text-white">
+                            Xodimlar
+                        </span>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-400" />
+                </button>
+
                 {/* Subscription / Tariff */}
                 <button
                     onClick={() => navigate('/subscription')}

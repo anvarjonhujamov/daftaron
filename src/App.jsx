@@ -26,6 +26,8 @@ import SubscriptionPage from './pages/SubscriptionPage'
 import OverduePage from './pages/OverduePage'
 import NotificationsPage from './pages/NotificationsPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import ShopsPage from './pages/ShopsPage'
+import StaffPage from './pages/StaffPage'
 
 export default function App() {
 
@@ -75,6 +77,8 @@ export default function App() {
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/subscription" element={<SubscriptionPage />} />
+                    <Route path="/shops" element={<ShopsPage />} />
+                    <Route path="/staff" element={<StaffPage />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 </Route>
 

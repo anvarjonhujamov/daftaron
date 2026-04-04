@@ -1,6 +1,6 @@
 # Daftaron — Texnik Topshiriq (TZ)
 
-> So'nggi yangilanish: 2026-03-22
+> So'nggi yangilanish: 2026-04-01
 
 ## Mundarija
 
@@ -26,6 +26,7 @@
 20. [Web route'lar — to'liq ro'yxat](#20-web-routelar--toliq-royxat)
 21. [Xato kodlari](#21-xato-kodlari)
 22. [Muhim konfiguratsiyalar](#22-muhim-konfiguratsiyalar)
+23. [API Endpointlar va Javob Formatlar](#23-api-endpointlar-va-javob-formatlar)
 
 ---
 
@@ -86,6 +87,96 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Multi-tenant storage modeli (amaldagi)
+
+#### 2.1. Model tanlovi
+
+Tanlangan model: **Shared DB + Shared Schema + `tenant_id` isolation**.
+
+**Struktura:**
+- Bitta MySQL cluster,
+- Bitta schema,
+- Tenantga tegishli barcha biznes jadvallarda `tenant_id` ustuni,
+- Servis/controller qatlamida qat'iy tenant scope (data isolation).
+
+**Nega shu model?**
+- `Database-per-user` modeli hozircha optimal emas: 50k+ tenantda 50k+ DB lifecycle boshqarish murakkab (backup, restore, migration, incident management), infra xarajati keskin oshadi.
+- Shared-schema modeli tez implementatsiya, stabil ishlash beradi, API contract saqlangan holda o'sishga imkon beradi, va keyinchalik shardlashga (tenant hash strategiyasi) ochiq qoladi.
+
+#### 2.2. API contract va tenant selector
+
+API endpointlar backward-compatible saqlangan va active tenant uchun qo'shimcha endpointlar qo'shildi.
+
+**Tenant selector (priority tartibi):**
+- Query/body: `tenant_id`
+- Header: `X-Tenant-Id`
+
+**Active tenant endpointlari:**
+- `GET /api/v1/tenants` — foydalanuvchiga ruxsat etilgan do'konlar ro'yxati + active do'kon
+- `PUT /api/v1/tenants/active` — `tenant_id` ni active qilib saqlash (`users.tenant_id` da)
+
+**Qoidalar:**
+- Tenantga bog'liq endpointlar (`/customers`, `/debts`, `/payments`, `/dashboard`, `/debts/overdue`, `/workers`):
+  - `shop_owner/shop_worker` faqat o'z tenantini tanlay oladi
+  - Ruxsatsiz tenantni tanlasa **403** (`Bu do'konga kirish huquqingiz yo'q.`)
+  - Administrator/manager uchun cheklov yo'q
+- Selector berilmasa backward-compatible xulq: oddiy user → joriy tenant, admin/manager → global ko'rinish
+
+#### 2.3. Migration strategiyasi
+
+Loyiha reset qilinadigan holat bo'lgani uchun migrationlar konsolidatsiya qilindi:
+- `add_*` va `update_*` incremental migrationlar olib tashlandi
+- Yakuniy ustunlar va indekslar to'g'ridan-to'g'ri `create_*` migratsiyalarga ko'chirildi
+
+**Natija:** Noldan bir xil, predictible schema ko'tariladi, migration chain qisqa va tushunarli, drift xavfi kamayadi.
+
+#### 2.4. Performance va 50k+ obunachiga tayyorlash
+
+**Indekslar:**
+- `debts`, `payments`, `customers`, `transactions`, `payment_orders` uchun kompozit indekslar
+- Tenant-heavy querylar uchun `tenant_id + status + date` indekslar
+
+**Data tiplari:**
+- Monetary ustunlar: `DECIMAL(18,2)` (katta summalar uchun)
+- Paket modelida string `feature_type` (enum o'rniga) — kengaytiriladigan model
+
+**Tavsiya etilgan operatsion qo'shimchalar:**
+- MySQL read-replica (reporting/dashboard GET lar uchun)
+- Queue worker scaling (SMS/notification/background tasklar)
+- Slow query log + APM (monitoring)
+- Connection pool tuning
+
+#### 2.5. Ma'lumotlar xavfsizligi va backup
+
+Arxitektura tarafidan qo'llab-quvvatlanadigan production amaliyat:
+- Kunlik full backup + binlog asosida point-in-time restore
+- Haftalik restore drill (test restore imkon-salomatligi tekshiruvi)
+- Critical jadvallar uchun accidental delete himoyasi (soft delete mumkin bo'lgan joylarda)
+
+*Eslatma: Backup policy infra/devops darajasida yoqilishi kerak.*
+
+#### 2.6. I18n (Tillarni qo'shish — kelajak)
+
+Quyidagi jadvallarga `*_translations` JSON ustunlari qo'shildi:
+- `plans.name_translations`, `plans.description_translations`
+- `categories.name_translations`
+- `regions.name_translations`, `districts.name_translations`, `streets.name_translations`
+- `tenants.name_translations`
+- `payment_systems.name_translations`
+
+**Moslik:** Hozirgi API ni buzmaydi — `name` va `description` maydonlari saqlangan, lekin qiymat locale-ga mos qaytadi.
+
+**Implementatsiya:**
+- Eloquent model darajasida `HasLocalizedAttributes` trait
+- API/web tarafida `name` va `description` oldingi shakli saqlangan
+- Lokatsiya seedlari `regions.json + districts.json + villages.json` orqali to'liq yuritiladi
+
+#### 2.7. Keyingi bosqichlar (xohishga ko'ra)
+
+1. DB-level RLS o'rniga app-level tenant guard qat'iyligi uchun policy/middleware audit
+2. Reporting read model (materialized summary) qo'shish
+3. Sharding readiness: tenant-id hash strategiyasi va shard router abstraction
+
 ---
 
 ## 3. Rollar va foydalanuvchilar
@@ -145,7 +236,25 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
 | Parol tiklash 2 | `POST /auth/password/verify` | `phone`, `code` | `reset_token` (10 daqiqa) |
 | Parol tiklash 3 | `POST /auth/password/reset` | `reset_token`, `password`, `password_confirmation` | Parol yangilandi |
 
-### 4.3. Telefon formati
+### 4.3. API tenant selector (multi-tenant)
+
+Tenantga bog'liq API endpointlar (`/customers`, `/debts`, `/payments`, `/dashboard`, `/debts/overdue`, `/workers`) uchun selector:
+
+- Query/body: `tenant_id`
+- Header: `X-Tenant-Id`
+- Active tenant endpointlari:
+  - `GET /api/v1/tenants` — foydalanuvchiga ruxsat etilgan do'konlar + active do'kon
+  - `PUT /api/v1/tenants/active` — `tenant_id` ni active qilib saqlash (`users.tenant_id`)
+
+Qoidalar:
+
+1. `shop_owner/shop_worker` faqat o'z tenantini tanlay oladi.
+2. Boshqa tenant yuborilsa **403** (`Bu do'konga kirish huquqingiz yo'q.`).
+3. Selector berilmasa backward-compatible xulq saqlanadi:
+   - oddiy user: joriy tenant,
+   - admin/manager: global ko'rinish.
+
+### 4.4. Telefon formati
 
 | Kiritish | Natija (bazada) |
 |----------|----------------|
@@ -206,6 +315,12 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
 | `price` | Oylik narx (so'm) | 29 000 |
 | `debt_limit` | Umumiy nasiya limiti (`null` = cheksiz) | 70 |
 | `sms_limit` | Bepul SMS soni (oyiga) | 20 |
+| `shop_limit` | Do'kon limiti (`null` = cheksiz) | 1 |
+| `worker_limit` | Xodim limiti (`null` = cheksiz) | 0 |
+| `allow_extra_debt_packages` | Qo'shimcha nasiya paketi ruxsati | false (Oddiy) |
+| `allow_extra_sms_packages` | Qo'shimcha SMS paketi ruxsati | true |
+| `allow_extra_shop_packages` | Qo'shimcha do'kon paketi ruxsati | false (Oddiy), true (Pro) |
+| `allow_extra_worker_packages` | Qo'shimcha xodim paketi ruxsati | false (Oddiy), true (Pro) |
 
 **Limit tekshiruvi (DebtService):**
 - Barcha nasiyalar umumiy hisoblanadi — `debt_limit` bilan solishtiriladi
@@ -268,7 +383,18 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
     "sms_total_limit": 20,
     "sms_used": 8,
     "sms_remaining": 12,
-    "extra_sms_price": 190
+    "extra_sms_price": 190,
+    "shop_base_limit": 1,
+    "shop_extra_limit": 0,
+    "shop_total_limit": 1,
+    "shop_used": 1,
+    "shop_remaining": 0,
+    "worker_base_limit": 0,
+    "worker_extra_limit": 0,
+    "worker_total_limit": 0,
+    "worker_used": 0,
+    "worker_remaining": 0,
+    "allowed_extra_package_types": ["sms"]
   },
   "plans": [
     {
@@ -276,7 +402,13 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
       "name": "Oddiy",
       "price": 29000,
       "debt_limit": 70,
-      "sms_limit": 20
+      "sms_limit": 20,
+      "shop_limit": 1,
+      "worker_limit": 0,
+      "allow_extra_debt_packages": false,
+      "allow_extra_sms_packages": true,
+      "allow_extra_shop_packages": false,
+      "allow_extra_worker_packages": false
     }
   ],
   "extra_packages": [
@@ -291,6 +423,7 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
     {
       "id": 2,
       "type": "sms",
+      "feature_type": "sms",
       "quantity": 50,
       "price": 25000,
       "is_active": true,
@@ -324,11 +457,15 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
 | `sms_used` | Ishlatilgan SMS soni |
 | `sms_remaining` | Qolgan SMS (total - used) |
 | `extra_sms_price` | Limitdan keyingi har bir SMS narxi (so'm) |
+| `shop_base_limit`, `shop_extra_limit`, `shop_total_limit`, `shop_used`, `shop_remaining` | Do'kon capacity usage snapshot |
+| `worker_base_limit`, `worker_extra_limit`, `worker_total_limit`, `worker_used`, `worker_remaining` | Xodim capacity usage snapshot |
+| `allowed_extra_package_types` | Joriy plan sotib olishi mumkin bo'lgan paket turlari |
 
 | `extra_packages` maydon | Tavsif |
 |--------------------------|--------|
 | `id` | Paket ID |
-| `type` | `debt` yoki `sms` |
+| `type` | Legacy moslik maydoni (`debt` yoki `sms`) |
+| `feature_type` | Canonical capability turi (`debt`, `sms`, `shop`, `worker`) |
 | `quantity` | Paketdagi miqdor |
 | `price` | Narxi (so'm) |
 | `is_active` | Faolmi |
@@ -338,7 +475,12 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
 
 Admin panelda **Qo'shimcha paketlar** (`/admin/extra-packages`) bo'limida istalgan miqdor va narxda paketlar yaratiladi.
 
-**Paket turlari:** `debt` (nasiya) va `sms`.
+**Paket turlari:** `debt` (nasiya), `sms`, `shop`, `worker`.
+
+**Plan bo'yicha xarid qoidalari:**
+- `Oddiy / Basic` faqat `sms` paketini sotib ola oladi.
+- `Pro` va undan kattaroq planlarda ruxsatlar admin belgilagan capability flaglarga bog'liq.
+- API va Web da sotib olishdan oldin shu capability tekshiriladi; ruxsat bo'lmasa **422** qaytadi.
 
 **Sotib olish:**
 - **Web:** `POST /subscription/buy-extra/{extra_package}` — balansdan yechiladi
@@ -347,6 +489,8 @@ Admin panelda **Qo'shimcha paketlar** (`/admin/extra-packages`) bo'limida istalg
 Sotib olingan paketlar `extra_purchases` jadvaliga yoziladi va foydalanuvchining umumiy limitiga qo'shiladi:
 - Nasiya limiti = `plan.debt_limit` + sotib olingan `debt` paketlar `quantity` yig'indisi
 - SMS limiti = `plan.sms_limit` + sotib olingan `sms` paketlar `quantity` yig'indisi
+- Do'kon limiti = `plan.shop_limit` + sotib olingan `shop` paketlar `quantity` yig'indisi
+- Xodim limiti = `plan.worker_limit` + sotib olingan `worker` paketlar `quantity` yig'indisi
 
 **Tranzaksiya turi:** `transactions.type = "extra_package"`
 
@@ -1034,7 +1178,14 @@ Body: `name`, `category_id`, `region_id`, `district_id`, `street_id`
 **Cheklov:** Oddiy ta'rifda faqat 1 ta do'kon. Yangi qo'shmoqchi bo'lsa:
 - **422** — `"Basic (Oddiy) ta'rifda faqat bitta do'kon mumkin."` + `requires_upgrade: true`
 
-### 17.3. Joylashuv ma'lumotlari (authsiz API)
+### 17.3. Active do'konni tanlash
+
+- **Web:** `POST /shops/switch` (`tenant_id`) — topbar do'kon selectori shu endpointga yuboradi.
+- **API:** `GET /api/v1/tenants`, `PUT /api/v1/tenants/active` (`tenant_id`).
+- Tanlov `users.tenant_id` da saqlanadi va tenant selector (`tenant_id`/`X-Tenant-Id`) yuborilmagan so'rovlarda default scope bo'ladi.
+- Xodim CRUD (`/workers`) doim active do'kon scope ida ishlaydi.
+
+### 17.4. Joylashuv ma'lumotlari (authsiz API)
 
 | Endpoint | Tavsif |
 |----------|--------|
@@ -1042,6 +1193,10 @@ Body: `name`, `category_id`, `region_id`, `district_id`, `street_id`
 | `GET /api/v1/locations/categories` | Do'kon kategoriyalari |
 | `GET /api/v1/locations/districts/{regionId}` | Tumanlar |
 | `GET /api/v1/locations/streets/{districtId}` | Ko'chalar |
+
+Qo'shimcha:
+- `?locale=uz|en|ru|oz` query param berilsa `name` maydoni shu locale bo'yicha qaytadi (API contract o'zgarmaydi).
+- `streets` jadvali synthetic emas, `database/data/villages.json` dan to'liq mahalla ro'yxati bilan seed qilinadi.
 
 ---
 
@@ -1173,6 +1328,8 @@ users ──────────┐
 | POST | `/subscription/choose/{plan}` | Ta'rif tanlash (promo_code qo'llab-quvvatlanadi) |
 | POST | `/subscription/buy-extra/{extra_package}` | Qo'shimcha paket sotib olish |
 | POST | `/promo-codes/check` | Promocode tekshirish (2026-03-26) |
+| GET | `/tenants` | Foydalanuvchiga ruxsat etilgan do'konlar + active tenant |
+| PUT | `/tenants/active` | Active do'konni tanlash (`tenant_id`) |
 | POST | `/support/chat` | AI support bot — xabar yuborish |
 | GET | `/support/history` | AI support bot — chat tarixi |
 | DELETE | `/support/history` | AI support bot — tarixni tozalash |
@@ -1199,6 +1356,11 @@ users ──────────┐
 | POST | `/debts/overdue/{customer}/send-sms` | Muddati o'tganga eslatma SMS |
 | GET | `/payments` | To'lovlar ro'yxati |
 | POST | `/payments` | To'lov yaratish |
+| GET | `/workers` | Xodimlar ro'yxati + statistikalar |
+| POST | `/workers` | Xodim yaratish (active do'konga biriktiriladi) |
+| GET | `/workers/{id}` | Bitta xodim + statistikalar |
+| PUT | `/workers/{id}` | Xodimni yangilash |
+| DELETE | `/workers/{id}` | Xodimni o'chirish |
 | GET | `/profile` | Profil |
 | PUT | `/profile` | Profil yangilash |
 | PUT | `/profile/password` | Parol o'zgartirish |
@@ -1250,6 +1412,7 @@ users ──────────┐
 | `/subscription/choose/{plan}` | POST | Ta'rif tanlash |
 | `/subscription/balance-topup` | POST | Balans to'ldirish |
 | `/subscription/plan-pay/{plan}` | POST | Ta'rif to'lash (to'lov tizimi orqali) |
+| `/shops/switch` | POST | Active do'konni almashtirish (`tenant_id`) |
 | `/payment/return` | GET | To'lovdan qaytish |
 | `/payment/cancel` | GET | To'lov bekor |
 
@@ -1268,6 +1431,7 @@ users ──────────┐
 | `/overdue` | GET | Muddati o'tganlar |
 | `/overdue/{customer}/send-sms` | POST | Eslatma SMS |
 | `/payments` | resource | To'lovlar CRUD |
+| `/workers` | resource | Xodimlar CRUD + statistika |
 | `/shops/create` | GET | Do'kon yaratish formasi |
 | `/shops` | POST | Do'kon yaratish |
 | `/notifications` | GET | Bildirishnomalar |
@@ -1384,4 +1548,1097 @@ GROQ_API_KEY=...
 
 ---
 
-*TZ oxirgi yangilanish: 2026-03-22. Loyiha versiyasi: Laravel 12, API v1.*
+## 23. API Endpointlar va Javob Formatlar
+
+> **Eslatma:** Barcha API endpointlari `/api/v1` prefiksi bilan ishlaydi. Detailed OpenAPI 3.0 spesifikatsiyasi uchun [public/docs/openapi.yaml](../public/docs/openapi.yaml) faylini ko'ring.
+
+### 23.1. Authentifikatsiya va Ruxsatlar
+
+#### Login (API)
+
+**Endpoint:** `POST /auth/login`
+
+**Request:**
+```json
+{
+  "phone": "+998901234567",
+  "password": "password123",
+  "device_name": "iPhone 13 Pro"
+}
+```
+
+**Response (200 — Muvaffaqiyatli):**
+```json
+{
+  "token": "1|ABCDEFGHIJKLMNOPQRSTUVWXYZ...",
+  "user": {
+    "id": 1,
+    "public_id": 1001,
+    "name": "John Doe",
+    "phone": "+998901234567",
+    "email": "john@example.com",
+    "balance": 50000,
+    "trial_ends_at": "2026-04-05T10:30:00Z",
+    "status": 1
+  }
+}
+```
+
+**Response (422 — SMS tasdiq talab qilinadi):**
+```json
+{
+  "requires_verification": true,
+  "message": "SMS tasdiqlash talab qilinadi."
+}
+```
+
+#### Telegram Login
+
+**Endpoint:** `POST /auth/telegram-login`
+
+**Request:**
+```json
+{
+  "phone": "+998901234567",
+  "device_name": "Mobile App"
+}
+```
+
+**Response (200):**
+```json
+{
+  "token": "1|ABCDEFGHIJKLMNOPQRSTUVWXYZ...",
+  "user": { ... }
+}
+```
+
+**Response (404 — Ro'yxatdan o'tmagan):**
+```json
+{
+  "requires_registration": true,
+  "phone": "+998901234567",
+  "message": "Bazada foydalanuvchi topilmadi. Ro'yxatdan o'ting."
+}
+```
+
+#### Logout
+
+**Endpoint:** `POST /auth/logout`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+```json
+{
+  "message": "Muvaffaqiyatli chiqildi."
+}
+```
+
+### 23.2. Ro'yxatdan O'tish (Taqdimiy 3-bosqich)
+
+#### Bosqich 1: Ism + Telefon
+
+**Endpoint:** `POST /auth/register`
+
+**Request:**
+```json
+{
+  "name": "John Doe",
+  "phone": "+998901234567",
+  "device_name": "Mobile"
+}
+```
+
+**Response (200):**
+```json
+{
+  "requires_verification": true,
+  "message": "SMS kodi yuborildi."
+}
+```
+
+#### Bosqich 2: SMS Kodi
+
+**Endpoint:** `POST /auth/verify`
+
+**Request:**
+```json
+{
+  "phone": "+998901234567",
+  "code": "1234",
+  "type": "register"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Telefon tekshirildi. Do'kon ma'lumotlarini kiriting."
+}
+```
+
+**Response (422 — Noto'g'ri kod):**
+```json
+{
+  "message": "Kodi tekshiruvi muvaffaq bo'lmadi.",
+  "errors": { "code": ["Noto'g'ri kod."] }
+}
+```
+
+#### Bosqich 3: Do'kon + Parol
+
+**Endpoint:** `POST /auth/register/complete`
+
+**Request:**
+```json
+{
+  "phone": "+998901234567",
+  "shop_name": "Bozor Market",
+  "category_id": 1,
+  "region_id": 1,
+  "district_id": 5,
+  "street_id": 120,
+  "password": "SecurePass123",
+  "password_confirmation": "SecurePass123",
+  "device_name": "Mobile"
+}
+```
+
+**Response (201):**
+```json
+{
+  "token": "1|ABCDEFGHIJKLMNOPQRSTUVWXYZ...",
+  "user": { ... },
+  "tenant": {
+    "id": 1,
+    "name": "Bozor Market",
+    "category_id": 1,
+    "region_id": 1,
+    "district_id": 5,
+    "street_id": 120
+  }
+}
+```
+
+### 23.3. Parol Tiklash
+
+#### Qadim 1: Telefon
+
+**Endpoint:** `POST /auth/password/forgot`
+
+**Request:**
+```json
+{
+  "phone": "+998901234567"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "SMS kodi yuborildi."
+}
+```
+
+#### Qadim 2: SMS Kodi
+
+**Endpoint:** `POST /auth/password/verify`
+
+**Request:**
+```json
+{
+  "phone": "+998901234567",
+  "code": "5678"
+}
+```
+
+**Response (200):**
+```json
+{
+  "reset_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+#### Qadim 3: Yangi Parol
+
+**Endpoint:** `POST /auth/password/reset`
+
+**Request:**
+```json
+{
+  "reset_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "password": "NewPass456",
+  "password_confirmation": "NewPass456"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Parol muvaffaqiyatli yangilandi."
+}
+```
+
+### 23.4. Profil
+
+#### Profil Ko'rish
+
+**Endpoint:** `GET /profile`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+```json
+{
+  "id": 1,
+  "public_id": 1001,
+  "name": "John Doe",
+  "phone": "+998901234567",
+  "email": "john@example.com",
+  "balance": 50000,
+  "tenant_id": 1,
+  "status": 1,
+  "trial_ends_at": "2026-04-05T10:30:00Z"
+}
+```
+
+#### Profil Yangilash
+
+**Endpoint:** `PUT /profile`
+
+**Request:**
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com"
+}
+```
+
+**Response (200):** Yangilangan profil ma'lumotlari
+
+#### Parol O'zgartirish
+
+**Endpoint:** `PUT /profile/password`
+
+**Request:**
+```json
+{
+  "current_password": "OldPass123",
+  "password": "NewPass456",
+  "password_confirmation": "NewPass456"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Parol muvaffaqiyatli yangilandi."
+}
+```
+
+### 23.5. Obuna va Balans
+
+#### Obuna Holati
+
+**Endpoint:** `GET /subscription/status`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):** [6.5 bo'limda batafsil formatni qarang]
+
+#### Ta'rif Tanlash
+
+**Endpoint:** `POST /subscription/choose/{plan_id}`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request (ixtiyoriy promocode):**
+```json
+{
+  "promo_code": "SALE20"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Ta'rif muvaffaqiyatli tanlandi.",
+  "plan": { "id": 2, "name": "Pro", "price": 49000 },
+  "new_trial_ends_at": "2026-05-05T10:30:00Z",
+  "balance_after": 1000
+}
+```
+
+**Response (422 — Balans yetmasa):**
+```json
+{
+  "message": "Mablag' yetarli emas.",
+  "plan_price": 49000,
+  "balance": 5000
+}
+```
+
+#### Promocode Tekshirish
+
+**Endpoint:** `POST /promo-codes/check`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request:**
+```json
+{
+  "code": "SALE20"
+}
+```
+
+**Response (200 — Faol):**
+```json
+{
+  "valid": true,
+  "type": "percent",
+  "amount": 20,
+  "discount_label": "20% chegirma",
+  "message": "Promocode faol."
+}
+```
+
+**Response (422 — Nofaol):**
+```json
+{
+  "valid": false,
+  "message": "Promocode muddati o'tgan yoki faol emas."
+}
+```
+
+#### Qo'shimcha Paket Sotib Olish
+
+**Endpoint:** `POST /subscription/buy-extra/{extra_package_id}`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+```json
+{
+  "message": "Paket muvaffaqiyatli sotib olingan.",
+  "package": {
+    "id": 2,
+    "type": "sms",
+    "quantity": 50,
+    "price": 25000
+  },
+  "balance_after": 25000
+}
+```
+
+### 23.6. Do'konlar (Tenants)
+
+#### Do'konlar Ro'yxati
+
+**Endpoint:** `GET /tenants`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+```json
+{
+  "tenants": [
+    {
+      "id": 1,
+      "name": "Bozor Market",
+      "category_id": 1,
+      "region_id": 1,
+      "district_id": 5,
+      "street_id": 120,
+      "plan_id": 2,
+      "status": "active"
+    }
+  ],
+  "active_tenant_id": 1
+}
+```
+
+#### Active Do'konni Tanlash
+
+**Endpoint:** `PUT /tenants/active`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request:**
+```json
+{
+  "tenant_id": 1
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Do'kon muvaffaqiyatli tanlandi.",
+  "active_tenant_id": 1
+}
+```
+
+#### Yangi Do'kon Qo'shish
+
+**Endpoint:** `POST /tenants`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request:**
+```json
+{
+  "name": "Yangi Dukoni",
+  "category_id": 2,
+  "region_id": 2,
+  "district_id": 8,
+  "street_id": 200
+}
+```
+
+**Response (201 — Muvaffaqiyatli):**
+```json
+{
+  "id": 2,
+  "name": "Yangi Dukoni",
+  "category_id": 2,
+  "plan_id": null,
+  "status": "active"
+}
+```
+
+**Response (422 — Oddiy ta'rifda limit):**
+```json
+{
+  "message": "Basic (Oddiy) ta'rifda faqat bitta do'kon mumkin.",
+  "requires_upgrade": true
+}
+```
+
+### 23.7. Mijozlar (Customers)
+
+#### Mijozlar Ro'yxati
+
+**Endpoint:** `GET /customers`
+
+**Headers:** `Authorization: Bearer <token>; X-Tenant-Id: 1` (yoki query: `?tenant_id=1`)
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Aka Rajab",
+      "phone": "+998901112233",
+      "address": "Tashkent, Amir Temur ko'chasi, 45",
+      "description": "Savdo miqdori 5-10 million",
+      "total_debt": 1500000,
+      "overdue_sms_count": 2,
+      "overdue_sms_last_sent_at": "2026-03-20T14:00:00Z"
+    }
+  ]
+}
+```
+
+#### Mijoz Qo'shish
+
+**Endpoint:** `POST /customers`
+
+**Request:**
+```json
+{
+  "name": "Aka Rajab",
+  "phone": "+998901112233",
+  "address": "Tashkent, Amir Temur ko'chasi, 45",
+  "description": "Yangi mijoz"
+}
+```
+
+**Response (201):** Yaratilgan mijoz ma'lumotlari
+
+#### Mijoz Yangilash
+
+**Endpoint:** `PUT /customers/{id}`
+
+**Request:** [Yuqoridagi kabi]
+
+**Response (200):** Yangilangan ma'lumotlar
+
+#### Mijoz O'chirish
+
+**Endpoint:** `DELETE /customers/{id}`
+
+**Response (200):**
+```json
+{
+  "message": "Mijoz o'chirildi."
+}
+```
+
+### 23.8. Nasiyalar (Debts)
+
+#### Nasiyalar Ro'yxati
+
+**Endpoint:** `GET /debts`
+
+**Query parametrlar:** `?customer_id=1&tenant_id=1`
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "customer_id": 1,
+      "total_amount": 500000,
+      "remaining_amount": 200000,
+      "debt_date": "2026-03-15",
+      "status": "open",
+      "description": "Baliqsimonning to'lovlari",
+      "sms_sent": true,
+      "created_at": "2026-03-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+#### Nasiya Qo'shish
+
+**Endpoint:** `POST /debts`
+
+**Request:**
+```json
+{
+  "customer_id": 1,
+  "total_amount": 500000,
+  "debt_date": "2026-03-15",
+  "description": "Baliqsimonning to'lovlari",
+  "send_sms": true
+}
+```
+
+**Response (201 — Muvaffaqiyatli):**
+```json
+{
+  "success": true,
+  "message": "Nasiya muvaffaqiyatli qo'shildi.",
+  "debt": {
+    "id": 1,
+    "customer_id": 1,
+    "total_amount": 500000,
+    "remaining_amount": 500000
+  },
+  "remaining_limit": 69,
+  "sms_sent": true,
+  "sms_info": {
+    "message": "Aka Rajab aka siz 2026-03-15 sanasida Bozor Market dan 500000 so'm qarzdor bo'ldingiz."
+  }
+}
+```
+
+**Response (403 — Limit tugagan):**
+```json
+{
+  "error": true,
+  "message": "Sizning nasiya limitingiz tugadi. 0 ta nasiya qo'shish ham mumkin.",
+  "remaining_limit": 0
+}
+```
+
+**Response (422 — SMS balans yetmasa):**
+```json
+{
+  "success": true,
+  "message": "Nasiya qo'shildi, lekin SMS yuborilmadi.",
+  "debt": { ... },
+  "sms_error": "Balans yetarli emas. 190 so'm kerak."
+}
+```
+
+#### Nasiyani Yopish
+
+**Endpoint:** `PATCH /debts/{id}/close`
+
+**Response (200):**
+```json
+{
+  "message": "Nasiya yopildi.",
+  "debt": {
+    "id": 1,
+    "status": "closed",
+    "remaining_amount": 0
+  }
+}
+```
+
+### 23.9. To'lovlar (Payments)
+
+#### To'lovlar Ro'yxati
+
+**Endpoint:** `GET /payments`
+
+**Query parametrlar:** `?debt_id=1&tenant_id=1`
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "debt_id": 1,
+      "amount": 200000,
+      "paid_at": "2026-03-18T15:30:00Z"
+    }
+  ]
+}
+```
+
+#### To'lov Qo'shish
+
+**Endpoint:** `POST /payments`
+
+**Request:**
+```json
+{
+  "debt_id": 1,
+  "amount": 200000,
+  "paid_at": "2026-03-18",
+  "send_sms": true
+}
+```
+
+**Response (201):**
+```json
+{
+  "message": "To'lov muvaffaqiyatli qo'shildi.",
+  "payment": {
+    "id": 1,
+    "debt_id": 1,
+    "amount": 200000
+  },
+  "debt_remaining": 300000,
+  "sms_sent": true
+}
+```
+
+### 23.10. Muddati O'tgan Qarzdorlar (Overdue)
+
+#### Muddati O'tganlar Ro'yxati
+
+**Endpoint:** `GET /debts/overdue`
+
+**Query parametrlar:** `?days=10&tenant_id=1`
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "customer_id": 1,
+      "name": "Aka Rajab",
+      "phone": "+998901112233",
+      "first_debt_date": "2026-02-15",
+      "total_remaining": 2500000,
+      "days_overdue": 35,
+      "overdue_sms_count": 3,
+      "overdue_sms_last_sent_at": "2026-03-20T14:00:00Z"
+    }
+  ]
+}
+```
+
+#### Eslatma SMS Yuborish
+
+**Endpoint:** `POST /debts/overdue/{customer_id}/send-sms`
+
+**Query parametrlar:** `?days=10&tenant_id=1`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "SMS muvaffaqiyatli yuborildi.",
+  "overdue_sms_count": 4,
+  "overdue_sms_last_sent_at": "2026-03-23T14:00:00Z"
+}
+```
+
+### 23.11. Joylashuv Ma'lumotlari (Authsiz)
+
+#### Viloyatlar
+
+**Endpoint:** `GET /locations/regions`
+
+**Query parametrlar:** `?locale=uz` (ixtiyoriy)
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Tashkent",
+      "name_translations": { "uz": "Toshkent", "ru": "Ташкент", "en": "Tashkent" }
+    }
+  ]
+}
+```
+
+#### Kategoriyalar
+
+**Endpoint:** `GET /locations/categories`
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Oziq-ovqat",
+      "name_translations": { "uz": "Oziq-ovqat", "ru": "Продукты", "en": "Groceries" }
+    }
+  ]
+}
+```
+
+#### Tumanlar
+
+**Endpoint:** `GET /locations/districts/{region_id}`
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": 5,
+      "region_id": 1,
+      "name": "Shayxontohur",
+      "name_translations": { "uz": "Shayxontoxur", ... }
+    }
+  ]
+}
+```
+
+#### Ko'chalar
+
+**Endpoint:** `GET /locations/streets/{district_id}`
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": 120,
+      "district_id": 5,
+      "name": "Amir Temur ko'chasi",
+      "name_translations": { ... }
+    }
+  ]
+}
+```
+
+### 23.12. AI SupportBot
+
+#### Xabar Yuborish
+
+**Endpoint:** `POST /support/chat`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request:**
+```json
+{
+  "message": "Nasiya qanday qo'shiladi?"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Nasiya qanday qo'shiladi?",
+  "reply": "Qarzlar bo'limiga o'ting, Yangi qarz tugmasini bosing. Mijozni tanlang, summani kiriting va saqlang."
+}
+```
+
+#### Chat Tarixi
+
+**Endpoint:** `GET /support/history`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+```json
+{
+  "history": [
+    {
+      "id": 1,
+      "role": "user",
+      "content": "Salom",
+      "created_at": "2026-03-22T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "role": "assistant",
+      "content": "Salom! Qanday yordam bera olaman?",
+      "created_at": "2026-03-22T10:00:01Z"
+    }
+  ]
+}
+```
+
+#### Chat Tarixini Tozalash
+
+**Endpoint:** `DELETE /support/history`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+```json
+{
+  "message": "Chat tarixi tozalandi."
+}
+```
+
+### 23.13. Bildirishnomalar (Notifications)
+
+#### Bildirishnomalar Ro'yxati
+
+**Endpoint:** `GET /notifications`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "type": "debt_created",
+      "message": "Yangi nasiya qo'shildi",
+      "data": {
+        "tenant_name": "Bozor Market",
+        "amount": 500000,
+        "debt_id": 1
+      },
+      "read_at": null,
+      "created_at": "2026-03-22T10:00:00Z"
+    }
+  ]
+}
+```
+
+#### Bitta Bildirishnoma
+
+**Endpoint:** `GET /notifications/{id}`
+
+**Response (200):** [Yuqoridagi ma'lumotlar], `read_at` yangilangan bo'ladi
+
+### 23.14. Xodimlar (Workers)
+
+#### Xodimlar Ro'yxati
+
+**Endpoint:** `GET /workers`
+
+**Headers:** `Authorization: Bearer <token>`; Query: `?tenant_id=1`
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Ali Karimov",
+      "phone": "+998901234567",
+      "role": "seller",
+      "status": "active",
+      "created_at": "2026-03-01T10:00:00Z"
+    }
+  ]
+}
+```
+
+#### Xodim Qo'shish
+
+**Endpoint:** `POST /workers`
+
+**Request:**
+```json
+{
+  "name": "Ali Karimov",
+  "phone": "+998901234567",
+  "role": "seller"
+}
+```
+
+**Response (201):** Yaratilgan xodim ma'lumotlari
+
+#### Xodim Yangilash
+
+**Endpoint:** `PUT /workers/{id}`
+
+**Request:**
+```json
+{
+  "name": "Ali Karimov Jr.",
+  "status": "active"
+}
+```
+
+**Response (200):** Yangilangan ma'lumotlar
+
+#### Xodim O'chirish
+
+**Endpoint:** `DELETE /workers/{id}`
+
+**Response (200):**
+```json
+{
+  "message": "Xodim o'chirildi."
+}
+```
+
+### 23.15. Dashboard
+
+#### Dashboard Statistikalaari
+
+**Endpoint:** `GET /dashboard`
+
+**Headers:** `Authorization: Bearer <token>`; Query: `?tenant_id=1`
+
+**Response (200):**
+```json
+{
+  "summary": {
+    "total_customers": 45,
+    "total_debts": 12,
+    "total_debt_amount": 15000000,
+    "total_payments": 8,
+    "total_payment_amount": 5000000,
+    "remaining_debt": 10000000,
+    "overdue_amount": 2500000,
+    "overdue_customers": 5
+  },
+  "recent_debts": [ ... ],
+  "recent_payments": [ ... ]
+}
+```
+
+### 23.16. Xato Javoblar
+
+#### 401 — Autentifikatsiya Xatosi
+
+```json
+{
+  "message": "Autentifikatsiya muvaffaq bo'lmadi.",
+  "error": "Unauthorized"
+}
+```
+
+#### 403 — Ruxsat Rad Etildi
+
+```json
+{
+  "message": "Bu do'konga kirish huquqingiz yo'q.",
+  "error": "Forbidden"
+}
+```
+
+#### 404 — Topilmadi
+
+```json
+{
+  "message": "Resurs topilmadi.",
+  "error": "Not Found"
+}
+```
+
+#### 422 — Validatsiya Xatosi
+
+```json
+{
+  "message": "Kiritilgan ma'lumotlar noto'g'ri.",
+  "errors": {
+    "phone": ["Telefon raqam majburiy yoki noto'g'ri formatda."],
+    "amount": ["Summa 0 dan katta bo'lishi kerak."]
+  }
+}
+```
+
+#### 500 — Server Xatosi
+
+```json
+{
+  "message": "Server xatosi yuz berdi.",
+  "error": "Internal Server Error"
+}
+```
+
+### 23.17. Tashqi API — Payme Webhook
+
+#### Payme Merchant API (JSON-RPC 2.0)
+
+**Endpoint:** `POST /api/payme/merchant`
+
+**Autentifikatsiya:** HTTP Basic Auth
+
+- **Login:** `merchant_id` yoki `paycom` yoki `Paycom`
+- **Password:** `.env` da `PAYME_MERCHANT_TEST_KEY` (test) yoki `PAYME_MERCHANT_KEY` (production)
+
+**Request Misol (CheckPerformTransaction):**
+```json
+{
+  "id": 1,
+  "method": "CheckPerformTransaction",
+  "params": {
+    "account": {
+      "user_id": 1
+    },
+    "amount": 2900000
+  }
+}
+```
+
+**Response (Success):**
+```json
+{
+  "id": 1,
+  "result": {
+    "allow": true
+  }
+}
+```
+
+**Response (Error):**
+```json
+{
+  "id": 1,
+  "error": {
+    "code": -31050,
+    "message": "Foydalanuvchi topilmadi",
+    "data": null
+  }
+}
+```
+
+#### Payme Metodlari
+
+| Metod | Tavsif |
+|-------|--------|
+| `CheckPerformTransaction` | Tranzaksiyani bajarishdan oldin tekshirish |
+| `CreateTransaction` | Tranzaksiyani yaratish |
+| `PerformTransaction` | Tranzaksiyani yakunlash |
+| `CancelTransaction` | Bekor qilish |
+| `CheckTransaction` | Holatini tekshirish |
+| `GetStatement` | Vaqt oralig'idagi tranzaksiyalar |
+
+#### Click Callback Endpointlari
+
+**Prepare:** `POST /payment/click/prepare` (MD5 sign bilan)
+
+**Complete:** `POST /payment/click/complete` (MD5 sign bilan)
+
+[Batafsil: 12-bo'limga qarang]
+
+---
+
+*TZ oxirgi yangilanish: 2026-04-01. Loyiha versiyasi: Laravel 12, API v1.*

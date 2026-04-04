@@ -191,14 +191,15 @@ export default function DashboardPage() {
         <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3 overflow-hidden">
+                <Link to="/shops" className="flex items-center gap-3 overflow-hidden active:opacity-70 transition-opacity" title="Do'konni o'zgartirish">
                     <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
                         <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
                     </div>
-                    <h1 className="text-[24px] font-bold text-gray-900 dark:text-white truncate">
+                    <h1 className="text-[24px] font-bold text-gray-900 dark:text-white truncate flex items-center gap-1.5">
                         {user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}
+                        <ChevronRight size={20} className="text-gray-400 mt-1 shrink-0" />
                     </h1>
-                </div>
+                </Link>
                 
 
                 <div className="flex gap-2">

@@ -111,15 +111,15 @@ export default function SubscriptionPage() {
             description: "Biznesini jiddiy yuritayotganlar uchun",
             features: [
                 "Cheksiz nasiya qo'shish",
-                "3 ta biznes",
+                "3 ta bo'linma bizneslar",
                 "Batafsil moliyaviy hisobotlar",
                 "50 ta bepul SMS",
                 "Limitdan tashqari sms 170 so'm",
-                "3 ta xodim qo'shish",
-                "Tezkor qo'llab-quvvatlash"
+                "3 tagacha xodim qo'shish",
+                "Tezkor AI qo'llab-quvvatlash"
             ],
             is_popular: true,
-            is_coming_soon: true
+            is_coming_soon: false
         },
         {
             id: 'mock_premium',
@@ -295,19 +295,26 @@ export default function SubscriptionPage() {
                             const isActivePlan = activePlanId && activePlanId === plan.id && isSubscriptionActive
                             const isOpen = openPlanId === plan.id
 
-                             return (
+                                 const isPro = plan.name?.toLowerCase().includes('pro');
+
+                                 return (
                                 <div
                                     key={plan.id}
-                                    className={`card dark:bg-gray-800 transition-all relative ${isActivePlan
-                                        ? 'border-2 border-green-400 dark:border-green-600'
-                                        : plan.is_popular
-                                            ? 'border-2 border-blue-500 dark:border-blue-700 shadow-md shadow-blue-500/10'
-                                            : 'border border-gray-100 dark:border-gray-700'
+                                    className={`card overflow-hidden transition-all duration-300 relative ${isActivePlan
+                                        ? 'bg-gradient-to-br from-green-50/50 to-emerald-100/50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-400 dark:border-green-600 shadow-lg shadow-green-500/20'
+                                        : isPro
+                                            ? 'bg-gradient-to-br from-[#f8fafc] to-[#e0f2fe] dark:from-gray-800 dark:to-blue-900/20 border-2 border-blue-500/50 hover:border-blue-500 shadow-xl shadow-blue-500/20 scale-[1.02]'
+                                            : plan.is_popular
+                                                ? 'bg-white dark:bg-gray-800 border-2 border-indigo-400 dark:border-indigo-600 shadow-md shadow-indigo-500/10'
+                                                : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
                                         }`}
                                 >
+                                    {isPro && !isActivePlan && (
+                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-400/5 to-purple-500/5 pointer-events-none rounded-[22px]"></div>
+                                    )}
                                     {plan.is_popular && (
                                         <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
-                                            <span className="bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
+                                            <span className={`${isPro ? 'bg-gradient-to-r from-blue-600 to-purple-600 shadow-blue-500/30' : 'bg-blue-600'} text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg`}>
                                                 Eng ommabob
                                             </span>
                                         </div>
@@ -316,15 +323,15 @@ export default function SubscriptionPage() {
                                     <button
                                         type="button"
                                         onClick={() => setOpenPlanId(isOpen ? null : plan.id)}
-                                        className="w-full flex items-center gap-3 text-left"
+                                        className="w-full flex items-center gap-3 text-left relative z-20"
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isActivePlan
-                                            ? 'bg-green-100 dark:bg-green-900/30'
-                                            : 'bg-indigo-100 dark:bg-indigo-900/30'
+                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 shadow-sm ${isActivePlan
+                                            ? 'bg-gradient-to-tr from-green-400 to-emerald-400 text-white'
+                                            : isPro
+                                                ? 'bg-gradient-to-tr from-blue-500 to-purple-500 text-white'
+                                                : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500'
                                             }`}>
-                                            <Package size={18} className={
-                                                isActivePlan ? 'text-green-500' : 'text-indigo-500'
-                                            } />
+                                            <Package size={20} className={isPro || isActivePlan ? "drop-shadow-md" : ""} />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
