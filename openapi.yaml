@@ -16,7 +16,7 @@ info:
       - Query param: `?tenant_id=5`
       - Body: `{ "tenant_id": 5 }`
       - Header: `X-Tenant-Id: 5`
-    - Active tenant: `GET /tenants`, `PUT /tenants/active`
+    - Active tenant: `GET /tenants`, `PUT /tenants/active`, `DELETE /tenants/{tenant}`
     - Shop owner faqat o'z tenantini tanlay oladi
     - Unauthorized tenant: 403 Forbidden
     
@@ -53,7 +53,7 @@ info:
     
     - **Texnik topshiriq:** [/TZ.md](/TZ.md)
     - **Userflow (Mobil):** [/UserFlow-Mobile.md](/UserFlow-Mobile.md)
-    - **Detailed API docs:** [/docs/API-REFERENCE.md](/docs/API-REFERENCE.md)
+    - **OpenAPI spec:** [/public/docs/openapi.yaml](/public/docs/openapi.yaml)
 
 servers:
   - url: /api/v1
@@ -254,21 +254,25 @@ components:
           type: integer
         name:
           type: string
-        owner_id:
-          type: integer
-        category_id:
-          type: integer
-        region_id:
-          type: integer
-        district_id:
-          type: integer
-        street_id:
-          type: integer
+        region:
+          type: string
+          nullable: true
+        district:
+          type: string
+          nullable: true
+        street:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
         plan_id:
           type: integer
           nullable: true
         status:
           type: string
+        balance:
+          type: number
         is_active:
           type: boolean
 
@@ -686,7 +690,7 @@ paths:
                   type: string
       responses:
         "200":
-          description: Ta'rif tanlandi, trial uzaydi
+          description: Ta'rif tanlandi, muddati sotib olingan kundan 30 kun
         "422":
           description: Mablag' yetarli emas
 
@@ -799,6 +803,40 @@ paths:
           description: Active tenant tanlandi
         "403":
           description: Ruxsat yo'q
+
+  /tenants/{tenant}:
+    delete:
+      tags: [Tenants]
+      summary: Owner o'z do'konini o'chirish
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Do'kon va unga tegishli tenant ma'lumotlari o'chirildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  active_tenant_id:
+                    type: integer
+                    nullable: true
+                  tenants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Tenant"
+        "403":
+          description: Bu do'konni o'chirish huquqi yo'q
+        "404":
+          description: Tenant topilmadi
 
   /customers:
     get:

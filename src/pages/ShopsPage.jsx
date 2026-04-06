@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Drawer } from 'vaul'
 import { tenantsApi } from '../api/tenants.api'
 import { categoriesApi } from '../api/categories.api'
-import { Store, Plus, ArrowLeft, MapPin, CheckCircle2, X, Loader2 } from 'lucide-react'
+import { Store, Plus, ArrowLeft, MapPin, CheckCircle2, X, Loader2, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import LocationSelector from '../components/LocationSelector'
@@ -16,6 +16,8 @@ export default function ShopsPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [categories, setCategories] = useState([])
     const [savingShop, setSavingShop] = useState(false)
+    const [deletingShopId, setDeletingShopId] = useState(null)
+    const [shopToDelete, setShopToDelete] = useState(null)
     const [newShop, setNewShop] = useState({
         name: '',
         category_id: null,
@@ -133,6 +135,48 @@ export default function ShopsPage() {
         }
     }
 
+    const requestDeleteShop = (shop) => {
+        setShopToDelete(shop)
+    }
+
+    const confirmDeleteShop = async () => {
+        if (!shopToDelete) return
+        const shop = shopToDelete
+        setDeletingShopId(shop.id)
+        try {
+            const response = await tenantsApi.deleteTenant(shop.id)
+            const updatedTenants = Array.isArray(response?.tenants) ? response.tenants : null
+            const nextActiveTenantId = response?.active_tenant_id ?? null
+
+            if (updatedTenants) {
+                setShops(updatedTenants)
+                setActiveId(nextActiveTenantId)
+            } else {
+                setShops((prev) => prev.filter((s) => s.id !== shop.id))
+                if (activeId === shop.id) {
+                    setActiveId(null)
+                }
+            }
+
+            const user = JSON.parse(localStorage.getItem('user') || '{}')
+            user.tenant_id = nextActiveTenantId
+            localStorage.setItem('user', JSON.stringify(user))
+
+            toast.success(response?.message || "Biznes muvaffaqiyatli o'chirildi")
+        } catch (err) {
+            if (err.response?.status === 403) {
+                toast.error("Bu biznesni o'chirish huquqi yo'q")
+            } else if (err.response?.status === 404) {
+                toast.error("Biznes topilmadi")
+            } else {
+                toast.error(err.response?.data?.message || "Biznesni o'chirishda xatolik yuz berdi")
+            }
+        } finally {
+            setDeletingShopId(null)
+            setShopToDelete(null)
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -213,6 +257,18 @@ export default function ShopsPage() {
                                     </div>
                                 </div>
                             </div>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    requestDeleteShop(shop)
+                                }}
+                                disabled={deletingShopId === shop.id}
+                                className={`absolute top-3 ${isActive ? 'right-12' : 'right-3'} w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors`}
+                                title="Biznesni o'chirish"
+                            >
+                                {deletingShopId === shop.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                            </button>
                         </div>
                     )})}
                 </div>
@@ -302,6 +358,39 @@ export default function ShopsPage() {
                     </Drawer.Content>
                 </Drawer.Portal>
             </Drawer.Root>
+
+            {shopToDelete && (
+                <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 shadow-2xl p-5">
+                        <h4 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
+                            Biznesni o'chirish
+                        </h4>
+                        <p className="text-[14px] text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
+                            <span className="font-semibold">"{shopToDelete.name}"</span> biznesini o'chirmoqchimisiz?
+                            Bu amalni ortga qaytarib bo'lmaydi.
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShopToDelete(null)}
+                                disabled={deletingShopId === shopToDelete.id}
+                                className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold"
+                            >
+                                Bekor qilish
+                            </button>
+                            <button
+                                type="button"
+                                onClick={confirmDeleteShop}
+                                disabled={deletingShopId === shopToDelete.id}
+                                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-70"
+                            >
+                                {deletingShopId === shopToDelete.id ? <Loader2 size={16} className="animate-spin" /> : null}
+                                O'chirish
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

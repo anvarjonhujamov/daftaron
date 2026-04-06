@@ -14,5 +14,10 @@ export const tenantsApi = {
     setActiveTenant: async (tenantId) => {
         const response = await axios.put('/tenants/active', { tenant_id: tenantId })
         return response.data
+    },
+
+    deleteTenant: async (tenantId) => {
+        const response = await axios.delete(`/tenants/${tenantId}`)
+        return response.data
     }
 }
