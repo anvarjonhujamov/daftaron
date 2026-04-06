@@ -23,7 +23,8 @@ export default function ShopsPage() {
         category_id: null,
         region_id: null,
         district_id: null,
-        street_id: null
+        street_id: null,
+        location: ''
     })
     const [formErrors, setFormErrors] = useState({})
 
@@ -81,7 +82,8 @@ export default function ShopsPage() {
             category_id: categories?.[0]?.id ?? null,
             region_id: null,
             district_id: null,
-            street_id: null
+            street_id: null,
+            location: ''
         })
     }
 
@@ -133,6 +135,21 @@ export default function ShopsPage() {
         } catch (e) {
             toast.error("Xatolik yuz berdi", { id: loadingToast })
         }
+    }
+
+    const getShopLocationLabel = (shop) => {
+        const parts = []
+        if (shop.location) {
+            return shop.location
+        }
+        if (shop.region) parts.push(shop.region)
+        if (shop.district) parts.push(shop.district)
+        if (shop.street) parts.push(shop.street)
+        return parts.join(', ')
+    }
+
+    const handleNewShopLocationChange = (address) => {
+        setNewShop((prev) => ({ ...prev, location: address }))
     }
 
     const requestDeleteShop = (shop) => {
@@ -226,6 +243,7 @@ export default function ShopsPage() {
                 <div className="grid gap-4">
                     {shops.map(shop => {
                         const isActive = shop.id === activeId || shop.is_active
+                        const locationLabel = getShopLocationLabel(shop)
                         return (
                         <div 
                             key={shop.id} 
@@ -251,10 +269,12 @@ export default function ShopsPage() {
                                     <p className={`text-[17px] font-bold ${isActive ? 'text-emerald-900 dark:text-emerald-100' : 'text-gray-900 dark:text-white'}`}>
                                         {shop.name}
                                     </p>
-                                    <div className="flex items-center gap-1.5 mt-1.5 text-gray-500 dark:text-gray-400">
-                                        <MapPin size={13} />
-                                        <span className="text-[12px]">{shop.location || "Hudud belgilanmagan"}</span>
-                                    </div>
+                                    {locationLabel && (
+                        <div className="flex items-center gap-1.5 mt-1.5 text-gray-500 dark:text-gray-400">
+                            <MapPin size={13} />
+                            <span className="text-[12px]">{locationLabel}</span>
+                        </div>
+                    )}
                                 </div>
                             </div>
                             <button
@@ -286,7 +306,7 @@ export default function ShopsPage() {
                             <div className="sticky top-0 bg-white dark:bg-gray-900 z-10 pb-3 mb-2 flex items-center justify-between">
                                 <div>
                                     <h3 className="text-[18px] font-bold text-gray-900 dark:text-white">Yangi biznes qo'shish</h3>
-                                    <p className="text-[12px] text-gray-500 dark:text-gray-400">OpenAPI bo'yicha majburiy maydonlarni to'ldiring</p>
+                                    <p className="text-[12px] text-gray-500 dark:text-gray-400">Majburiy maydonlarni to'ldiring</p>
                                 </div>
                                 <button
                                     onClick={closeAddModal}
@@ -336,8 +356,21 @@ export default function ShopsPage() {
                                         street_id: newShop.street_id
                                     }}
                                     onChange={(location) => setNewShop(prev => ({ ...prev, ...location }))}
+                                    onAddressChange={handleNewShopLocationChange}
                                     required
                                 />
+                                {newShop.location ? (
+                                    <div className="space-y-1">
+                                        <label className="label">Tanlangan manzil</label>
+                                        <input
+                                            type="text"
+                                            className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                                            value={newShop.location}
+                                            readOnly
+                                            disabled
+                                        />
+                                    </div>
+                                ) : null}
                                 {formErrors.region_id && <p className="text-red-500 text-xs mt-1">{formErrors.region_id[0]}</p>}
                                 {formErrors.district_id && <p className="text-red-500 text-xs mt-1">{formErrors.district_id[0]}</p>}
                                 {formErrors.street_id && <p className="text-red-500 text-xs mt-1">{formErrors.street_id[0]}</p>}

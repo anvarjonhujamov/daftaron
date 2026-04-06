@@ -8,7 +8,7 @@ import { paymentsApi } from '../api/payments.api'
 import { profileApi } from '../api/profile.api'
 import {
     TrendingUp, Users, ChevronRight,
-    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone
+    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone, Briefcase
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton, { DashboardSkeleton } from '../components/Skeleton'
@@ -288,11 +288,11 @@ export default function DashboardPage() {
                                 )}
                             </Link>
                             <Link
-                                to="/payments"
+                                to="/staff"
                                 className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
-                                title="To'lovlar tarixi"
+                                title="Xodimlar"
                             >
-                                <History size={22} />
+                                <Briefcase size={22} />
                             </Link>
                         </div>
                     </>

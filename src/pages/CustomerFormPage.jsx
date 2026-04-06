@@ -21,7 +21,16 @@ export default function CustomerFormPage() {
     const [errors, setErrors] = useState({})
 
     const handleLocationChange = (location) => {
-        setForm({ ...form, ...location })
+        setForm((prev) => ({ ...prev, ...location }))
+    }
+
+    const handleLocationAddressChange = (address) => {
+        setForm((prev) => {
+            if (prev.address && prev.address.trim() !== '') {
+                return prev
+            }
+            return { ...prev, address }
+        })
     }
 
     const handleSubmit = async (e) => {
@@ -111,6 +120,7 @@ export default function CustomerFormPage() {
                             street_id: form.street_id
                         }}
                         onChange={handleLocationChange}
+                        onAddressChange={handleLocationAddressChange}
                     />
 
                     <div>
