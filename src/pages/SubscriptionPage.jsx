@@ -36,6 +36,10 @@ export default function SubscriptionPage() {
             const data = await subscriptionApi.getStatus()
             setStatus(data)
             updateSubscriptionData(data)
+            
+            // Helpful logs to verify IDs and names from the backend
+            console.log('Subscription Status:', data)
+            if (data.plans) console.table(data.plans)
         } catch (err) {
             console.error('Failed to load subscription status:', err)
             toast.error(err.response?.data?.message || 'Obuna holatini yuklashda xatolik yuz berdi')
@@ -66,6 +70,13 @@ export default function SubscriptionPage() {
 
     const handleChoosePlan = async (planId) => {
         if (!planId || saving) return
+
+        // If it's a mock string ID, it's likely to fail on the real backend
+        if (typeof planId === 'string' && planId.startsWith('mock_')) {
+            toast.error("Ushbu ta'rif hozircha faqat ko'rgazma uchun. Iltimos, aktiv ta'rifni tanlang.")
+            return
+        }
+
         setSaving(true)
 
         try {
@@ -87,7 +98,12 @@ export default function SubscriptionPage() {
         } catch (err) {
             const resp = err.response?.data
             if (resp?.message) {
-                toast.error(resp.message)
+                // Specific toast for trial restriction to guide the user
+                if (resp.message.toLowerCase().includes('sinov muddati') || resp.message.toLowerCase().includes('trial')) {
+                    toast.error("Sinov muddati davomida faqat 'Oddiy' ta'rifni tanlash mumkin. Obuna bo'lish uchun avval 'Oddiy'ni tanlang.")
+                } else {
+                    toast.error(resp.message)
+                }
             } else {
                 toast.error("Ta'rifni tanlashda xatolik yuz berdi")
             }
@@ -101,11 +117,23 @@ export default function SubscriptionPage() {
     const transactions = status?.transactions || []
     const apiPackages = status?.extra_packages || []
 
-    // API dan kelgan tariflar (odatda 1 ta) va UI uchun qolgan 2 ta mock tarif
-    // Backend to'liq ishlaguncha 3 ta tarif ko'rsatish uchun
     const mockPlans = [
         {
-            id: 'mock_pro',
+            id: 1, 
+            name: "Oddiy ta'rif",
+            price: 29000,
+            description: "Boshlang'ich bizneslar uchun",
+            features: [
+                "70 ta nasiya limiti",
+                "1 ta do'kon",
+                "20 ta bepul SMS",
+                "Limitdan tashqari sms 190 so'm",
+                "Xodimlar qo'shish ruxsati yo'q"
+            ],
+            is_popular: false
+        },
+        {
+            id: 2, 
             name: "Pro ta'rif",
             price: 59000,
             description: "Biznesini jiddiy yuritayotganlar uchun",
@@ -122,7 +150,7 @@ export default function SubscriptionPage() {
             is_coming_soon: false
         },
         {
-            id: 'mock_premium',
+            id: 3, 
             name: "Premium ta'rif",
             price: 99000,
             description: "Katta hajmdagi bizneslar uchun",
@@ -153,9 +181,28 @@ export default function SubscriptionPage() {
             { id: 'extra_100', name: '100 ta nasiya limiti', price: 69000, limits: 100, type: 'debt' },
         ]
 
-    const plans = apiPlans.length > 0
-        ? [...apiPlans, ...mockPlans.slice(0, Math.max(0, 3 - apiPlans.length))]
-        : mockPlans
+    const plans = apiPlans.map(apiPlan => {
+        // Find matching mock plan for design/features (matching by name)
+        const mockMatch = mockPlans.find(m => 
+            apiPlan.name?.toLowerCase().includes(m.name?.toLowerCase().replace(" ta'rif", ""))
+        );
+        if (mockMatch) {
+            return { ...mockMatch, ...apiPlan }; // API plan ID & price, Mock features & description
+        }
+        return apiPlan;
+    });
+
+    // If we have less than 3 plans, append mock ones that weren't already merged
+    if (plans.length < 3) {
+        mockPlans.forEach(mock => {
+            const alreadyIn = plans.some(p => 
+                p.name?.toLowerCase().includes(mock.name?.toLowerCase().replace(" ta'rif", ""))
+            );
+            if (!alreadyIn) {
+                plans.push(mock);
+            }
+        });
+    }
     const numericBalance = parseCurrency(status?.balance ?? 0)
 
     // Joriy aktiv ta'rif ID sini aniqlash

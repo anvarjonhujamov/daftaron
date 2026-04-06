@@ -2,12 +2,15 @@ import React, { useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   RefreshControl,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View
 } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
+import { Picker } from '@react-native-picker/picker'
 import debtsApi from '../api/debts.api'
 import paymentsApi from '../api/payments.api'
 import { useThemeMode } from '../context/ThemeContext'
@@ -16,6 +19,13 @@ import { formatCurrency, formatDate } from '../utils/format'
 export default function ReportsScreen() {
   const { theme } = useThemeMode()
   const styles = useMemo(() => createStyles(theme), [theme])
+  const now = new Date()
+  const [selectedMonthDate, setSelectedMonthDate] = useState(
+    new Date(now.getFullYear(), now.getMonth(), 1)
+  )
+  const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false)
+  const [draftYear, setDraftYear] = useState(now.getFullYear())
+  const [draftMonth, setDraftMonth] = useState(now.getMonth())
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -26,7 +36,7 @@ export default function ReportsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadData()
-    }, [])
+    }, [selectedMonthDate])
   )
 
   async function loadData() {
@@ -39,18 +49,17 @@ export default function ReportsScreen() {
       const debts = normalizeArray(debtsRaw)
       const payments = normalizeArray(paymentsRaw)
 
-      const now = new Date()
-      const y = now.getFullYear()
-      const m = now.getMonth()
+      const startDate = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth(), 1, 0, 0, 0, 0)
+      const endDate = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + 1, 0, 23, 59, 59, 999)
 
       const debtsThisMonth = debts.filter((d) => {
         const dt = new Date(d.created_at || d.debt_date || 0)
-        return dt.getFullYear() === y && dt.getMonth() === m
+        return !Number.isNaN(dt.getTime()) && dt >= startDate && dt <= endDate
       })
 
       const paymentsThisMonth = payments.filter((p) => {
         const dt = new Date(p.paid_at || p.created_at || 0)
-        return dt.getFullYear() === y && dt.getMonth() === m
+        return !Number.isNaN(dt.getTime()) && dt >= startDate && dt <= endDate
       })
 
       const debtSum = debtsThisMonth.reduce((sum, d) => sum + Number(d.total_amount || d.amount || 0), 0)
@@ -60,14 +69,14 @@ export default function ReportsScreen() {
       setMonthlyPayments(paymentSum)
 
       const combined = [
-        ...debts.map((d) => ({
+        ...debtsThisMonth.map((d) => ({
           id: `d-${d.id}`,
           type: 'debt',
           customer_name: d.customer_name || d.customer?.name || 'Mijoz',
           amount: Number(d.total_amount || d.amount || 0),
           date: d.created_at || d.debt_date
         })),
-        ...payments.map((p) => ({
+        ...paymentsThisMonth.map((p) => ({
           id: `p-${p.id}`,
           type: 'payment',
           customer_name: p.customer_name || p.customer?.name || 'Mijoz',
@@ -93,10 +102,35 @@ export default function ReportsScreen() {
     )
   }
 
+  const periodLabel = formatMonthYear(selectedMonthDate)
+  const currentMonthRef = new Date()
+  const isCurrentMonth =
+    selectedMonthDate.getFullYear() === currentMonthRef.getFullYear() &&
+    selectedMonthDate.getMonth() === currentMonthRef.getMonth()
+
+  const yearOptions = buildYearOptions(now.getFullYear())
+
+  const openPeriodModal = () => {
+    setDraftYear(selectedMonthDate.getFullYear())
+    setDraftMonth(selectedMonthDate.getMonth())
+    setIsPeriodModalOpen(true)
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Hisobotlar</Text>
-      <Text style={styles.sub}>Joriy oy bo'yicha ko'rsatkichlar</Text>
+      <Text style={styles.sub}>Siz tanlagan davr bo'yicha ko'rsatkichlar</Text>
+
+      <TouchableOpacity style={styles.periodCard} onPress={openPeriodModal} activeOpacity={0.85}>
+        <View>
+          <Text style={styles.periodLabel}>HISOBOT DAVRI</Text>
+          <Text style={styles.periodValue}>
+            {periodLabel}
+            {isCurrentMonth ? " (joriy oy)" : ''}
+          </Text>
+        </View>
+        <Text style={styles.periodAction}>O'zgartirish</Text>
+      </TouchableOpacity>
 
       <View style={styles.cardsRow}>
         <View style={[styles.card, { borderColor: theme.border }]}> 
@@ -131,6 +165,55 @@ export default function ReportsScreen() {
           </View>
         )}
       />
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isPeriodModalOpen}
+        onRequestClose={() => setIsPeriodModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Hisobot davrini tanlang</Text>
+
+            <Text style={styles.modalFieldLabel}>Oy</Text>
+            <View style={styles.pickerWrap}>
+              <Picker selectedValue={draftMonth} onValueChange={(v) => setDraftMonth(v)}>
+                {UZ_MONTHS.map((name, index) => (
+                  <Picker.Item key={name} label={name} value={index} />
+                ))}
+              </Picker>
+            </View>
+
+            <Text style={styles.modalFieldLabel}>Yil</Text>
+            <View style={styles.pickerWrap}>
+              <Picker selectedValue={draftYear} onValueChange={(v) => setDraftYear(v)}>
+                {yearOptions.map((year) => (
+                  <Picker.Item key={String(year)} label={String(year)} value={year} />
+                ))}
+              </Picker>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setIsPeriodModalOpen(false)}
+              >
+                <Text style={styles.cancelButtonText}>Bekor qilish</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={() => {
+                  setSelectedMonthDate(new Date(draftYear, draftMonth, 1))
+                  setIsPeriodModalOpen(false)
+                }}
+              >
+                <Text style={styles.saveButtonText}>Saqlash</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -139,6 +222,23 @@ function normalizeArray(data) {
   if (Array.isArray(data)) return data
   if (Array.isArray(data?.data)) return data.data
   return []
+}
+
+const UZ_MONTHS = [
+  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+  'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'
+]
+
+function formatMonthYear(date) {
+  return `${UZ_MONTHS[date.getMonth()]} ${date.getFullYear()}`
+}
+
+function buildYearOptions(currentYear) {
+  const years = []
+  for (let y = currentYear + 1; y >= currentYear - 5; y -= 1) {
+    years.push(y)
+  }
+  return years
 }
 
 function createStyles(theme) {
@@ -165,6 +265,33 @@ function createStyles(theme) {
       marginTop: 3,
       marginBottom: 10,
       fontSize: 13
+    },
+    periodCard: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      backgroundColor: theme.card,
+      padding: 12,
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    },
+    periodLabel: {
+      color: theme.muted,
+      fontSize: 11,
+      fontWeight: '700'
+    },
+    periodValue: {
+      color: theme.text,
+      fontSize: 17,
+      fontWeight: '700',
+      marginTop: 2
+    },
+    periodAction: {
+      color: theme.primary,
+      fontSize: 13,
+      fontWeight: '600'
     },
     cardsRow: {
       gap: 10,
@@ -224,6 +351,60 @@ function createStyles(theme) {
     },
     rowAmount: {
       fontSize: 13,
+      fontWeight: '700'
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      justifyContent: 'center',
+      paddingHorizontal: 16
+    },
+    modalContent: {
+      borderRadius: 16,
+      backgroundColor: theme.card,
+      padding: 14
+    },
+    modalTitle: {
+      color: theme.text,
+      fontSize: 16,
+      fontWeight: '700',
+      marginBottom: 12
+    },
+    modalFieldLabel: {
+      color: theme.muted,
+      fontSize: 12,
+      marginBottom: 4,
+      marginTop: 6
+    },
+    pickerWrap: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 10,
+      overflow: 'hidden'
+    },
+    modalActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: 10,
+      marginTop: 14
+    },
+    modalButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      borderRadius: 9
+    },
+    cancelButton: {
+      backgroundColor: theme.background
+    },
+    saveButton: {
+      backgroundColor: theme.primary
+    },
+    cancelButtonText: {
+      color: theme.muted,
+      fontWeight: '600'
+    },
+    saveButtonText: {
+      color: '#fff',
       fontWeight: '700'
     }
   })

@@ -1,15 +1,29 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Drawer } from 'vaul'
 import { tenantsApi } from '../api/tenants.api'
-import { Store, Plus, ArrowLeft, MapPin, Search, CheckCircle2 } from 'lucide-react'
+import { categoriesApi } from '../api/categories.api'
+import { Store, Plus, ArrowLeft, MapPin, CheckCircle2, X, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
+import LocationSelector from '../components/LocationSelector'
 
 export default function ShopsPage() {
     const navigate = useNavigate()
     const [shops, setShops] = useState([])
     const [loading, setLoading] = useState(true)
     const [activeId, setActiveId] = useState(null)
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+    const [categories, setCategories] = useState([])
+    const [savingShop, setSavingShop] = useState(false)
+    const [newShop, setNewShop] = useState({
+        name: '',
+        category_id: null,
+        region_id: null,
+        district_id: null,
+        street_id: null
+    })
+    const [formErrors, setFormErrors] = useState({})
 
     useEffect(() => {
         loadShops()
@@ -39,11 +53,76 @@ export default function ShopsPage() {
         }
     }
 
+    const loadCategories = async () => {
+        const list = await categoriesApi.getCategories()
+        setCategories(list)
+        setNewShop(prev => ({
+            ...prev,
+            category_id: prev.category_id ?? list?.[0]?.id ?? null
+        }))
+    }
+
+    const openAddModal = async () => {
+        setIsAddModalOpen(true)
+        setFormErrors({})
+        if (categories.length === 0) {
+            await loadCategories()
+        }
+    }
+
+    const closeAddModal = () => {
+        setIsAddModalOpen(false)
+        setSavingShop(false)
+        setFormErrors({})
+        setNewShop({
+            name: '',
+            category_id: categories?.[0]?.id ?? null,
+            region_id: null,
+            district_id: null,
+            street_id: null
+        })
+    }
+
+    const handleCreateShop = async (e) => {
+        e.preventDefault()
+        setSavingShop(true)
+        setFormErrors({})
+        try {
+            await tenantsApi.createTenant({
+                name: newShop.name.trim(),
+                category_id: newShop.category_id,
+                region_id: newShop.region_id,
+                district_id: newShop.district_id,
+                street_id: newShop.street_id
+            })
+            toast.success("Yangi biznes muvaffaqiyatli qo'shildi")
+            closeAddModal()
+            await loadShops()
+        } catch (err) {
+            const resp = err.response?.data
+            if (err.response?.status === 422 && resp?.errors) {
+                setFormErrors(resp.errors)
+                const firstError = Object.values(resp.errors)?.[0]?.[0]
+                toast.error(firstError || "Kiritilgan ma'lumotlar noto'g'ri")
+            } else {
+                toast.error(resp?.message || "Biznes qo'shishda xatolik yuz berdi")
+            }
+        } finally {
+            setSavingShop(false)
+        }
+    }
+
     const setAsActive = async (id) => {
         const loadingToast = toast.loading("Faol do'kon o'zgartirilmoqda...")
         try {
             await tenantsApi.setActiveTenant(id)
             setActiveId(id)
+            
+            // Sync local storage user object
+            const user = JSON.parse(localStorage.getItem('user') || '{}')
+            user.tenant_id = id
+            localStorage.setItem('user', JSON.stringify(user))
+
             toast.success("Faol do'kon o'zgartirildi", { id: loadingToast })
             // Opt: reload page or reload context
             setTimeout(() => {
@@ -77,7 +156,7 @@ export default function ShopsPage() {
                         Mening do'konlarim
                     </h1>
                     <button
-                        onClick={() => toast.success("Yangi biznes qo'shish! Tez kunda")}
+                        onClick={openAddModal}
                         className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 rounded-xl flex items-center justify-center active:scale-95 transition-transform"
                     >
                         <Plus size={20} />
@@ -138,6 +217,91 @@ export default function ShopsPage() {
                     )})}
                 </div>
             </div>
+
+            <Drawer.Root open={isAddModalOpen} onOpenChange={(open) => !open && closeAddModal()} repositionInputs={false}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
+                    <Drawer.Content className="fixed bg-white dark:bg-gray-900 bottom-0 left-0 right-0 max-h-[90vh] rounded-t-[28px] z-50 flex flex-col focus:outline-none">
+                        <Drawer.Title className="sr-only">Yangi biznes qo'shish</Drawer.Title>
+                        <Drawer.Description className="sr-only">Yangi do'kon ma'lumotlarini kiriting</Drawer.Description>
+                        <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 my-4" />
+
+                        <div className="w-full max-w-md mx-auto px-5 pb-8 overflow-y-auto">
+                            <div className="sticky top-0 bg-white dark:bg-gray-900 z-10 pb-3 mb-2 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-[18px] font-bold text-gray-900 dark:text-white">Yangi biznes qo'shish</h3>
+                                    <p className="text-[12px] text-gray-500 dark:text-gray-400">OpenAPI bo'yicha majburiy maydonlarni to'ldiring</p>
+                                </div>
+                                <button
+                                    onClick={closeAddModal}
+                                    className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCreateShop} className="space-y-4">
+                                <div>
+                                    <label className="label">Biznes nomi</label>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        value={newShop.name}
+                                        onChange={(e) => setNewShop(prev => ({ ...prev, name: e.target.value }))}
+                                        placeholder="Masalan: Nurli Zamin"
+                                        required
+                                    />
+                                    {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name[0]}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="label">Faoliyat turi (kategoriya)</label>
+                                    <select
+                                        className="input"
+                                        value={newShop.category_id ?? ''}
+                                        onChange={(e) => setNewShop(prev => ({
+                                            ...prev,
+                                            category_id: e.target.value ? parseInt(e.target.value, 10) : null
+                                        }))}
+                                        required
+                                    >
+                                        <option value="">Tanlang...</option>
+                                        {categories.map((cat) => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                    {formErrors.category_id && <p className="text-red-500 text-xs mt-1">{formErrors.category_id[0]}</p>}
+                                </div>
+
+                                <LocationSelector
+                                    value={{
+                                        region_id: newShop.region_id,
+                                        district_id: newShop.district_id,
+                                        street_id: newShop.street_id
+                                    }}
+                                    onChange={(location) => setNewShop(prev => ({ ...prev, ...location }))}
+                                    required
+                                />
+                                {formErrors.region_id && <p className="text-red-500 text-xs mt-1">{formErrors.region_id[0]}</p>}
+                                {formErrors.district_id && <p className="text-red-500 text-xs mt-1">{formErrors.district_id[0]}</p>}
+                                {formErrors.street_id && <p className="text-red-500 text-xs mt-1">{formErrors.street_id[0]}</p>}
+
+                                <button
+                                    type="submit"
+                                    disabled={savingShop || !newShop.name.trim() || !newShop.category_id || !newShop.region_id || !newShop.district_id || !newShop.street_id}
+                                    className={`w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 ${
+                                        savingShop || !newShop.name.trim() || !newShop.category_id || !newShop.region_id || !newShop.district_id || !newShop.street_id
+                                            ? 'bg-gray-200 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
+                                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                    }`}
+                                >
+                                    {savingShop ? <Loader2 size={18} className="animate-spin" /> : "Biznesni qo'shish"}
+                                </button>
+                            </form>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
         </div>
     )
 }
