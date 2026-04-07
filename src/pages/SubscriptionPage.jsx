@@ -80,7 +80,8 @@ export default function SubscriptionPage() {
         setSaving(true)
 
         try {
-            const code = promoResult?.valid ? promoCode.trim() : null
+            // Always send entered promo code (backend validates applicability per plan)
+            const code = promoCode.trim() ? promoCode.trim() : null
             const data = await subscriptionApi.choosePlan(planId, code)
             toast.success(data.message || "Ta'rif muvaffaqiyatli tanlandi")
 
@@ -117,56 +118,6 @@ export default function SubscriptionPage() {
     const transactions = status?.transactions || []
     const apiPackages = status?.extra_packages || []
 
-    const mockPlans = [
-        {
-            id: 1, 
-            name: "Oddiy ta'rif",
-            price: 29000,
-            description: "Boshlang'ich bizneslar uchun",
-            features: [
-                "70 ta nasiya limiti",
-                "1 ta do'kon",
-                "20 ta bepul SMS",
-                "Limitdan tashqari sms 190 so'm",
-                "Xodimlar qo'shish ruxsati yo'q"
-            ],
-            is_popular: false
-        },
-        {
-            id: 2, 
-            name: "Pro ta'rif",
-            price: 59000,
-            description: "Biznesini jiddiy yuritayotganlar uchun",
-            features: [
-                "Cheksiz nasiya qo'shish",
-                "3 ta bo'linma bizneslar",
-                "Batafsil moliyaviy hisobotlar",
-                "50 ta bepul SMS",
-                "Limitdan tashqari sms 170 so'm",
-                "3 tagacha xodim qo'shish",
-                "Tezkor AI qo'llab-quvvatlash"
-            ],
-            is_popular: true,
-            is_coming_soon: false
-        },
-        {
-            id: 3, 
-            name: "Premium ta'rif",
-            price: 99000,
-            description: "Katta hajmdagi bizneslar uchun",
-            features: [
-                "Cheksiz nasiya",
-                "10 ta biznes",
-                "100 ta bepul SMS",
-                "10 ta xodim qo'shish",
-                "Advanced analytics (chuqur hisobotlar)",
-                "AI orqali ovoz bilan ma'lumot kiritish",
-                "Avtomatik SMS yuborish (schedule)"
-            ],
-            is_coming_soon: true
-        }
-    ]
-
     const extraPackages = apiPackages.length > 0 
         ? apiPackages.map(pkg => ({
             id: pkg.id,
@@ -181,33 +132,17 @@ export default function SubscriptionPage() {
             { id: 'extra_100', name: '100 ta nasiya limiti', price: 69000, limits: 100, type: 'debt' },
         ]
 
-    const plans = apiPlans.map(apiPlan => {
-        // Find matching mock plan for design/features (matching by name)
-        const mockMatch = mockPlans.find(m => 
-            apiPlan.name?.toLowerCase().includes(m.name?.toLowerCase().replace(" ta'rif", ""))
-        );
-        if (mockMatch) {
-            return { ...mockMatch, ...apiPlan }; // API plan ID & price, Mock features & description
-        }
-        return apiPlan;
-    });
-
-    // If we have less than 3 plans, append mock ones that weren't already merged
-    if (plans.length < 3) {
-        mockPlans.forEach(mock => {
-            const alreadyIn = plans.some(p => 
-                p.name?.toLowerCase().includes(mock.name?.toLowerCase().replace(" ta'rif", ""))
-            );
-            if (!alreadyIn) {
-                plans.push(mock);
-            }
-        });
-    }
+    const plans = apiPlans
     const numericBalance = parseCurrency(status?.balance ?? 0)
 
     // Joriy aktiv ta'rif ID sini aniqlash
     const activePlanId = trialInfo?.plan_id ?? status?.current_plan_id ?? status?.active_plan_id ?? null
     const isSubscriptionActive = !trialInfo.is_expired && trialInfo.status !== 0
+    const activePlan = plans.find((p) => p.id === activePlanId)
+    const isActivePlanPro = activePlan?.name?.toLowerCase().includes('pro')
+    const visibleExtraPackages = isActivePlanPro
+        ? extraPackages.filter((pkg) => pkg.type !== 'sms')
+        : extraPackages
 
     const formatDate = (dateString) => {
         if (!dateString) return ''
@@ -405,7 +340,7 @@ export default function SubscriptionPage() {
                                         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                                             <div className="space-y-1">
                                                 {(() => {
-                                                    // Get features from plan.features OR extract from plan.description
+                                                    // Get features from backend; fallback: extract readable lines from backend description
                                                     let featuresArray = []
                                                     
                                                     if (plan.features && Array.isArray(plan.features) && plan.features.length > 0) {
@@ -541,7 +476,7 @@ export default function SubscriptionPage() {
                 </div>
                 
                 <div className="grid grid-cols-1 gap-3">
-                    {extraPackages.map((pkg) => (
+                    {visibleExtraPackages.map((pkg) => (
                         <div 
                             key={pkg.id}
                             className="card dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-between p-4 active:scale-[0.98] transition-all hover:border-blue-200 dark:hover:border-blue-900/50"
@@ -598,6 +533,11 @@ export default function SubscriptionPage() {
                         </div>
                     ))}
                 </div>
+                {isActivePlanPro && (
+                    <p className="mt-3 text-[12px] text-gray-500 dark:text-gray-400">
+                        Pro ta'rifda SMS paketi ko'rsatilmaydi.
+                    </p>
+                )}
                 
                 <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-2xl flex items-start gap-3">
                     <Clock size={16} className="text-gray-400 mt-0.5 shrink-0" />
