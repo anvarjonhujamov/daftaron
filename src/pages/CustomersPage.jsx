@@ -286,13 +286,13 @@ export default function CustomersPage() {
                             { value: '', label: 'Barchasi' },
                             { value: 'debtors', label: 'Qarzdor' },
                             { value: 'paid', label: "To'langan" },
-                            { value: 'overdue', label: "Muddati o'tganlar" }
+                            { value: 'overdue', label: "Muddati o'tgan" }
                         ]
                 ).map(tab => (
                     <button
                         key={tab.value}
                         onClick={() => setFilter(tab.value)}
-                        className={`px-3 py-2 rounded-full text-[12px] font-medium transition-all ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
+                        className={`px-3 py-2 rounded-full text-[12px] font-medium transition-all whitespace-nowrap shrink-0 ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
                     >
                         {tab.label}
                     </button>

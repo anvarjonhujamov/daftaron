@@ -335,14 +335,14 @@ export default function DebtsPage() {
                 <p className="text-gray-400 text-[14px]">Biznes tahlili va ko'rsatkichlar</p>
             </div>
 
-            <div className="mb-6 space-y-3">
+            <div className="mb-4 space-y-2">
                 {!isStaff && (
-                    <div className="card p-4 h-full min-h-[120px]">
-                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-2">Xodim bo'yicha</p>
+                    <div className="card p-3 h-full">
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Xodim bo'yicha</p>
                         <select
                             value={selectedStaffId}
                             onChange={(event) => setSelectedStaffId(event.target.value)}
-                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="all">Hammasi</option>
                             {staffOptions.map((option) => (
@@ -352,15 +352,15 @@ export default function DebtsPage() {
                     </div>
                 )}
 
-                <div className="card p-4 h-full min-h-[120px]">
-                    <div className="flex flex-col gap-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Hisobot turi</p>
-                                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{displayPeriod}</p>
+                <div className="card p-3 h-full">
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider whitespace-nowrap">Hisobot turi</p>
+                                <p className="text-[16px] font-bold text-gray-900 dark:text-white truncate">{displayPeriod}</p>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2 items-center">
+                        <div className="flex gap-1.5 items-center overflow-x-auto whitespace-nowrap pr-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             {[
                                 { value: 'yearly', label: 'Yillik' },
                                 { value: 'monthly', label: 'Oylik' },
@@ -371,7 +371,7 @@ export default function DebtsPage() {
                                 <button
                                     key={option.value}
                                     onClick={() => handlePeriodTypeSelect(option.value)}
-                                    className={`rounded-full px-3 py-2 text-[12px] font-semibold transition ${periodType === option.value ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'}`}
+                                    className={`rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition shrink-0 ${periodType === option.value ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'}`}
                                 >
                                     {option.label}
                                 </button>
@@ -380,21 +380,21 @@ export default function DebtsPage() {
                     </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 items-stretch">
+                <div className="grid gap-2 sm:grid-cols-2 items-stretch">
                     {periodType === 'yearly' && (
-                        <div className="card p-3 h-full min-h-[120px] sm:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
+                        <div className="card p-3 h-full sm:col-span-2 flex items-center justify-between gap-2">
+                            <div className="min-w-0">
                                 <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Yil</p>
-                                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{selectedDate} yil</p>
+                                <p className="text-[17px] font-bold text-gray-900 dark:text-white truncate">{selectedDate} yil</p>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                     onClick={() => {
                                         const year = Number(selectedDate) - 1
                                         setSelectedDate(String(year))
                                         setPickerYear(year)
                                     }}
-                                    className="pill bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+                                    className="w-11 h-11 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 flex items-center justify-center"
                                 >
                                     <ChevronLeft size={18} />
                                 </button>
@@ -405,7 +405,7 @@ export default function DebtsPage() {
                                         setPickerYear(year)
                                     }}
                                     disabled={Number(selectedDate) >= currentYear}
-                                    className="pill bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+                                    className="w-11 h-11 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 flex items-center justify-center"
                                 >
                                     <ChevronRight size={18} />
                                 </button>
@@ -414,8 +414,8 @@ export default function DebtsPage() {
                     )}
 
                     {periodType === 'daily' && (
-                        <div className="card p-3 h-full min-h-[120px] sm:col-span-2">
-                            <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-3">Kun</p>
+                        <div className="card p-3 h-full sm:col-span-2">
+                            <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">Kun</p>
                             <input
                                 type="date"
                                 value={selectedDate}
@@ -431,7 +431,7 @@ export default function DebtsPage() {
                                 setPickerYear(parseInt(selectedDate.split('-')[0], 10))
                                 setShowDatePicker(true)
                             }}
-                            className="card h-full min-h-[120px] sm:col-span-2 w-full flex items-center justify-between p-3 active:scale-[0.98] transition-all text-left"
+                            className="card h-full sm:col-span-2 w-full flex items-center justify-between p-3 active:scale-[0.98] transition-all text-left"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-500">
@@ -524,7 +524,7 @@ export default function DebtsPage() {
             <div className="mb-8">
                 <h2 className="section-title">HISOBOT</h2>
                 <div className="card bg-white dark:bg-gray-800 p-3">
-                    <div className="flex flex-col gap-3 border-b border-gray-100 dark:border-gray-700 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start justify-between gap-3 border-b border-gray-100 dark:border-gray-700 pb-2.5">
                         <div>
                             <p className="text-[14px] font-semibold text-gray-900 dark:text-white">Berilgan nasiyalar</p>
                             <p className="text-[12px] text-gray-400">Sizga qarzdor</p>
@@ -534,17 +534,17 @@ export default function DebtsPage() {
                             <p className="text-[11px] text-gray-400">so'm · {reportStats.debtCount} ta nasiya</p>
                         </div>
                     </div>
-                    <div className="flex flex-col gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                                <ArrowDownRight size={20} className="text-green-500" />
+                    <div className="flex items-start justify-between gap-3 pt-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                                <ArrowDownRight size={18} className="text-green-500" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <p className="text-[14px] font-semibold text-gray-900 dark:text-white">Qabul qilingan to'lovlar</p>
-                                <p className="text-[12px] text-gray-400">Mijozlardan olingan</p>
+                                <p className="text-[11px] text-gray-400">Mijozlardan olingan</p>
                             </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                             <p className="text-[16px] font-bold text-green-500">{formatCurrency(reportStats.payments)}</p>
                             <p className="text-[11px] text-gray-400">so'm</p>
                         </div>
