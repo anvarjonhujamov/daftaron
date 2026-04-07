@@ -5,6 +5,7 @@ import { customersApi } from '../api/customers.api'
 import { debtsApi } from '../api/debts.api'
 import { paymentsApi } from '../api/payments.api'
 import { staffApi } from '../api/staff.api'
+import { subscriptionApi } from '../api/subscription.api'
 import toast from 'react-hot-toast'
 import {
     ChevronLeft, MoreVertical, Phone as PhoneIcon, MessageSquare,
@@ -23,7 +24,7 @@ export default function CustomerDetailPage() {
     const [debts, setDebts] = useState([])
     const [staffMembers, setStaffMembers] = useState([])
     const [loading, setLoading] = useState(true)
-    const { status: subStatus, remaining, sms_remaining } = useSubscription()
+    const { status: subStatus, remaining, sms_remaining, total } = useSubscription()
     const [showDebtDrawer, setShowDebtDrawer] = useState(false)
     const [showPaymentDrawer, setShowPaymentDrawer] = useState(false)
     const [showOptionsDrawer, setShowOptionsDrawer] = useState(false)
@@ -40,11 +41,52 @@ export default function CustomerDetailPage() {
     const [paymentErrors, setPaymentErrors] = useState({})
     const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
     const [blockedType, setBlockedType] = useState(null) // 'limit' | 'expired'
+    const [limitMeta, setLimitMeta] = useState({
+        loaded: false,
+        isUnlimited: false,
+        remaining: null
+    })
 
     useEffect(() => {
         loadData()
         loadStaff()
     }, [id])
+
+    useEffect(() => {
+        const loadSubscriptionLimit = async () => {
+            try {
+                const data = await subscriptionApi.getStatus()
+                const trial = data?.trial_info || data?.trial || {}
+                const usage = data?.usage || {}
+
+                const debtLimit =
+                    usage.debt_limit ??
+                    data?.total_limit ??
+                    data?.total ??
+                    trial?.total_limit ??
+                    null
+
+                const remainingLimit =
+                    usage.debt_remaining ??
+                    data?.remaining_limit ??
+                    data?.remaining ??
+                    trial?.remaining_limit ??
+                    null
+
+                const isUnlimited = Number(debtLimit) === 0
+                setLimitMeta({
+                    loaded: true,
+                    isUnlimited,
+                    remaining: isUnlimited ? null : remainingLimit
+                })
+            } catch (err) {
+                console.error('Failed to load subscription limit:', err)
+                setLimitMeta((prev) => ({ ...prev, loaded: true }))
+            }
+        }
+
+        loadSubscriptionLimit()
+    }, [])
 
     const loadStaff = async () => {
         try {
@@ -268,6 +310,9 @@ export default function CustomerDetailPage() {
             customer.balance ??
             customer.total_debt ?? 0
         )
+    const effectiveIsUnlimited = limitMeta.loaded ? limitMeta.isUnlimited : (remaining == null && total == null)
+    const effectiveRemaining = limitMeta.loaded ? limitMeta.remaining : remaining
+    const isDebtLimitReached = !effectiveIsUnlimited && Number(effectiveRemaining ?? 0) === 0
 
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors">
@@ -326,7 +371,7 @@ export default function CustomerDetailPage() {
                             if (subStatus === 'expired') {
                                 setBlockedType('expired')
                                 setShowBlockedDrawer(true)
-                            } else if (remaining === 0) {
+                            } else if (isDebtLimitReached) {
                                 setBlockedType('limit')
                                 setShowBlockedDrawer(true)
                             } else {
@@ -334,7 +379,7 @@ export default function CustomerDetailPage() {
                             }
                         }} 
                         className={`btn flex-1 py-3 shadow-lg active:scale-95 transition-all ${
-                            subStatus === 'expired' || remaining === 0
+                            subStatus === 'expired' || isDebtLimitReached
                                 ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 border border-gray-100 dark:border-gray-600'
                                 : 'btn-danger shadow-red-500/20'
                         }`}
@@ -541,7 +586,7 @@ export default function CustomerDetailPage() {
                                         <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-900/20">
                                             <p className="text-[11px] text-blue-500 uppercase font-bold tracking-wider mb-0.5">Nasiya Limiti</p>
                                             <p className="text-[14px] font-bold text-blue-600 dark:text-blue-400">
-                                                {remaining ?? 0} ta qoldi
+                                                {effectiveIsUnlimited ? 'Cheksiz' : `${effectiveRemaining ?? 0} ta qoldi`}
                                             </p>
                                         </div>
                                         <div className="p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
@@ -742,7 +787,7 @@ export default function CustomerDetailPage() {
                             <p className="text-gray-500 dark:text-gray-400 mb-8 px-4 leading-relaxed">
                                 {blockedType === 'expired' ? (
                                     <>
-                                        Obunangiz tugagan. Sizda hali <b>{remaining} ta</b> nasiya limiti mavjud.
+                                        Obunangiz tugagan. Sizda hali <b>{effectiveIsUnlimited ? 'Cheksiz' : (effectiveRemaining ?? 0)}</b> nasiya limiti mavjud.
                                         Yo'qotmaslik uchun obunani yangilang.
                                     </>
                                 ) : (
