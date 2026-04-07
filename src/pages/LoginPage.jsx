@@ -81,7 +81,9 @@ export default function LoginPage() {
                             <div className="relative">
                                 <Phone size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-red-400' : 'text-gray-400'}`} />
                                 <input
-                                    type="text"
+                                    type="tel"
+                                    inputMode="tel"
+                                    autoComplete="tel"
                                     className={`input pl-11 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                     placeholder="+998 XX XXX XX XX"
                                     value={form.phone}

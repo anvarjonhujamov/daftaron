@@ -17,6 +17,7 @@ import toast from 'react-hot-toast'
 import PaymentMethods from '../components/PaymentMethods'
 import PaymentDrawer from '../components/PaymentDrawer'
 import LegalDrawer from '../components/LegalDrawer'
+import SupportDrawer from '../components/SupportDrawer'
 import { isUserStaff } from '../utils/roleHelper'
 
 export default function ProfilePage() {
@@ -50,6 +51,7 @@ export default function ProfilePage() {
     const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false)
     const [selectedProvider, setSelectedProvider] = useState(null)
     const [showLegalDrawer, setShowLegalDrawer] = useState(false)
+    const [showSupportDrawer, setShowSupportDrawer] = useState(false)
 
     const isTrialExpired = user?.trial_ends_at
         ? new Date(user.trial_ends_at) < new Date()
@@ -465,7 +467,7 @@ export default function ProfilePage() {
                 {/* Aloqa / Support */}
                 <button
                     type="button"
-                    onClick={() => window.open('https://t.me/backend_php_dev', '_blank', 'noopener,noreferrer')}
+                    onClick={() => setShowSupportDrawer(true)}
                     className="w-full flex items-center justify-between py-4"
                 >
                     <div className="flex items-center gap-3">
@@ -563,7 +565,9 @@ export default function ProfilePage() {
                                     <div className="relative">
                                         <Phone size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${profileErrors.phone ? 'text-red-400' : 'text-gray-400'}`} />
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            inputMode="tel"
+                                            autoComplete="tel"
                                             className={`input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11 ${profileErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                             placeholder="+998 XX XXX XX XX"
                                             value={profileForm.phone}
@@ -695,6 +699,11 @@ export default function ProfilePage() {
             <LegalDrawer 
                 isOpen={showLegalDrawer}
                 onClose={() => setShowLegalDrawer(false)}
+            />
+
+            <SupportDrawer
+                isOpen={showSupportDrawer}
+                onClose={() => setShowSupportDrawer(false)}
             />
         </div>
     )

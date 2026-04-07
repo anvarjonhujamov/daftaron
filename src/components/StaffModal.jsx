@@ -122,6 +122,8 @@ export default function StaffModal({ isOpen, onClose, onSave, staff }) {
                                         </div>
                                         <input
                                             type="tel"
+                                            inputMode="tel"
+                                            autoComplete="tel"
                                             className="w-full pl-11 pr-4 py-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all"
                                             placeholder="+998 90 123 45 67"
                                             value={`${phonePrefix}${phone}`}

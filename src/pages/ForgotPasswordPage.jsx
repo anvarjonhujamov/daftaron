@@ -111,7 +111,9 @@ export default function ForgotPasswordPage() {
                                 <div className="relative">
                                     <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                     <input
-                                        type="text"
+                                        type="tel"
+                                        inputMode="tel"
+                                        autoComplete="tel"
                                         className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11"
                                         placeholder="+998 XX XXX XX XX"
                                         value={phone}

@@ -31,6 +31,8 @@ export default function DebtsPage() {
     const [periodType, setPeriodType] = useState('monthly')
     const [showDatePicker, setShowDatePicker] = useState(false)
     const [pickerYear, setPickerYear] = useState(today.getFullYear())
+    const currentYear = today.getFullYear()
+    const currentMonthIndex = today.getMonth()
 
     useEffect(() => {
         loadData()
@@ -402,6 +404,7 @@ export default function DebtsPage() {
                                         setSelectedDate(String(year))
                                         setPickerYear(year)
                                     }}
+                                    disabled={Number(selectedDate) >= currentYear}
                                     className="pill bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
                                 >
                                     <ChevronRight size={18} />
@@ -479,8 +482,13 @@ export default function DebtsPage() {
                                     {pickerYear}
                                 </span>
                                 <button
-                                    onClick={() => setPickerYear(prev => prev + 1)}
-                                    className="p-2 text-gray-400 hover:text-blue-500"
+                                    onClick={() => {
+                                        if (pickerYear < currentYear) {
+                                            setPickerYear(prev => prev + 1)
+                                        }
+                                    }}
+                                    disabled={pickerYear >= currentYear}
+                                    className="p-2 text-gray-400 hover:text-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     <ChevronRight size={24} />
                                 </button>
@@ -490,13 +498,17 @@ export default function DebtsPage() {
                             <div className="grid grid-cols-3 gap-3">
                                 {MONTH_NAMES.map((name, index) => {
                                     const isSelected = selectedDate === `${pickerYear}-${String(index + 1).padStart(2, '0')}`
+                                    const isFutureMonth = pickerYear > currentYear || (pickerYear === currentYear && index > currentMonthIndex)
                                     return (
                                         <button
                                             key={name}
                                             onClick={() => handleSelectMonth(index)}
+                                            disabled={isFutureMonth}
                                             className={`py-4 rounded-2xl text-[15px] font-semibold transition-all active:scale-95 ${isSelected
                                                 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                                                : 'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-100'
+                                                : isFutureMonth
+                                                    ? 'bg-gray-100 dark:bg-gray-700/30 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                                                    : 'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-100'
                                                 }`}
                                         >
                                             {name}

@@ -89,7 +89,9 @@ export default function CustomerFormPage() {
                     <div>
                         <label className="label">Telefon raqam *</label>
                         <input
-                            type="text"
+                            type="tel"
+                            inputMode="tel"
+                            autoComplete="tel"
                             className="input"
                             placeholder="+998 XX XXX XX XX"
                             value={form.phone}

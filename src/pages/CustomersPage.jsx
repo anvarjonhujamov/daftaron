@@ -518,7 +518,7 @@ export default function CustomersPage() {
                                     <label className="label">Telefon raqami (ixtiyoriy)</label>
                                     <div className="relative">
                                         <Phone size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-red-400' : 'text-gray-400'}`} />
-                                        <input type="text" className={`input pl-11 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`} placeholder="+998 XX XXX XX XX" value={form.phone} onChange={(e) => { setForm({ ...form, phone: formatPhoneNumber(e.target.value) }); if (errors.phone) setErrors({ ...errors, phone: null }); }} />
+                                        <input type="tel" inputMode="tel" autoComplete="tel" className={`input pl-11 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`} placeholder="+998 XX XXX XX XX" value={form.phone} onChange={(e) => { setForm({ ...form, phone: formatPhoneNumber(e.target.value) }); if (errors.phone) setErrors({ ...errors, phone: null }); }} />
                                     </div>
                                     {errors.phone && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{errors.phone[0]}</p>}
                                 </div>
