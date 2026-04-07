@@ -9,7 +9,7 @@ import { profileApi } from '../api/profile.api'
 import { staffApi } from '../api/staff.api'
 import {
     TrendingUp, Users, ChevronRight,
-    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone, Briefcase
+    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone, UserCog
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton, { DashboardSkeleton } from '../components/Skeleton'
@@ -397,7 +397,7 @@ export default function DashboardPage() {
                                     className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
                                     title="Xodimlar"
                                 >
-                                    <Briefcase size={22} />
+                                    <UserCog size={22} />
                                 </Link>
                             )}
                         </div>

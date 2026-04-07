@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { supportApi } from '../api/support.api'
 
 const TELEGRAM_SUPPORT_URL = 'https://t.me/backend_php_dev'
-const TELEGRAM_DISCUSSION_URL = 'https://t.me/daftaron_muhokama'
+const TELEGRAM_DISCUSSION_URL = 'https://t.me/+_Vv2x0u1HmE5Nzhi'
 
 export default function SupportDrawer({ isOpen, onClose }) {
     const [mode, setMode] = useState('menu')
