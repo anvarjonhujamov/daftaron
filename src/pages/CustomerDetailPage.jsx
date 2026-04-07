@@ -4,6 +4,7 @@ import { Drawer } from 'vaul'
 import { customersApi } from '../api/customers.api'
 import { debtsApi } from '../api/debts.api'
 import { paymentsApi } from '../api/payments.api'
+import { staffApi } from '../api/staff.api'
 import toast from 'react-hot-toast'
 import {
     ChevronLeft, MoreVertical, Phone as PhoneIcon, MessageSquare,
@@ -20,6 +21,7 @@ export default function CustomerDetailPage() {
     const navigate = useNavigate()
     const [customer, setCustomer] = useState(null)
     const [debts, setDebts] = useState([])
+    const [staffMembers, setStaffMembers] = useState([])
     const [loading, setLoading] = useState(true)
     const { status: subStatus, remaining, sms_remaining } = useSubscription()
     const [showDebtDrawer, setShowDebtDrawer] = useState(false)
@@ -41,7 +43,19 @@ export default function CustomerDetailPage() {
 
     useEffect(() => {
         loadData()
+        loadStaff()
     }, [id])
+
+    const loadStaff = async () => {
+        try {
+            const response = await staffApi.getStaff()
+            const staffList = Array.isArray(response) ? response : (response.data || [])
+            setStaffMembers(staffList)
+        } catch (err) {
+            console.error('Failed to load staff:', err)
+            setStaffMembers([])
+        }
+    }
 
     const loadData = async () => {
         try {
@@ -203,6 +217,27 @@ export default function CustomerDetailPage() {
         return phone
     }
 
+    const getStaffNameById = (userId) => {
+        if (!userId) return null
+        const staff = staffMembers.find((s) => String(s.id) === String(userId))
+        return staff?.name || null
+    }
+
+    const getCreatorName = (item) => {
+        if (!item) return null
+        // Direct createdBy object with name
+        if (item.createdBy && typeof item.createdBy === 'object' && item.createdBy.name) {
+            return item.createdBy.name
+        }
+        // Try user ID
+        const userId = item.created_by_user_id || item.user_id
+        if (userId) {
+            const creator = getStaffNameById(userId)
+            if (creator) return creator
+        }
+        return null
+    }
+
     const formatDate = (dateString) => {
         if (!dateString) return ''
         const date = new Date(dateString)
@@ -332,7 +367,14 @@ export default function CustomerDetailPage() {
                                     <span className={`badge px-2 py-0.5 rounded-lg text-[11px] ${debt.status === 'closed' ? 'badge-paid' : 'badge-debtor'}`}>
                                         {debt.status === 'closed' ? 'Yopilgan' : 'Faol'}
                                     </span>
-                                    <span className="text-[11px] text-gray-400">{formatDate(debt.created_at)}</span>
+                                    <div className="text-right">
+                                        <div className="text-[11px] text-gray-400">{formatDate(debt.created_at)}</div>
+                                        {getCreatorName(debt) && (
+                                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                                {getCreatorName(debt)}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 mb-4">

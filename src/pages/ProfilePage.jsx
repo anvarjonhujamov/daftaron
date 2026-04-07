@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { profileApi } from '../api/profile.api'
 import { authApi } from '../api/auth.api'
 import { subscriptionApi } from '../api/subscription.api'
+import { staffApi } from '../api/staff.api'
 import {
     User, Phone, Mail, Lock, LogOut, ChevronRight,
     Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle, Store, Bell, ShieldCheck, TrendingUp, BarChart3
@@ -16,9 +17,11 @@ import toast from 'react-hot-toast'
 import PaymentMethods from '../components/PaymentMethods'
 import PaymentDrawer from '../components/PaymentDrawer'
 import LegalDrawer from '../components/LegalDrawer'
+import { isUserStaff } from '../utils/roleHelper'
 
 export default function ProfilePage() {
     const navigate = useNavigate()
+    const location = useLocation()
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -28,6 +31,7 @@ export default function ProfilePage() {
     const [balance, setBalance] = useState(0)
     const [currentPlan, setCurrentPlan] = useState(null)
     const [usage, setUsage] = useState(null)
+    const [isStaff, setIsStaff] = useState(false)
 
     const [profileForm, setProfileForm] = useState({
         name: '',
@@ -118,6 +122,14 @@ export default function ProfilePage() {
             }
         } catch (balanceErr) {
             console.error('Failed to load balance:', balanceErr)
+        }
+
+        // Check if user is staff
+        try {
+            const isStaffUser = await isUserStaff(staffApi)
+            setIsStaff(isStaffUser)
+        } catch (err) {
+            console.error('Failed to check staff status:', err)
         }
 
         setLoading(false)
@@ -273,9 +285,10 @@ export default function ProfilePage() {
                 )}
 
                 {/* Balance Divider Line */}
-                <div className="h-px bg-gray-100 dark:bg-gray-700/50 w-[calc(100%+32px)] mb-3 -mx-4 block box-content"></div>
+                {!isStaff && <div className="h-px bg-gray-100 dark:bg-gray-700/50 w-[calc(100%+32px)] mb-3 -mx-4 block box-content"></div>}
 
                 {/* Balance Section */}
+                {!isStaff && (
                 <div className="flex items-center gap-3.5 px-0.5 pb-0.5 relative">
                     <div className="w-[42px] h-[42px] rounded-full bg-[#eff6ff] dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                         <Wallet size={17} className="text-[#3b82f6]" />
@@ -287,10 +300,11 @@ export default function ProfilePage() {
                         </p>
                     </div>
                 </div>
+                )}
             </div>
 
             {/* Subscription / Trial Period Card */}
-            {user?.trial_ends_at && (
+            {!isStaff && user?.trial_ends_at && (
                 <div
                     className={
                         isTrialExpired
@@ -330,7 +344,7 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {usage ? (usage.sms_remaining !== undefined ? usage.sms_remaining : Math.max(0, usage.sms_limit - usage.sms_used)) : (currentPlan.sms_limit || 'Cheksiz')} ta SMS
+                                                {usage ? (usage.sms_remaining !== undefined ? usage.sms_remaining : Math.max(0, usage.sms_limit - usage.sms_used)) : (currentPlan.sms_limit === 0 ? 'Cheksiz' : currentPlan.sms_limit || 'Cheksiz')} ta SMS
                                             </p>
                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Oylik bepul xabarlar</p>
                                         </div>
@@ -342,7 +356,7 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {usage ? (usage.debt_remaining !== undefined ? usage.debt_remaining : Math.max(0, usage.debt_limit - usage.debt_used)) : (currentPlan.debt_limit || 'Cheksiz')} ta nasiya
+                                                {usage ? (usage.debt_remaining !== undefined ? usage.debt_remaining : Math.max(0, usage.debt_limit - usage.debt_used)) : (currentPlan.debt_limit === 0 ? 'Cheksiz' : currentPlan.debt_limit || 'Cheksiz')} ta nasiya
                                             </p>
                                             <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Umumiy nasiyalar limiti</p>
                                         </div>
@@ -381,8 +395,9 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Do'konlar */}
+                {!isStaff && (
                 <button
-                    onClick={() => navigate('/shops')}
+                    onClick={() => navigate('/shops', { state: { from: location.pathname } })}
                     className="w-full flex items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700/50"
                 >
                     <div className="flex items-center gap-3">
@@ -395,10 +410,12 @@ export default function ProfilePage() {
                     </div>
                     <ChevronRight size={18} className="text-gray-400" />
                 </button>
+                )}
 
                 {/* Xodimlar */}
+                {!isStaff && (
                 <button
-                    onClick={() => navigate('/staff')}
+                    onClick={() => navigate('/staff', { state: { from: location.pathname } })}
                     className="w-full flex items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700/50"
                 >
                     <div className="flex items-center gap-3">
@@ -411,8 +428,10 @@ export default function ProfilePage() {
                     </div>
                     <ChevronRight size={18} className="text-gray-400" />
                 </button>
+                )}
 
                 {/* Subscription / Tariff */}
+                {!isStaff && (
                 <button
                     onClick={() => navigate('/subscription')}
                     className="w-full flex items-center justify-between py-4"
@@ -427,6 +446,7 @@ export default function ProfilePage() {
                     </div>
                     <ChevronRight size={18} className="text-gray-400" />
                 </button>
+                )}
 
                 {/* Change Password */}
                 <button
@@ -472,6 +492,7 @@ export default function ProfilePage() {
                 </button>
 
                 {/* Balance top-up */}
+                {!isStaff && (
                 <div className="py-4">
                     <span className="text-[15px] font-medium text-gray-900 dark:text-white block mb-3">
                         Balansni to'ldirish
@@ -481,6 +502,7 @@ export default function ProfilePage() {
                         setPaymentDrawerOpen(true)
                     }} />
                 </div>
+                )}
             </div>
 
             {/* Logout */}

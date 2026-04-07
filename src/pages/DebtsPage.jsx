@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { debtsApi } from '../api/debts.api'
 import { paymentsApi } from '../api/payments.api'
+import { staffApi } from '../api/staff.api'
 import {
     Calendar, ArrowUpRight, ArrowDownRight,
     ChevronRight, History, Receipt, Clock, X, ChevronLeft
@@ -10,6 +11,7 @@ import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { CustomersSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
+import { isUserStaff } from '../utils/roleHelper'
 
 const MONTH_NAMES = [
     'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
@@ -19,17 +21,105 @@ const MONTH_NAMES = [
 export default function DebtsPage() {
     const [allDebts, setAllDebts] = useState([])
     const [allPayments, setAllPayments] = useState([])
+    const [staffMembers, setStaffMembers] = useState([])
+    const [currentUser, setCurrentUser] = useState(null)
     const [loading, setLoading] = useState(true)
-    const [selectedDate, setSelectedDate] = useState(() => {
-        const d = new Date()
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    })
+    const [isStaff, setIsStaff] = useState(false)
+    const today = new Date()
+    const [selectedDate, setSelectedDate] = useState(() => `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`)
+    const [selectedStaffId, setSelectedStaffId] = useState('all')
+    const [periodType, setPeriodType] = useState('monthly')
     const [showDatePicker, setShowDatePicker] = useState(false)
-    const [pickerYear, setPickerYear] = useState(new Date().getFullYear())
+    const [pickerYear, setPickerYear] = useState(today.getFullYear())
 
     useEffect(() => {
         loadData()
+        loadStaff()
+        const storedUser = localStorage.getItem('user')
+        if (storedUser) {
+            try {
+                const parsed = JSON.parse(storedUser)
+                if (parsed?.id || parsed?.user_id) {
+                    setCurrentUser(parsed)
+                }
+            } catch (err) {
+                console.error('Failed to parse user from localStorage', err)
+            }
+        }
+
+        const checkStaff = async () => {
+            try {
+                const staffUser = await isUserStaff(staffApi)
+                setIsStaff(staffUser)
+
+                if (staffUser) {
+                    const stored = localStorage.getItem('user')
+                    const u = stored ? JSON.parse(stored) : null
+                    const myId = u?.id || u?.user_id
+                    if (u && myId) {
+                        setCurrentUser(u)
+                    }
+
+                    // Resolve staff record id for reliable filtering (some APIs use staff_id instead of user_id)
+                    try {
+                        const staffListResp = await staffApi.getStaff()
+                        const staffList = Array.isArray(staffListResp) ? staffListResp : (staffListResp.data || [])
+                        const staffRec = staffList.find(s => String(s.id) === String(myId) || String(s.user_id) === String(myId))
+                        const effectiveId = staffRec?.id ?? myId
+                        setSelectedStaffId(String(effectiveId))
+                    } catch {
+                        if (myId) setSelectedStaffId(String(myId))
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to check staff status:', err)
+            }
+        }
+
+        checkStaff()
     }, [])
+
+    const getUserRelationIds = (item) => {
+        const fields = [
+            item.worker_id,
+            item.staff_id,
+            item.employee_id,
+            item.user_id,
+            item.created_by,
+            item.created_by_id,
+            item.owner_id,
+            item.tenant_id,
+            item.worker?.id,
+            item.staff?.id,
+            item.employee?.id,
+            item.user?.id,
+            item.created_by?.id,
+            item.owner?.id,
+            item.tenant?.id
+        ]
+
+        if (item.debt) {
+            fields.push(
+                item.debt.worker_id,
+                item.debt.staff_id,
+                item.debt.employee_id,
+                item.debt.user_id,
+                item.debt.created_by,
+                item.debt.created_by_id,
+                item.debt.owner_id,
+                item.debt.tenant_id,
+                item.debt.worker?.id,
+                item.debt.staff?.id,
+                item.debt.employee?.id,
+                item.debt.user?.id,
+                item.debt.created_by?.id,
+                item.debt.owner?.id,
+                item.debt.tenant?.id
+            )
+        }
+
+        return fields
+    }
 
     const loadData = async () => {
         try {
@@ -47,6 +137,86 @@ export default function DebtsPage() {
         }
     }
 
+    const loadStaff = async () => {
+        try {
+            const response = await staffApi.getStaff()
+            setStaffMembers(Array.isArray(response) ? response : (response.data || []))
+        } catch (err) {
+            console.error('Failed to load staff:', err)
+            setStaffMembers([])
+        }
+    }
+
+    const parseDate = (value) => {
+        const date = new Date(value || '')
+        return Number.isNaN(date.getTime()) ? null : date
+    }
+
+    const getWeekRange = (referenceDate) => {
+        const date = new Date(referenceDate)
+        const day = date.getDay()
+        const delta = day === 0 ? 6 : day - 1
+        const start = new Date(date)
+        start.setDate(date.getDate() - delta)
+        start.setHours(0, 0, 0, 0, 0)
+        const end = new Date(start)
+        end.setDate(start.getDate() + 6)
+        end.setHours(23, 59, 59, 999)
+        return { start, end }
+    }
+
+    const getReportRange = () => {
+        const now = new Date()
+        if (periodType === 'daily') {
+            const [year, month, day] = selectedDate.split('-').map(Number)
+            const start = new Date(year, month - 1, day, 0, 0, 0, 0)
+            const end = new Date(year, month - 1, day, 23, 59, 59, 999)
+            return { start, end }
+        }
+        if (periodType === 'yearly') {
+            const year = Number(selectedDate) || now.getFullYear()
+            const start = new Date(year, 0, 1, 0, 0, 0, 0)
+            const end = new Date(year, 11, 31, 23, 59, 59, 999)
+            return { start, end }
+        }
+        if (periodType === 'monthly') {
+            const [year, month] = selectedDate.split('-').map(Number)
+            const start = new Date(year, month - 1, 1, 0, 0, 0, 0)
+            const end = new Date(year, month, 0, 23, 59, 59, 999)
+            return { start, end }
+        }
+        if (periodType === 'last_week') {
+            const thisWeek = getWeekRange(now)
+            const start = new Date(thisWeek.start)
+            start.setDate(start.getDate() - 7)
+            const end = new Date(start)
+            end.setDate(start.getDate() + 6)
+            end.setHours(23, 59, 59, 999)
+            return { start, end }
+        }
+        return getWeekRange(now)
+    }
+
+    const getStaffMatch = (item, staffId) => {
+        if (staffId === 'all') return true
+
+        const ownerId = currentUser?.id || currentUser?.user_id
+        const fields = getUserRelationIds(item)
+
+        if (staffId === 'owner') {
+            if (!ownerId) return true
+            return fields.some((value) => Number(value) === Number(ownerId))
+        }
+
+        const id = Number(staffId)
+        return fields.some((value) => Number(value) === id)
+    }
+
+    const getStaffName = (staffId) => {
+        if (staffId === 'all') return null
+        return staffMembers.find((staff) => String(staff.id) === String(staffId))?.name || null
+    }
+
     const formatDate = (dateString) => {
         if (!dateString) return ''
         const date = new Date(dateString)
@@ -58,40 +228,92 @@ export default function DebtsPage() {
         return `${mm}/${dd}/${yyyy} ${hh}:${min}`
     }
 
-    // Monthly stats calculation
-    const monthlyStats = useMemo(() => {
-        const [year, month] = selectedDate.split('-').map(Number)
+    const normalizeTwoDigits = (value) => String(value).padStart(2, '0')
 
-        const debtsInMonth = allDebts.filter(d => {
-            const date = new Date(d.created_at)
-            return date.getFullYear() === year && (date.getMonth() + 1) === month
-        })
-
-        const paymentsInMonth = allPayments.filter(p => {
-            const date = new Date(p.paid_at || p.created_at)
-            return date.getFullYear() === year && (date.getMonth() + 1) === month
-        })
-
-        return {
-            debts: debtsInMonth.reduce((sum, d) => sum + (parseFloat(d.total_amount) || 0), 0),
-            payments: paymentsInMonth.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
+    const resetSelectedDateForType = (type) => {
+        const now = new Date()
+        if (type === 'yearly') {
+            const year = now.getFullYear()
+            setSelectedDate(String(year))
+            setPickerYear(year)
+            return
         }
-    }, [allDebts, allPayments, selectedDate])
+        if (type === 'daily') {
+            setSelectedDate(`${now.getFullYear()}-${normalizeTwoDigits(now.getMonth() + 1)}-${normalizeTwoDigits(now.getDate())}`)
+            setPickerYear(now.getFullYear())
+            return
+        }
+        setSelectedDate(`${now.getFullYear()}-${normalizeTwoDigits(now.getMonth() + 1)}`)
+        setPickerYear(now.getFullYear())
+    }
 
-    // Consolidated last 5 activities
+    const handlePeriodTypeSelect = (type) => {
+        setPeriodType(type)
+        setShowDatePicker(false)
+        resetSelectedDateForType(type)
+    }
+
+    const reportRange = useMemo(() => getReportRange(), [periodType, selectedDate])
+
+    const filteredDebts = useMemo(() => {
+        return allDebts.filter((d) => {
+            const date = parseDate(d.debt_date || d.created_at)
+            if (!date) return false
+            const inRange = reportRange.start <= date && date <= reportRange.end
+            return inRange && getStaffMatch(d, selectedStaffId)
+        })
+    }, [allDebts, reportRange, selectedStaffId])
+
+    const filteredPayments = useMemo(() => {
+        return allPayments.filter((p) => {
+            const date = parseDate(p.paid_at || p.created_at)
+            if (!date) return false
+            const inRange = reportRange.start <= date && date <= reportRange.end
+            return inRange && getStaffMatch(p, selectedStaffId)
+        })
+    }, [allPayments, reportRange, selectedStaffId])
+
+    const reportStats = useMemo(() => ({
+        debts: filteredDebts.reduce((sum, d) => sum + (parseFloat(d.total_amount) || 0), 0),
+        debtCount: filteredDebts.length,
+        payments: filteredPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
+    }), [filteredDebts, filteredPayments])
+
     const combinedActivity = useMemo(() => {
-        const debts = allDebts.map(d => ({ ...d, type: 'debt', date: new Date(d.created_at) }))
-        const payments = allPayments.map(p => ({ ...p, type: 'payment', date: new Date(p.paid_at || p.created_at) }))
+        const debts = filteredDebts.map(d => ({ ...d, type: 'debt', date: parseDate(d.debt_date || d.created_at) || new Date() }))
+        const payments = filteredPayments.map(p => ({ ...p, type: 'payment', date: parseDate(p.paid_at || p.created_at) || new Date() }))
 
         return [...debts, ...payments]
             .sort((a, b) => b.date - a.date)
             .slice(0, 5)
-    }, [allDebts, allPayments])
+    }, [filteredDebts, filteredPayments])
 
-    const displayMonth = useMemo(() => {
+    const displayPeriod = useMemo(() => {
+        if (periodType === 'daily') return selectedDate
+        if (periodType === 'weekly') return 'Bu hafta'
+        if (periodType === 'last_week') return "O'tgan hafta"
+        if (periodType === 'yearly') return `${selectedDate} yil`
         const [year, month] = selectedDate.split('-')
-        return `${MONTH_NAMES[parseInt(month) - 1]} ${year}`
-    }, [selectedDate])
+        return `${MONTH_NAMES[parseInt(month, 10) - 1]} ${year}`
+    }, [periodType, selectedDate])
+
+    const staffOptions = useMemo(() => {
+        const ownerOption = currentUser ? [{
+            id: 'owner',
+            label: `Do'kon egasi (${currentUser.phone || ''})`,
+            value: 'owner'
+        }] : []
+
+        const otherStaff = staffMembers
+            .filter((staff) => String(staff.id) !== String(currentUser?.id))
+            .map((staff) => ({
+                id: staff.id,
+                label: `${staff.name}${staff.phone ? ` (${staff.phone})` : ''}`,
+                value: staff.id
+            }))
+
+        return [...ownerOption, ...otherStaff]
+    }, [currentUser, staffMembers])
 
     const handleSelectMonth = (monthIndex) => {
         const newDate = `${pickerYear}-${String(monthIndex + 1).padStart(2, '0')}`
@@ -111,28 +333,118 @@ export default function DebtsPage() {
                 <p className="text-gray-400 text-[14px]">Biznes tahlili va ko'rsatkichlar</p>
             </div>
 
-            {/* Date Picker Section */}
-            <div className="mb-6">
-                <button
-                    onClick={() => {
-                        setPickerYear(parseInt(selectedDate.split('-')[0]))
-                        setShowDatePicker(true)
-                    }}
-                    className="card w-full flex items-center justify-between p-4 active:scale-[0.98] transition-all text-left"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-500">
-                            <Calendar size={20} />
+            <div className="mb-6 space-y-3">
+                {!isStaff && (
+                    <div className="card p-4 h-full min-h-[120px]">
+                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-2">Xodim bo'yicha</p>
+                        <select
+                            value={selectedStaffId}
+                            onChange={(event) => setSelectedStaffId(event.target.value)}
+                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="all">Hammasi</option>
+                            {staffOptions.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                <div className="card p-4 h-full min-h-[120px]">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Hisobot turi</p>
+                                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{displayPeriod}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Hisobot davri</p>
-                            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{displayMonth}</p>
+                        <div className="flex flex-wrap gap-2 items-center">
+                            {[
+                                { value: 'yearly', label: 'Yillik' },
+                                { value: 'monthly', label: 'Oylik' },
+                                { value: 'weekly', label: 'Bu hafta' },
+                                { value: 'last_week', label: "O'tgan hafta" },
+                                { value: 'daily', label: 'Kunlik' }
+                            ].map((option) => (
+                                <button
+                                    key={option.value}
+                                    onClick={() => handlePeriodTypeSelect(option.value)}
+                                    className={`rounded-full px-3 py-2 text-[12px] font-semibold transition ${periodType === option.value ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'}`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                    <div className="p-2 text-gray-300">
-                        <Calendar size={18} />
-                    </div>
-                </button>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 items-stretch">
+                    {periodType === 'yearly' && (
+                        <div className="card p-3 h-full min-h-[120px] sm:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Yil</p>
+                                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{selectedDate} yil</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        const year = Number(selectedDate) - 1
+                                        setSelectedDate(String(year))
+                                        setPickerYear(year)
+                                    }}
+                                    className="pill bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+                                >
+                                    <ChevronLeft size={18} />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const year = Number(selectedDate) + 1
+                                        setSelectedDate(String(year))
+                                        setPickerYear(year)
+                                    }}
+                                    className="pill bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+                                >
+                                    <ChevronRight size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {periodType === 'daily' && (
+                        <div className="card p-3 h-full min-h-[120px] sm:col-span-2">
+                            <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-3">Kun</p>
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(event) => setSelectedDate(event.target.value)}
+                                className="input"
+                            />
+                        </div>
+                    )}
+
+                    {periodType === 'monthly' && (
+                        <button
+                            onClick={() => {
+                                setPickerYear(parseInt(selectedDate.split('-')[0], 10))
+                                setShowDatePicker(true)
+                            }}
+                            className="card h-full min-h-[120px] sm:col-span-2 w-full flex items-center justify-between p-3 active:scale-[0.98] transition-all text-left"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-500">
+                                    <Calendar size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Oy tanlandi</p>
+                                    <p className="text-[17px] font-bold text-gray-900 dark:text-white">{displayPeriod}</p>
+                                </div>
+                            </div>
+                            <div className="p-2 text-gray-300">
+                                <Calendar size={18} />
+                            </div>
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Drawer for Month Picker */}
@@ -197,37 +509,31 @@ export default function DebtsPage() {
                 </Drawer.Portal>
             </Drawer.Root>
 
-            {/* MONTHLY REPORT */}
             <div className="mb-8">
-                <h2 className="section-title">OYLIK HISOBOT</h2>
-                <div className="card bg-white dark:bg-gray-800 p-1">
-                    <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                                <ArrowUpRight size={20} className="text-red-500" />
-                            </div>
-                            <div>
-                                <p className="text-[14px] font-medium text-gray-900 dark:text-white">Berilgan nasiyalar</p>
-                                <p className="text-[12px] text-gray-400">Sizga qarzdor</p>
-                            </div>
+                <h2 className="section-title">HISOBOT</h2>
+                <div className="card bg-white dark:bg-gray-800 p-3">
+                    <div className="flex flex-col gap-3 border-b border-gray-100 dark:border-gray-700 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-[14px] font-semibold text-gray-900 dark:text-white">Berilgan nasiyalar</p>
+                            <p className="text-[12px] text-gray-400">Sizga qarzdor</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-[17px] font-bold text-red-500">{formatCurrency(monthlyStats.debts)}</p>
-                            <p className="text-[11px] text-gray-400">so'm</p>
+                            <p className="text-[16px] font-bold text-red-500">{formatCurrency(reportStats.debts)}</p>
+                            <p className="text-[11px] text-gray-400">so'm · {reportStats.debtCount} ta nasiya</p>
                         </div>
                     </div>
-                    <div className="flex items-center justify-between p-4">
+                    <div className="flex flex-col gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                                 <ArrowDownRight size={20} className="text-green-500" />
                             </div>
                             <div>
-                                <p className="text-[14px] font-medium text-gray-900 dark:text-white">Qabul qilingan to'lovlar</p>
+                                <p className="text-[14px] font-semibold text-gray-900 dark:text-white">Qabul qilingan to'lovlar</p>
                                 <p className="text-[12px] text-gray-400">Mijozlardan olingan</p>
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-[17px] font-bold text-green-500">{formatCurrency(monthlyStats.payments)}</p>
+                            <p className="text-[16px] font-bold text-green-500">{formatCurrency(reportStats.payments)}</p>
                             <p className="text-[11px] text-gray-400">so'm</p>
                         </div>
                     </div>

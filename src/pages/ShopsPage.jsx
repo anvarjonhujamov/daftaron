@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Drawer } from 'vaul'
 import { tenantsApi } from '../api/tenants.api'
 import { categoriesApi } from '../api/categories.api'
@@ -10,6 +10,7 @@ import LocationSelector from '../components/LocationSelector'
 
 export default function ShopsPage() {
     const navigate = useNavigate()
+    const location = useLocation()
     const [shops, setShops] = useState([])
     const [loading, setLoading] = useState(true)
     const [activeId, setActiveId] = useState(null)
@@ -121,14 +122,18 @@ export default function ShopsPage() {
         try {
             await tenantsApi.setActiveTenant(id)
             setActiveId(id)
-            
-            // Sync local storage user object
+
+            const shop = shops.find((item) => item.id === id)
             const user = JSON.parse(localStorage.getItem('user') || '{}')
             user.tenant_id = id
+            if (shop) {
+                user.tenant_name = shop.name
+                user.shop_name = shop.name
+                user.tenant = { ...(user.tenant || {}), name: shop.name }
+            }
             localStorage.setItem('user', JSON.stringify(user))
 
             toast.success("Faol do'kon o'zgartirildi", { id: loadingToast })
-            // Opt: reload page or reload context
             setTimeout(() => {
                 navigate('/')
             }, 500)
@@ -150,6 +155,21 @@ export default function ShopsPage() {
 
     const handleNewShopLocationChange = (address) => {
         setNewShop((prev) => ({ ...prev, location: address }))
+    }
+
+    const handleBack = () => {
+        const from = location.state?.from
+        if (from) {
+            navigate(from)
+            return
+        }
+
+        if (window.history.length > 1) {
+            navigate(-1)
+            return
+        }
+
+        navigate('/')
     }
 
     const requestDeleteShop = (shop) => {
@@ -208,7 +228,7 @@ export default function ShopsPage() {
             <div className="sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-700">
                 <div className="px-4 h-[60px] flex items-center justify-between gap-3">
                     <button
-                        onClick={() => navigate('/profile')}
+                        onClick={handleBack}
                         className="w-10 h-10 -ml-2 rounded-xl flex items-center justify-center active:bg-gray-100 dark:active:bg-gray-700 transition-colors"
                     >
                         <ArrowLeft size={22} className="text-gray-700 dark:text-gray-300" />

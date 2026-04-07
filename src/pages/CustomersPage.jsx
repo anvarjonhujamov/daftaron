@@ -12,6 +12,8 @@ import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/pho
 import { formatCurrency } from '../utils/format'
 import { useSubscription } from '../contexts/SubscriptionContext'
 import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
+import { staffApi } from '../api/staff.api'
+import { isUserStaff } from '../utils/roleHelper'
 
 export default function CustomersPage() {
     const location = useLocation()
@@ -32,6 +34,7 @@ export default function CustomersPage() {
     const [overdueLoading, setOverdueLoading] = useState(false)
     const [overdueDays, setOverdueDays] = useState(10)
     const [sendingSms, setSendingSms] = useState(null)
+    const [isStaff, setIsStaff] = useState(false)
 
     useEffect(() => {
         const params = new URLSearchParams(location.search)
@@ -48,9 +51,29 @@ export default function CustomersPage() {
         }
     }, [location.search])
 
+    useEffect(() => {
+        const check = async () => {
+            try {
+                const staffUser = await isUserStaff(staffApi)
+                setIsStaff(staffUser)
+
+                if (staffUser) {
+                    const params = new URLSearchParams(location.search)
+                    if (params.get('filter') === 'overdue') {
+                        setFilter('')
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to check staff status:', err)
+            }
+        }
+
+        check()
+    }, [])
+
     // Load overdue when tab switches to 'overdue'
     useEffect(() => {
-        if (filter === 'overdue') loadOverdue()
+        if (!isStaff && filter === 'overdue') loadOverdue()
     }, [filter, overdueDays])
 
     const loadOverdue = async () => {
@@ -252,12 +275,20 @@ export default function CustomersPage() {
 
             {/* Filter Pills */}
             <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide">
-                {[
-                    { value: '', label: 'Barchasi' },
-                    { value: 'debtors', label: 'Qarzdor' },
-                    { value: 'paid', label: "To'langan" },
-                    { value: 'overdue', label: "Muddati o'tganlar" }
-                ].map(tab => (
+                {(
+                    isStaff
+                        ? [
+                            { value: '', label: 'Barchasi' },
+                            { value: 'debtors', label: 'Qarzdor' },
+                            { value: 'paid', label: "To'langan" }
+                        ]
+                        : [
+                            { value: '', label: 'Barchasi' },
+                            { value: 'debtors', label: 'Qarzdor' },
+                            { value: 'paid', label: "To'langan" },
+                            { value: 'overdue', label: "Muddati o'tganlar" }
+                        ]
+                ).map(tab => (
                     <button
                         key={tab.value}
                         onClick={() => setFilter(tab.value)}
@@ -269,7 +300,7 @@ export default function CustomersPage() {
             </div>
 
             {/* Overdue Tab Content */}
-            {filter === 'overdue' ? (
+            {!isStaff && filter === 'overdue' ? (
                 <>
                     {/* Days filter */}
                     <div className="flex items-center gap-3 mb-4">

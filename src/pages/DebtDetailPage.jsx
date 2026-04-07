@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { debtsApi } from '../api/debts.api'
-import { paymentsApi } from '../api/payments.api'
+import { staffApi } from '../api/staff.api'
 import {
     Clock, CheckCircle2, Trash2, ArrowLeft,
     FileText, Calendar, ChevronRight, CreditCard
@@ -14,34 +14,58 @@ import toast from 'react-hot-toast'
 import { useSubscription } from '../contexts/SubscriptionContext'
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { Drawer } from 'vaul'
+import { isUserStaff } from '../utils/roleHelper'
 
 export default function DebtDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
     const [debt, setDebt] = useState(null)
     const [payments, setPayments] = useState([])
+    const [staffMembers, setStaffMembers] = useState([])
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const { status: subStatus, remaining } = useSubscription()
     const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
+    const [isStaff, setIsStaff] = useState(false)
 
     useEffect(() => {
         loadData()
+        loadStaff()
     }, [id])
+
+    useEffect(() => {
+        const check = async () => {
+            try {
+                const staffUser = await isUserStaff(staffApi)
+                setIsStaff(staffUser)
+            } catch (err) {
+                console.error('Failed to check staff status:', err)
+            }
+        }
+        check()
+    }, [])
+
+    const loadStaff = async () => {
+        try {
+            const response = await staffApi.getStaff()
+            const staffList = Array.isArray(response) ? response : (response.data || [])
+            setStaffMembers(staffList)
+        } catch (err) {
+            console.error('Failed to load staff:', err)
+            setStaffMembers([])
+        }
+    }
 
     const loadData = async () => {
         try {
-            const [debtData, paymentsData] = await Promise.all([
-                debtsApi.getDebt(id),
-                paymentsApi.getPayments({ debt_id: id })
-            ])
-            setDebt(debtData.data || debtData)
-            setPayments(paymentsData.data || [])
+            const debtData = await debtsApi.getDebt(id)
+            const debtInfo = debtData.data || debtData
+            setDebt(debtInfo)
+            setPayments(debtInfo.payments || [])
         } catch (err) {
             console.error('Failed to load debt:', err)
-            if (err.response?.status === 404) {
-                navigate('/debts')
-            }
+            setDebt(null)
+            setPayments([])
         } finally {
             setLoading(false)
         }
@@ -49,6 +73,10 @@ export default function DebtDetailPage() {
 
 
     const handleCloseDebt = async () => {
+        if (isStaff) {
+            toast.error("Xodim nasiyani yopishi mumkin emas")
+            return
+        }
         if (subStatus === 'expired') {
             setShowBlockedDrawer(true)
             return
@@ -68,6 +96,10 @@ export default function DebtDetailPage() {
     }
 
     const handleDeleteDebt = async () => {
+        if (isStaff) {
+            toast.error("Xodim nasiyani o'chira olmaydi")
+            return
+        }
         if (subStatus === 'expired') {
             setShowBlockedDrawer(true)
             return
@@ -92,9 +124,54 @@ export default function DebtDetailPage() {
         const mm = String(date.getMonth() + 1).padStart(2, '0')
         const dd = String(date.getDate()).padStart(2, '0')
         const yyyy = date.getFullYear()
+        return `${mm}/${dd}/${yyyy}`
+    }
+
+    const formatDateTime = (dateString) => {
+        if (!dateString) return ''
+        const date = new Date(dateString)
+        const mm = String(date.getMonth() + 1).padStart(2, '0')
+        const dd = String(date.getDate()).padStart(2, '0')
+        const yyyy = date.getFullYear()
         const hh = String(date.getHours()).padStart(2, '0')
         const min = String(date.getMinutes()).padStart(2, '0')
         return `${mm}/${dd}/${yyyy} ${hh}:${min}`
+    }
+
+    const getStaffNameById = (userId) => {
+        if (!userId) return null
+        const staff = staffMembers.find((s) => String(s.id) === String(userId))
+        return staff?.name || `ID: ${userId}`
+    }
+
+    const getCreatorName = (item) => {
+        if (!item) return null
+        // Direct createdBy object with name
+        if (item.createdBy && typeof item.createdBy === 'object' && item.createdBy.name) {
+            return item.createdBy.name
+        }
+        // Direct user object with name
+        if (item.user && typeof item.user === 'object' && item.user.name) {
+            return item.user.name
+        }
+        // Direct created_by object with name
+        if (item.created_by && typeof item.created_by === 'object' && item.created_by.name) {
+            return item.created_by.name
+        }
+        // Direct name field
+        if (item.created_by_name) {
+            return item.created_by_name
+        }
+        if (item.creator_name) {
+            return item.creator_name
+        }
+        // Try different ID fields
+        const userId = item.created_by_user_id || item.user_id || item.staff_id || item.creator_id
+        if (userId) {
+            const creator = getStaffNameById(userId)
+            if (creator && creator !== `ID: ${userId}`) return creator
+        }
+        return null
     }
 
     if (loading) {
@@ -133,30 +210,55 @@ export default function DebtDetailPage() {
 
             {/* Debt Card Detail */}
             <div className="card dark:bg-gray-800 p-5 mb-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                {/* Header with Customer Info */}
+                <div className="mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                            <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1">Mijoz</p>
+                            <p className="text-[18px] font-bold text-gray-900 dark:text-white">
+                                {debt.customer?.name || "Noma'lum mijoz"}
+                            </p>
+                            {debt.customer?.phone && (
+                                <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+                                    {debt.customer.phone}
+                                </p>
+                            )}
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1">Sana</p>
+                            <p className="text-[15px] font-semibold text-gray-700 dark:text-gray-200">
+                                {formatDate(debt.debt_date || debt.created_at)}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2 text-[14px] font-semibold text-gray-700 dark:text-gray-300">
                         <Clock size={16} className="text-gray-400" />
                         <span>{debt.status === 'closed' ? 'Yopilgan' : 'Faol'}</span>
                     </div>
-                    <div className="flex gap-2">
-                        {debt.status === 'open' && (
+                    {!isStaff && (
+                        <div className="flex gap-2">
+                            {debt.status === 'open' && (
+                                <button
+                                    onClick={handleCloseDebt}
+                                    disabled={submitting}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform"
+                                >
+                                    <CheckCircle2 size={16} className="text-green-500" />
+                                    Yopish
+                                </button>
+                            )}
                             <button
-                                onClick={handleCloseDebt}
+                                onClick={handleDeleteDebt}
                                 disabled={submitting}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform"
+                                className="w-10 h-10 flex items-center justify-center bg-red-100 dark:bg-red-900/30 rounded-xl text-red-500 active:scale-95 transition-transform"
                             >
-                                <CheckCircle2 size={16} className="text-green-500" />
-                                Yopish
+                                <Trash2 size={18} />
                             </button>
-                        )}
-                        <button
-                            onClick={handleDeleteDebt}
-                            disabled={submitting}
-                            className="w-10 h-10 flex items-center justify-center bg-red-100 dark:bg-red-900/30 rounded-xl text-red-500 active:scale-95 transition-transform"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Progress Bar Section */}
@@ -234,8 +336,13 @@ export default function DebtDetailPage() {
                                         </p>
                                         <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
                                             <Calendar size={12} />
-                                            {formatDate(payment.paid_at || payment.created_at)}
+                                            {formatDateTime(payment.paid_at || payment.created_at)}
                                         </div>
+                                        {getCreatorName(payment) && (
+                                            <p className="text-[12px] text-gray-400 mt-1">
+                                                <span className="font-semibold">Qabul qilgan:</span> {getCreatorName(payment)}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                                 <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />

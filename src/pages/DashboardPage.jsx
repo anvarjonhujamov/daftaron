@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { dashboardApi } from '../api/dashboard.api'
 import { customersApi } from '../api/customers.api'
 import { debtsApi } from '../api/debts.api'
 import { notificationsApi } from '../api/notifications.api'
 import { paymentsApi } from '../api/payments.api'
 import { profileApi } from '../api/profile.api'
+import { staffApi } from '../api/staff.api'
 import {
     TrendingUp, Users, ChevronRight,
     UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone, Briefcase
@@ -14,8 +15,10 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton, { DashboardSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
 import { useSubscription } from '../contexts/SubscriptionContext'
+import { isUserStaff } from '../utils/roleHelper'
 
 export default function DashboardPage() {
+    const location = useLocation()
     const [stats, setStats] = useState(null)
     const [customers, setCustomers] = useState([])
     const [allDebts, setAllDebts] = useState([])
@@ -23,8 +26,59 @@ export default function DashboardPage() {
     const [unreadNotifs, setUnreadNotifs] = useState(0)
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState(null)
+    const [isStaff, setIsStaff] = useState(false)
+    const [staffSelfId, setStaffSelfId] = useState(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [isSearchActive, setIsSearchActive] = useState(false)
+
+    const getUserRelationIds = (item) => {
+        if (!item) return []
+        const fields = [
+            item.worker_id,
+            item.staff_id,
+            item.employee_id,
+            item.user_id,
+            item.created_by,
+            item.created_by_id,
+            item.owner_id,
+            item.tenant_id,
+            item.worker?.id,
+            item.staff?.id,
+            item.employee?.id,
+            item.user?.id,
+            item.created_by?.id,
+            item.owner?.id,
+            item.tenant?.id
+        ]
+
+        if (item.debt) {
+            fields.push(
+                item.debt.worker_id,
+                item.debt.staff_id,
+                item.debt.employee_id,
+                item.debt.user_id,
+                item.debt.created_by,
+                item.debt.created_by_id,
+                item.debt.owner_id,
+                item.debt.tenant_id,
+                item.debt.worker?.id,
+                item.debt.staff?.id,
+                item.debt.employee?.id,
+                item.debt.user?.id,
+                item.debt.created_by?.id,
+                item.debt.owner?.id,
+                item.debt.tenant?.id
+            )
+        }
+
+        return fields
+    }
+
+    const isItemRelatedToUser = (item, userId) => {
+        if (!userId) return false
+        const id = Number(userId)
+        return getUserRelationIds(item).some((value) => Number(value) === id)
+    }
 
     useEffect(() => {
         loadStats()
@@ -83,32 +137,71 @@ export default function DashboardPage() {
                 setUser(userData)
                 localStorage.setItem('user', JSON.stringify(userData))
             }
+            
+            // Check if user is staff
+            const isStaffUser = await isUserStaff(staffApi)
+            setIsStaff(isStaffUser)
+
+            // For filtering stats reliably, also resolve staff record id (staff_id) if present
+            if (isStaffUser) {
+                try {
+                    const staffListResp = await staffApi.getStaff()
+                    const staffList = Array.isArray(staffListResp) ? staffListResp : (staffListResp.data || [])
+                    const myId = (JSON.parse(localStorage.getItem('user') || '{}')?.id) || null
+                    const staffRec = staffList.find(s => String(s.id) === String(myId) || String(s.user_id) === String(myId))
+                    setStaffSelfId(staffRec?.id ?? null)
+                } catch {
+                    setStaffSelfId(null)
+                }
+            } else {
+                setStaffSelfId(null)
+            }
         } catch (e) {
             console.error('Failed to load user info:', e)
         }
     }
 
+    const currentUserId = user?.id || user?.user_id
+    const staffMatchIds = [currentUserId, staffSelfId].filter(Boolean)
+    const debtsForStats = isStaff && staffMatchIds.length > 0
+        ? allDebts.filter((d) => staffMatchIds.some((id) => isItemRelatedToUser(d, id)))
+        : allDebts
+
+    const paymentsForStats = isStaff && staffMatchIds.length > 0
+        ? allPayments.filter((p) => staffMatchIds.some((id) => isItemRelatedToUser(p, id)))
+        : allPayments
+
+    const computedTotalGiven = debtsForStats.reduce((sum, d) => sum + parseFloat(d.total_amount ?? d.amount ?? d.price ?? 0), 0)
+    const computedTotalRemaining = debtsForStats.reduce((sum, d) => sum + parseFloat(d.remaining_amount ?? d.remaining_debts ?? 0), 0)
+    const computedTotalPaid = paymentsForStats.reduce((sum, p) => sum + parseFloat(p.amount ?? p.paid_amount ?? 0), 0)
+
     // Robust field mapping based on user console output
     const totalCustomers = stats?.total_customers ?? stats?.totalCustomers ?? stats?.customers_count ?? 0
 
     // Qolgan qarz (Remaining Debt)
-    const totalDebt = parseFloat(
-        stats?.remaining_debts ?? stats?.remaining_debt ??
-        stats?.total_remaining ?? stats?.remaining_amount ??
-        stats?.total_debt ?? 0
-    )
+    const totalDebt = isStaff
+        ? computedTotalRemaining
+        : parseFloat(
+            stats?.remaining_debts ?? stats?.remaining_debt ??
+            stats?.total_remaining ?? stats?.remaining_amount ??
+            stats?.total_debt ?? 0
+        )
 
     // To'langan summa (Total Paid)
-    const totalPaid = parseFloat(
-        stats?.total_payments ?? stats?.total_paid ?? stats?.total_paid_sum ??
-        stats?.paid_sum ?? 0
-    )
+    const totalPaid = isStaff
+        ? computedTotalPaid
+        : parseFloat(
+            stats?.total_payments ?? stats?.total_paid ?? stats?.total_paid_sum ??
+            stats?.paid_sum ?? 0
+        )
 
     // Umumiy nasiya (Total Given) - total_debts represents the total loan amount
-    const totalGiven = parseFloat(
-        stats?.total_debts ?? stats?.total_given ?? stats?.total_amount ??
-        (totalDebt + totalPaid)
-    )
+    const totalGiven = isStaff
+        ? computedTotalGiven
+        : parseFloat(
+            stats?.total_debts ?? stats?.total_given ?? stats?.total_amount ??
+            (totalDebt + totalPaid)
+        )
 
     // Monthly Progress
     const monthlyPaid = parseFloat(
@@ -132,12 +225,12 @@ export default function DashboardPage() {
     // Bugun nasiya (Today's Debts)
     const todayDebts = (() => {
         const val = stats?.today_debts ?? stats?.today_given ?? stats?.today_debt_amount ?? stats?.today_amount ?? stats?.today_nasiya;
-        if (val !== undefined && val !== null) {
+        if (!isStaff && val !== undefined && val !== null) {
             return parseFloat(val) || 0;
         }
 
         // Fallback to client-side filtering
-        return allDebts
+        return debtsForStats
             .filter(d => {
                 const dateStr = d.created_at || d.debt_date;
                 if (!dateStr) return false;
@@ -153,12 +246,12 @@ export default function DashboardPage() {
     // Bugun to'lov (Today's Payments)
     const todayPayments = (() => {
         const val = stats?.today_payments ?? stats?.today_paid ?? stats?.today_paid_amount ?? stats?.today_payment ?? stats?.today_tolov;
-        if (val !== undefined && val !== null) {
+        if (!isStaff && val !== undefined && val !== null) {
             return parseFloat(val) || 0;
         }
 
         // Fallback to client-side filtering via allPayments
-        return allPayments
+        return paymentsForStats
             .filter(p => {
                 const dateStr = p.created_at || p.paid_at || p.payment_date;
                 if (!dateStr) return false;
@@ -257,15 +350,26 @@ export default function DashboardPage() {
                     </div>
                 ) : (
                     <>
-                        <Link to="/shops" className="flex items-center gap-3 overflow-hidden active:opacity-70 transition-opacity flex-1 min-w-0 mr-2" title="Do'konni o'zgartirish">
-                            <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
-                                <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
+                        {isStaff ? (
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
+                                    <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
+                                </div>
+                                <h1 className="text-[20px] xs:text-[24px] font-bold text-gray-900 dark:text-white truncate">
+                                    {user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}
+                                </h1>
                             </div>
-                            <h1 className="text-[20px] xs:text-[24px] font-bold text-gray-900 dark:text-white truncate flex items-center gap-1">
-                                <span className="truncate">{user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}</span>
-                                <ChevronRight size={18} className="text-gray-400 mt-1 shrink-0" />
-                            </h1>
-                        </Link>
+                        ) : (
+                            <Link to="/shops" state={{ from: location.pathname }} className="flex items-center gap-3 overflow-hidden active:opacity-70 transition-opacity flex-1 min-w-0 mr-2" title="Do'konni o'zgartirish">
+                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
+                                    <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
+                                </div>
+                                <h1 className="text-[20px] xs:text-[24px] font-bold text-gray-900 dark:text-white truncate flex items-center gap-1">
+                                    <span className="truncate">{user?.tenant_name || user?.shop_name || user?.tenant?.name || 'Daftaron'}</span>
+                                    <ChevronRight size={18} className="text-gray-400 mt-1 shrink-0" />
+                                </h1>
+                            </Link>
+                        )}
 
                         <div className="flex gap-1.5 shrink-0">
                             <button
@@ -287,13 +391,15 @@ export default function DashboardPage() {
                                     </span>
                                 )}
                             </Link>
-                            <Link
-                                to="/staff"
-                                className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
-                                title="Xodimlar"
-                            >
-                                <Briefcase size={22} />
-                            </Link>
+                            {!isStaff && (
+                                <Link
+                                    to="/staff"
+                                    className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
+                                    title="Xodimlar"
+                                >
+                                    <Briefcase size={22} />
+                                </Link>
+                            )}
                         </div>
                     </>
                 )}
@@ -310,7 +416,7 @@ export default function DashboardPage() {
                                 <Users size={16} className="text-white" />
                             </div>
                         </div>
-                        <p className="text-[24px] font-bold leading-none">{allDebts.length}</p>
+                        <p className="text-[24px] font-bold leading-none">{debtsForStats.length}</p>
                     </div>
                 </div>
 

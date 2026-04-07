@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { staffApi } from '../api/staff.api'
+import { debtsApi } from '../api/debts.api'
+import { paymentsApi } from '../api/payments.api'
 import { 
     Users, UserPlus, ArrowLeft, MoreVertical, 
     Briefcase, Trash2, Edit2, AlertCircle, Loader2 
@@ -11,6 +13,7 @@ import StaffModal from '../components/StaffModal'
 
 export default function StaffPage() {
     const navigate = useNavigate()
+    const location = useLocation()
     const [staff, setStaff] = useState([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -27,20 +30,118 @@ export default function StaffPage() {
     }
 
     useEffect(() => {
-        loadStaff()
+        loadStaffData()
     }, [])
 
-    const loadStaff = async () => {
+    const getRelationIds = (item) => {
+        const ids = [
+            item.worker_id,
+            item.staff_id,
+            item.employee_id,
+            item.user_id,
+            item.created_by,
+            item.created_by_id,
+            item.owner_id,
+            item.tenant_id,
+            item.worker?.id,
+            item.staff?.id,
+            item.employee?.id,
+            item.user?.id,
+            item.created_by?.id,
+            item.owner?.id,
+            item.tenant?.id
+        ]
+
+        if (item.debt) {
+            ids.push(
+                item.debt.worker_id,
+                item.debt.staff_id,
+                item.debt.employee_id,
+                item.debt.user_id,
+                item.debt.created_by,
+                item.debt.created_by_id,
+                item.debt.owner_id,
+                item.debt.tenant_id,
+                item.debt.worker?.id,
+                item.debt.staff?.id,
+                item.debt.employee?.id,
+                item.debt.user?.id,
+                item.debt.created_by?.id,
+                item.debt.owner?.id,
+                item.debt.tenant?.id
+            )
+        }
+
+        return ids
+    }
+
+    const isStaffRelated = (item, staffId) => {
+        const id = Number(staffId)
+        return getRelationIds(item).some((value) => Number(value) === id)
+    }
+
+    const getCustomerId = (item) => {
+        return item.customer_id || item.customer?.id || item.debt?.customer_id || item.debt?.customer?.id || item.user_id || item.user?.id || null
+    }
+
+    const buildStaffStats = (workers, debts, payments) => {
+        const statsMap = {}
+
+        workers.forEach((worker) => {
+            statsMap[worker.id] = {
+                debt_count: 0,
+                total_given: 0,
+                total_paid: 0,
+                remaining_amount: 0
+            }
+        })
+
+        debts.forEach((debt) => {
+            const related = workers.filter((worker) => isStaffRelated(debt, worker.id))
+            related.forEach((worker) => {
+                const totalAmount = Number(debt.total_amount || debt.amount || 0)
+                const remainingAmount = Number(debt.remaining_amount || 0)
+
+                statsMap[worker.id].debt_count += 1
+                statsMap[worker.id].total_given += totalAmount
+                statsMap[worker.id].remaining_amount += remainingAmount
+            })
+        })
+
+        payments.forEach((payment) => {
+            const related = workers.filter((worker) => isStaffRelated(payment, worker.id))
+            related.forEach((worker) => {
+                statsMap[worker.id].total_paid += Number(payment.amount || 0)
+            })
+        })
+
+        return workers.map((worker) => ({
+            ...worker,
+            stats: {
+                ...statsMap[worker.id]
+            }
+        }))
+    }
+
+    const loadStaffData = async () => {
         setLoading(true)
         try {
-            const response = await staffApi.getStaff()
-            // Standardizing data access for both {data: []} and [] formats
-            setStaff(response.data || response || [])
+            const [staffResponse, debtsResponse, paymentsResponse] = await Promise.all([
+                staffApi.getStaff(),
+                debtsApi.getDebts({ per_page: 500 }),
+                paymentsApi.getPayments({ per_page: 500 })
+            ])
+
+            const staffData = Array.isArray(staffResponse) ? staffResponse : (staffResponse.data || [])
+            const debtsData = Array.isArray(debtsResponse) ? debtsResponse : (debtsResponse.data || [])
+            const paymentsData = Array.isArray(paymentsResponse) ? paymentsResponse : (paymentsResponse.data || [])
+
+            setStaff(buildStaffStats(staffData, debtsData, paymentsData))
         } catch (err) {
-            console.error('Failed to load staff:', err)
-            const msg = err.response?.data?.message || 'Xodimlarni yuklashda xatolik yuz berdi'
+            console.error('Failed to load staff data:', err)
+            const msg = err.response?.data?.message || 'Xodimlar statistikasi yuklanmadi'
             toast.error(msg)
-            setStaff([]) // Clear list on error
+            setStaff([])
         } finally {
             setLoading(false)
         }
@@ -59,7 +160,7 @@ export default function StaffPage() {
                 })
                 toast.success("Yangi xodim muvaffaqiyatli qo'shildi")
             }
-            loadStaff()
+            loadStaffData()
         } catch (err) {
             const resp = err.response?.data
             if (err.response?.status === 403) {
@@ -74,6 +175,21 @@ export default function StaffPage() {
             }
             throw err // Let the modal know it failed
         }
+    }
+
+    const handleBack = () => {
+        const from = location.state?.from
+        if (from) {
+            navigate(from)
+            return
+        }
+
+        if (window.history.length > 1) {
+            navigate(-1)
+            return
+        }
+
+        navigate('/')
     }
 
     const handleDeleteStaff = async (id) => {
@@ -105,7 +221,7 @@ export default function StaffPage() {
             <div className="sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-700">
                 <div className="px-4 h-[60px] flex items-center justify-between gap-3">
                     <button
-                        onClick={() => navigate('/profile')}
+                        onClick={handleBack}
                         className="w-10 h-10 -ml-2 rounded-xl flex items-center justify-center active:bg-gray-100 dark:active:bg-gray-700 transition-colors"
                     >
                         <ArrowLeft size={22} className="text-gray-700 dark:text-gray-300" />
@@ -215,19 +331,27 @@ export default function StaffPage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-2 bg-gray-50/50 dark:bg-gray-700/30 p-3 rounded-2xl">
+                                <div className="grid grid-cols-4 gap-2 bg-gray-50/50 dark:bg-gray-700/30 p-3 rounded-2xl">
                                     <div className="text-center">
-                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Mijozlar</span>
-                                        <span className="text-[15px] font-bold text-gray-800 dark:text-white">{s.stats?.customers_served || 0}</span>
+                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Nasiyalar</span>
+                                        <span className="text-[15px] font-bold text-gray-800 dark:text-white">{s.stats?.debt_count || 0}</span>
                                     </div>
                                     <div className="text-center border-x border-gray-100 dark:border-gray-700/50">
-                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Nasiyalar</span>
-                                        <span className="text-[15px] font-bold text-gray-800 dark:text-white">{s.stats?.debts_created || 0}</span>
+                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Berilgan</span>
+                                        <span className="text-[15px] font-bold text-gray-800 dark:text-white">
+                                            {Intl.NumberFormat('uz-UZ').format(s.stats?.total_given || 0)}
+                                        </span>
+                                    </div>
+                                    <div className="text-center border-x border-gray-100 dark:border-gray-700/50">
+                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Tushum</span>
+                                        <span className="text-[15px] font-bold text-blue-500">
+                                            {Intl.NumberFormat('uz-UZ').format(s.stats?.total_paid || 0)}
+                                        </span>
                                     </div>
                                     <div className="text-center">
-                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Tushumlar</span>
-                                        <span className="text-[15px] font-bold text-blue-500 truncate px-1">
-                                            {Intl.NumberFormat('uz-UZ').format(s.stats?.payments_received || 0)}
+                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Qolgan summa</span>
+                                        <span className="text-[15px] font-bold text-red-500">
+                                            {Intl.NumberFormat('uz-UZ').format(s.stats?.remaining_amount || 0)}
                                         </span>
                                     </div>
                                 </div>
