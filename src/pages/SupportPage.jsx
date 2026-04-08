@@ -108,7 +108,7 @@ export default function SupportPage() {
     // ========== CHAT MODE ==========
     if (mode === 'chat') {
         return (
-            <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900">
+            <div className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-gray-900">
                 {/* Chat Header */}
                 <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
                     <button
