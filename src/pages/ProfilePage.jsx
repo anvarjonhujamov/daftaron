@@ -225,7 +225,7 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
                     <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
@@ -287,7 +287,7 @@ export default function ProfilePage() {
                 )}
 
                 {/* Balance Divider Line */}
-                {!isStaff && <div className="h-px bg-gray-100 dark:bg-gray-700/50 w-[calc(100%+32px)] mb-3 -mx-4 block box-content"></div>}
+                {!isStaff && <div className="h-px bg-gray-100 dark:bg-gray-700/50 -mx-4 mb-3"></div>}
 
                 {/* Balance Section */}
                 {!isStaff && (

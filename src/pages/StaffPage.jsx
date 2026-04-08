@@ -331,26 +331,26 @@ export default function StaffPage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-4 gap-2 bg-gray-50/50 dark:bg-gray-700/30 p-3 rounded-2xl">
-                                    <div className="text-center">
+                                <div className="grid grid-cols-2 gap-2 bg-gray-50/50 dark:bg-gray-700/30 p-3 rounded-2xl">
+                                    <div className="text-center p-1.5 rounded-xl">
                                         <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Nasiyalar</span>
                                         <span className="text-[15px] font-bold text-gray-800 dark:text-white">{s.stats?.debt_count || 0}</span>
                                     </div>
-                                    <div className="text-center border-x border-gray-100 dark:border-gray-700/50">
+                                    <div className="text-center p-1.5 rounded-xl">
                                         <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Berilgan</span>
-                                        <span className="text-[15px] font-bold text-gray-800 dark:text-white">
+                                        <span className="text-[14px] font-bold text-gray-800 dark:text-white truncate block">
                                             {Intl.NumberFormat('uz-UZ').format(s.stats?.total_given || 0)}
                                         </span>
                                     </div>
-                                    <div className="text-center border-x border-gray-100 dark:border-gray-700/50">
+                                    <div className="text-center p-1.5 rounded-xl">
                                         <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Tushum</span>
-                                        <span className="text-[15px] font-bold text-blue-500">
+                                        <span className="text-[14px] font-bold text-blue-500 truncate block">
                                             {Intl.NumberFormat('uz-UZ').format(s.stats?.total_paid || 0)}
                                         </span>
                                     </div>
-                                    <div className="text-center">
-                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Qolgan summa</span>
-                                        <span className="text-[15px] font-bold text-red-500">
+                                    <div className="text-center p-1.5 rounded-xl">
+                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Qolgan</span>
+                                        <span className="text-[14px] font-bold text-red-500 truncate block">
                                             {Intl.NumberFormat('uz-UZ').format(s.stats?.remaining_amount || 0)}
                                         </span>
                                     </div>

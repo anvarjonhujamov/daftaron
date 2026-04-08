@@ -315,7 +315,7 @@ export default function CustomerDetailPage() {
     const isDebtLimitReached = !effectiveIsUnlimited && Number(effectiveRemaining ?? 0) === 0
 
     return (
-        <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors">
+        <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors overflow-x-hidden">
             {/* Unified Hero Section */}
             <div className="px-4 mt-2">
                 <div className="bg-white dark:bg-gray-800 pt-2 pb-4 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all">

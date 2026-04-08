@@ -264,3 +264,103 @@
 .animate-slide-up {
   animation: slideUp 0.3s ease-out;
 }
+
+/* ===== MOBILE ADAPTIVE FIXES ===== */
+
+/* Fix date input overflow on mobile */
+input[type="date"] {
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Fix select dropdown arrow in dark mode */
+.dark select {
+  color-scheme: dark;
+}
+
+/* Prevent horizontal overflow globally */
+#root {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* All pages: prevent overflow */
+.min-h-screen {
+  overflow-x: hidden;
+}
+
+/* Fix grid overflow on very small screens */
+@media (max-width: 360px) {
+  /* Reduce font size for currency values on tiny screens */
+  .text-\[18px\] {
+    font-size: 16px;
+  }
+
+  .text-\[24px\] {
+    font-size: 20px;
+  }
+
+  .text-\[28px\] {
+    font-size: 24px;
+  }
+
+  .text-\[32px\] {
+    font-size: 26px;
+  }
+
+  /* Smaller card padding */
+  .card {
+    padding: 12px;
+  }
+
+  /* Tighter page padding */
+  .px-4 {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* Ensure proper sizing on mobile  */
+@media (max-width: 480px) {
+  input[type="date"] {
+    font-size: 14px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* Ensure tables and grids don't overflow */
+  .grid {
+    max-width: 100%;
+  }
+
+  /* Truncate long text in buttons */
+  .btn {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Smooth scrolling for iOS */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix for iOS input zoom (font-size < 16px causes zoom) */
+@media screen and (max-width: 768px) {
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

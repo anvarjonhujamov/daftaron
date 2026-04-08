@@ -229,7 +229,7 @@ export default function SubscriptionPage() {
     const isBlocked = trialInfo?.is_expired || trialInfo?.status === 0
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             <div className="flex items-center justify-between mb-6">
                 {isBlocked ? (
                     <div className="w-10 h-10" />

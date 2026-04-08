@@ -100,7 +100,7 @@ export default function HistoryPage() {
     }
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
                 <Link to="/" className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm">
@@ -119,23 +119,23 @@ export default function HistoryPage() {
             <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-6">
                 <button
                     onClick={() => { setMode('payments'); setDisplayLimit(50); }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-bold transition-all ${mode === 'payments'
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${mode === 'payments'
                         ? 'bg-green-500 text-white shadow-lg shadow-green-500/20'
                         : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                         }`}
                 >
-                    <TrendingDown size={18} />
-                    To'lovlar tarixi
+                    <TrendingDown size={16} />
+                    To'lovlar
                 </button>
                 <button
                     onClick={() => { setMode('debts'); setDisplayLimit(50); }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-bold transition-all ${mode === 'debts'
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${mode === 'debts'
                         ? 'bg-red-500 text-white shadow-lg shadow-red-500/20'
                         : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                         }`}
                 >
-                    <TrendingUp size={18} />
-                    Nasiyalar tarixi
+                    <TrendingUp size={16} />
+                    Nasiyalar
                 </button>
             </div>
 
@@ -182,7 +182,7 @@ export default function HistoryPage() {
                                                     <h3 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
                                                         {item.customer?.name || item.debt?.customer?.name || 'Mijoz'}
                                                     </h3>
-                                                    <span className={`text-[15px] font-bold ${mode === 'payments' ? 'text-green-500' : 'text-red-500'}`}>
+                                                    <span className={`text-[15px] font-bold whitespace-nowrap ${mode === 'payments' ? 'text-green-500' : 'text-red-500'}`}>
                                                         {formatCurrency(item.amount || item.total_amount)} <small className="text-[10px]">so'm</small>
                                                     </span>
                                                 </div>

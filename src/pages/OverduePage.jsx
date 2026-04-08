@@ -113,7 +113,7 @@ export default function OverduePage() {
     const DAY_OPTIONS = [5, 7, 10, 15, 20, 30, 60, 90]
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 mb-5">
                 <button
@@ -128,7 +128,7 @@ export default function OverduePage() {
             </div>
 
             {/* Filters */}
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
                 <div className="flex items-center gap-2">
                     <span className="text-[13px] text-gray-500 dark:text-gray-400">Kundan:</span>
                     <div className="relative">

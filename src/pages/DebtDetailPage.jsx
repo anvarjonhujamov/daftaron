@@ -198,7 +198,7 @@ export default function DebtDetailPage() {
         : 0
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             {/* Header */}
             <button
                 onClick={() => navigate(-1)}

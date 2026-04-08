@@ -235,7 +235,7 @@ export default function CustomersPage() {
     }
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Mijozlar</h1>
@@ -274,7 +274,7 @@ export default function CustomersPage() {
             </div>
 
             {/* Filter Pills */}
-            <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex gap-1.5 mb-4 overflow-x-auto scrollbar-hide pb-0.5 -mx-4 px-4">
                 {(
                     isStaff
                         ? [
@@ -292,7 +292,7 @@ export default function CustomersPage() {
                     <button
                         key={tab.value}
                         onClick={() => setFilter(tab.value)}
-                        className={`px-3 py-2 rounded-full text-[12px] font-medium transition-all whitespace-nowrap shrink-0 ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
+                        className={`px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all whitespace-nowrap shrink-0 ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
                     >
                         {tab.label}
                     </button>
@@ -430,27 +430,27 @@ export default function CustomersPage() {
                             )}
                         />
                     ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             {filteredCustomers.map((customer) => (
                                 <Link
                                     key={customer.id}
                                     to={`/customers/${customer.id}`}
-                                    className="card flex items-center gap-3 active:scale-[0.98] transition-transform"
+                                    className="card flex items-center gap-3 !py-3 active:scale-[0.98] transition-transform"
                                 >
-                                    <div className="avatar avatar-md">
+                                    <div className="avatar avatar-sm">
                                         {(customer.name || customer.customer_name || '?').charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">
+                                        <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
                                             {search ? highlightText(customer.name || customer.customer_name || 'Ism yo\'q', search) : (customer.name || customer.customer_name || 'Ism yo\'q')}
                                         </h3>
-                                        <p className="text-[13px] text-gray-400">
+                                        <p className="text-[12px] text-gray-400">
                                             {search && /^\d+$/.test(search.trim())
                                                 ? highlightPhone(customer.phone || customer.customer_phone || 'Telefon yo\'q', search)
                                                 : (customer.phone || customer.customer_phone || 'Telefon yo\'q')}
                                         </p>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right shrink-0">
                                         {(() => {
                                             const currentDebt = parseFloat(
                                                 customer.remaining_amount ??
@@ -461,17 +461,17 @@ export default function CustomersPage() {
                                             );
                                             return (
                                                 <>
-                                                    <div className={`text-[15px] font-bold ${currentDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                    <div className={`text-[14px] font-bold ${currentDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
                                                         {formatCurrency(currentDebt)} so'm
                                                     </div>
-                                                    <span className={`badge text-[11px] ${currentDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
+                                                    <span className={`badge text-[10px] ${currentDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
                                                         {currentDebt > 0 ? 'Qarzdor' : "To'langan"}
                                                     </span>
                                                 </>
                                             );
                                         })()}
                                     </div>
-                                    <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
+                                    <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
                                 </Link>
                             ))}
                         </div>

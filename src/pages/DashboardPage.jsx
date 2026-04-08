@@ -288,7 +288,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors relative">
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors relative overflow-x-hidden">
             {/* Header */}
             <div className="relative flex items-center justify-between mb-6 h-10 min-h-[40px]">
                 {isSearchActive ? (
@@ -462,22 +462,22 @@ export default function DashboardPage() {
 
             {/* Today Stats */}
             <div className="flex gap-3 mb-6">
-                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3">
-                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
                         <ArrowDown size={16} className="text-red-500" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-[11px] text-gray-400">Bugun nasiya</p>
-                        <p className="text-[14px] font-bold text-red-500">{formatCurrency(todayDebts)}</p>
+                        <p className="text-[14px] font-bold text-red-500 truncate">{formatCurrency(todayDebts)}</p>
                     </div>
                 </div>
-                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3">
-                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
                         <ArrowUp size={16} className="text-green-500" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-[11px] text-gray-400">Bugun to'lov</p>
-                        <p className="text-[14px] font-bold text-green-500">{formatCurrency(todayPayments)}</p>
+                        <p className="text-[14px] font-bold text-green-500 truncate">{formatCurrency(todayPayments)}</p>
                     </div>
                 </div>
             </div>

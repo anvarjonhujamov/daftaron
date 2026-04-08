@@ -328,7 +328,7 @@ export default function DebtsPage() {
     }
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Hisobotlar</h1>
@@ -339,16 +339,23 @@ export default function DebtsPage() {
                 {!isStaff && (
                     <div className="card p-3 h-full">
                         <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Xodim bo'yicha</p>
-                        <select
-                            value={selectedStaffId}
-                            onChange={(event) => setSelectedStaffId(event.target.value)}
-                            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="all">Hammasi</option>
-                            {staffOptions.map((option) => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <select
+                                value={selectedStaffId}
+                                onChange={(event) => setSelectedStaffId(event.target.value)}
+                                className="w-full appearance-none rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="all">Hammasi</option>
+                                {staffOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                <svg className="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -360,7 +367,7 @@ export default function DebtsPage() {
                                 <p className="text-[16px] font-bold text-gray-900 dark:text-white truncate">{displayPeriod}</p>
                             </div>
                         </div>
-                        <div className="flex gap-1.5 items-center overflow-x-auto whitespace-nowrap pr-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <div className="flex gap-1.5 items-center flex-wrap">
                             {[
                                 { value: 'yearly', label: 'Yillik' },
                                 { value: 'monthly', label: 'Oylik' },
@@ -414,13 +421,13 @@ export default function DebtsPage() {
                     )}
 
                     {periodType === 'daily' && (
-                        <div className="card p-3 h-full sm:col-span-2">
+                        <div className="card p-3 h-full sm:col-span-2 overflow-hidden">
                             <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">Kun</p>
                             <input
                                 type="date"
                                 value={selectedDate}
                                 onChange={(event) => setSelectedDate(event.target.value)}
-                                className="input"
+                                className="input w-full max-w-full box-border"
                             />
                         </div>
                     )}
