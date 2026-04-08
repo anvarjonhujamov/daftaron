@@ -274,7 +274,7 @@ export default function CustomersPage() {
             </div>
 
             {/* Filter Pills */}
-            <div className="flex gap-1.5 mb-4">
+            <div className="flex gap-1 mb-4">
                 {(
                     isStaff
                         ? [
@@ -286,13 +286,13 @@ export default function CustomersPage() {
                             { value: '', label: 'Barchasi' },
                             { value: 'debtors', label: 'Qarzdor' },
                             { value: 'paid', label: "To'langan" },
-                            { value: 'overdue', label: "Muddati ↓" }
+                            { value: 'overdue', label: "Muddati o'tgan" }
                         ]
                 ).map(tab => (
                     <button
                         key={tab.value}
                         onClick={() => setFilter(tab.value)}
-                        className={`flex-1 py-2 rounded-full text-[12px] font-semibold transition-all text-center ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
+                        className={`flex-1 py-2 rounded-full text-[11px] font-semibold transition-all text-center ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
                     >
                         {tab.label}
                     </button>
