@@ -214,10 +214,10 @@ export default function ProfilePage() {
     const formatDate = (dateString) => {
         if (!dateString) return ''
         const date = new Date(dateString)
-        const mm = String(date.getMonth() + 1).padStart(2, '0')
         const dd = String(date.getDate()).padStart(2, '0')
+        const mm = String(date.getMonth() + 1).padStart(2, '0')
         const yyyy = date.getFullYear()
-        return `${mm}/${dd}/${yyyy}`
+        return `${dd}.${mm}.${yyyy}`
     }
 
     if (loading) {
@@ -227,7 +227,7 @@ export default function ProfilePage() {
     return (
         <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center shrink-0">
                     <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
                 </div>
                 <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Sozlamalar</h1>

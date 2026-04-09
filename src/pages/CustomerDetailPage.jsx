@@ -312,7 +312,9 @@ export default function CustomerDetailPage() {
         )
     const effectiveIsUnlimited = limitMeta.loaded ? limitMeta.isUnlimited : (remaining == null && total == null)
     const effectiveRemaining = limitMeta.loaded ? limitMeta.remaining : remaining
-    const isDebtLimitReached = !effectiveIsUnlimited && Number(effectiveRemaining ?? 0) === 0
+    const hasKnownDebtRemaining = effectiveRemaining !== null && effectiveRemaining !== undefined && effectiveRemaining !== ''
+    // Only block by limit when we have a reliable remaining value.
+    const isDebtLimitReached = !effectiveIsUnlimited && hasKnownDebtRemaining && Number(effectiveRemaining) <= 0
 
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors overflow-x-hidden">

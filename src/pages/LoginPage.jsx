@@ -65,7 +65,7 @@ export default function LoginPage() {
         <div className="min-h-screen flex flex-col justify-center px-6 py-12 bg-gray-50 dark:bg-gray-900 transition-colors">
             <div className="sm:mx-auto sm:w-full sm:max-w-sm">
                 <div className="text-center mb-10">
-                    <div className="w-24 h-24 bg-white rounded-[32px] shadow-sm flex items-center justify-center mx-auto mb-4 border border-gray-100 dark:border-gray-700">
+                    <div className="w-24 h-24 bg-white rounded-[32px] shadow-sm flex items-center justify-center mx-auto mb-4 border border-gray-100">
                         <img src="/logo.png" alt="Daftaron Logo" className="w-16 h-16 object-contain" />
                     </div>
                     <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Daftaron</h1>
