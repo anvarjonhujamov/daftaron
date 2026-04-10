@@ -461,9 +461,11 @@ export default function CustomersPage() {
                                             );
                                             return (
                                                 <>
-                                                    <div className={`text-[14px] font-bold ${currentDebt > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                                        {formatCurrency(currentDebt)} so'm
-                                                    </div>
+                                                    {currentDebt > 0 && (
+                                                        <div className="text-[14px] font-bold text-red-500">
+                                                            {formatCurrency(currentDebt)} so'm
+                                                        </div>
+                                                    )}
                                                     <span className={`badge text-[10px] ${currentDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
                                                         {currentDebt > 0 ? 'Qarzdor' : "To'langan"}
                                                     </span>

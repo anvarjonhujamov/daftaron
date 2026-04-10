@@ -352,7 +352,7 @@ export default function DashboardPage() {
                     <>
                         {isStaff ? (
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
+                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center shrink-0">
                                     <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
                                 </div>
                                 <h1 className="text-[20px] xs:text-[24px] font-bold text-gray-900 dark:text-white truncate">
@@ -361,7 +361,7 @@ export default function DashboardPage() {
                             </div>
                         ) : (
                             <Link to="/shops" state={{ from: location.pathname }} className="flex items-center gap-3 overflow-hidden active:opacity-70 transition-opacity flex-1 min-w-0 mr-2" title="Do'konni o'zgartirish">
-                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-center shrink-0">
+                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center shrink-0">
                                     <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
                                 </div>
                                 <h1 className="text-[20px] xs:text-[24px] font-bold text-gray-900 dark:text-white truncate flex items-center gap-1">
