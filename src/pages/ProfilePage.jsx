@@ -137,6 +137,11 @@ export default function ProfilePage() {
         setLoading(false)
     }
 
+    const isProPlan = usage?.is_pro || 
+        currentPlan?.is_pro || 
+        (currentPlan?.name || '').toLowerCase().includes('pro') || 
+        (usage?.plan_name || '').toLowerCase().includes('pro');
+
     const toggleDarkMode = () => {
         const newValue = !darkMode
         setDarkMode(newValue)
@@ -336,31 +341,37 @@ export default function ProfilePage() {
                         </div>
 
                         {/* Plan Limits Section */}
-                        {currentPlan && !isTrialExpired && (
+                        {!isTrialExpired && (usage || currentPlan) && (
                             <div className="mt-4 pt-4 border-t border-orange-200/50 dark:border-orange-800/50">
-                                <p className="text-[12px] font-bold text-orange-800 dark:text-orange-300 mb-3 uppercase tracking-wider opacity-60">Qolgan limitlar</p>
-                                <div className="grid grid-cols-1 gap-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-white/50 dark:bg-black/20 flex items-center justify-center shrink-0">
-                                            <MessageCircle size={15} className="text-orange-500" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-lg bg-orange-100/50 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+                                            <MessageCircle size={15} className="text-orange-600 dark:text-orange-400" />
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {usage ? (usage.sms_remaining !== undefined ? usage.sms_remaining : Math.max(0, usage.sms_limit - usage.sms_used)) : (currentPlan.sms_limit === 0 ? 'Cheksiz' : currentPlan.sms_limit || 'Cheksiz')} ta SMS
-                                            </p>
-                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Oylik bepul xabarlar</p>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[13px] font-bold text-gray-900 dark:text-white leading-tight">
+                                                {usage ? (
+                                                    usage.sms_limit === -1 || usage.sms_limit === 0 ? 'Cheksiz' : 
+                                                    (usage.sms_remaining !== undefined ? usage.sms_remaining : Math.max(0, usage.sms_limit - usage.sms_used))
+                                                ) : (
+                                                    currentPlan?.sms_limit === 0 ? 'Cheksiz' : (currentPlan?.sms_limit || '0')
+                                                )}
+                                            </span>
+                                            <span className="text-[11px] text-orange-700/70 dark:text-orange-400/70 leading-tight">SMS qoldig'i</span>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-white/50 dark:bg-black/20 flex items-center justify-center shrink-0">
-                                            <Package size={15} className="text-orange-500" />
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-lg bg-orange-100/50 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+                                            <Package size={15} className="text-orange-600 dark:text-orange-400" />
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {usage ? (usage.debt_remaining !== undefined ? usage.debt_remaining : Math.max(0, usage.debt_limit - usage.debt_used)) : (currentPlan.debt_limit === 0 ? 'Cheksiz' : currentPlan.debt_limit || 'Cheksiz')} ta nasiya
-                                            </p>
-                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">Umumiy nasiyalar limiti</p>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[13px] font-bold text-gray-900 dark:text-white leading-tight">
+                                                {isProPlan || usage?.debt_limit === -1 || usage?.debt_limit === 0 || currentPlan?.debt_limit === 0 ? 'Cheksiz' : (
+                                                    usage ? (usage.debt_remaining !== undefined ? usage.debt_remaining : Math.max(0, usage.debt_limit - usage.debt_used)) : (currentPlan?.debt_limit || '0')
+                                                )}
+                                            </span>
+                                            <span className="text-[11px] text-orange-700/70 dark:text-orange-400/70 leading-tight">Nasiya qoldig'i</span>
                                         </div>
                                     </div>
                                 </div>
