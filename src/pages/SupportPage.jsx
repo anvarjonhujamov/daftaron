@@ -26,8 +26,38 @@ export default function SupportPage() {
 
     const chatMessages = useMemo(() => {
         if (!Array.isArray(messages)) return []
+
+        // If server returns flat messages with roles (user/assistant), convert to paired turns
+        if (messages.length > 0 && messages[0] && Object.prototype.hasOwnProperty.call(messages[0], 'role')) {
+            const turns = []
+            let current = { }
+            messages.forEach((m) => {
+                const content = m?.content || m?.message || m?.text || ''
+                if (m.role === 'user' || m.role === 'client') {
+                    // start a new turn for user
+                    if (current.userText || current.botText) {
+                        turns.push(current)
+                    }
+                    current = { id: m.id || Date.now(), userText: content }
+                } else if (m.role === 'assistant' || m.role === 'bot') {
+                    if (current.userText) {
+                        current.botText = content
+                        turns.push(current)
+                        current = { }
+                    } else {
+                        // assistant message without matching user - push standalone
+                        turns.push({ id: m.id || Date.now(), userText: null, botText: content })
+                        current = { }
+                    }
+                }
+            })
+            if (current.userText || current.botText) turns.push(current)
+            return turns
+        }
+
+        // Fallback: messages are already turn-like objects
         return messages.map((item, idx) => {
-            const userText = item?.message || item?.question || item?.user_message || item?.prompt
+            const userText = item?.message || item?.question || item?.user_message || item?.prompt || item?.user_message
             const botText = item?.reply || item?.answer || item?.assistant_message || item?.response
             if (!userText && !botText) return null
             return {
@@ -57,44 +87,17 @@ export default function SupportPage() {
         if (!text || sending) return
 
         setSending(true)
-        const optimistic = { id: Date.now(), message: text, reply: null }
+        const optimistic = { id: Date.now(), role: 'user', content: text }
         setMessages((prev) => [...prev, optimistic])
         setMessage('')
 
         try {
-            const response = await supportApi.sendMessage(text)
-
-            // Prefer the full server-saved object when available so history persists correctly.
-            let serverEntry = null
-            if (response && typeof response === 'object') {
-                const replyText =
-                    response?.reply ||
-                    response?.answer ||
-                    response?.assistant_message ||
-                    response?.response ||
-                    response?.data?.reply ||
-                    response?.message ||
-                    null
-
-                serverEntry = {
-                    id: response?.id || Date.now(),
-                    message: response?.message || text,
-                    reply: replyText
-                }
-            } else {
-                serverEntry = {
-                    id: Date.now(),
-                    message: text,
-                    reply: typeof response === 'string' ? response : "Javob olinmadi. Keyinroq urinib ko'ring."
-                }
-            }
-
-            setMessages((prev) => [
-                ...prev.filter((m) => m.id !== optimistic.id),
-                serverEntry
-            ])
+            await supportApi.sendMessage(text)
+            // Reload authoritative history from server which returns messages as { user_id, role, content }
+            await loadHistory()
         } catch (err) {
             console.error('Failed to send support message:', err)
+            // remove optimistic entry
             setMessages((prev) => prev.filter((m) => m.id !== optimistic.id))
             toast.error(err.response?.data?.message || "AI ChatBotga yuborishda xatolik")
         } finally {
