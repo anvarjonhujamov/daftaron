@@ -377,7 +377,6 @@ export default function ShopsPage() {
                                     }}
                                     onChange={(location) => setNewShop(prev => ({ ...prev, ...location }))}
                                     onAddressChange={handleNewShopLocationChange}
-                                    required
                                 />
                                 {newShop.location ? (
                                     <div className="space-y-1">
@@ -397,9 +396,9 @@ export default function ShopsPage() {
 
                                 <button
                                     type="submit"
-                                    disabled={savingShop || !newShop.name.trim() || !newShop.category_id || !newShop.region_id || !newShop.district_id || !newShop.street_id}
+                                    disabled={savingShop || !newShop.name.trim() || !newShop.category_id}
                                     className={`w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 ${
-                                        savingShop || !newShop.name.trim() || !newShop.category_id || !newShop.region_id || !newShop.district_id || !newShop.street_id
+                                        savingShop || !newShop.name.trim() || !newShop.category_id
                                             ? 'bg-gray-200 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
                                             : 'bg-emerald-600 text-white hover:bg-emerald-700'
                                     }`}

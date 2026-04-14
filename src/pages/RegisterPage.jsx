@@ -278,7 +278,6 @@ export default function RegisterPage() {
                                     street_id: formComplete.street_id
                                 }}
                                 onChange={handleLocationChange}
-                                required
                             />
                             <div>
                                 <label className="label">Parol</label>
