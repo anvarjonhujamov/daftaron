@@ -63,16 +63,35 @@ export default function SupportPage() {
 
         try {
             const response = await supportApi.sendMessage(text)
-            const replyText =
-                response?.reply ||
-                response?.data?.reply ||
-                response?.answer ||
-                response?.message ||
-                "Javob olinmadi. Keyinroq urinib ko'ring."
+
+            // Prefer the full server-saved object when available so history persists correctly.
+            let serverEntry = null
+            if (response && typeof response === 'object') {
+                const replyText =
+                    response?.reply ||
+                    response?.answer ||
+                    response?.assistant_message ||
+                    response?.response ||
+                    response?.data?.reply ||
+                    response?.message ||
+                    null
+
+                serverEntry = {
+                    id: response?.id || Date.now(),
+                    message: response?.message || text,
+                    reply: replyText
+                }
+            } else {
+                serverEntry = {
+                    id: Date.now(),
+                    message: text,
+                    reply: typeof response === 'string' ? response : "Javob olinmadi. Keyinroq urinib ko'ring."
+                }
+            }
 
             setMessages((prev) => [
                 ...prev.filter((m) => m.id !== optimistic.id),
-                { id: optimistic.id, message: text, reply: replyText }
+                serverEntry
             ])
         } catch (err) {
             console.error('Failed to send support message:', err)
