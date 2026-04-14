@@ -59,7 +59,7 @@ export default function StaffModal({ isOpen, onClose, onSave, staff }) {
     }
 
     return (
-        <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()} repositionInputs={false}>
+        <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()} repositionInputs={true}>
             <Drawer.Portal>
                 <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
                 <Drawer.Content className="fixed bg-white dark:bg-gray-900 bottom-0 left-0 right-0 max-h-[90vh] rounded-t-[32px] z-50 animate-in slide-in-from-bottom flex flex-col focus:outline-none">
