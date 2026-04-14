@@ -660,6 +660,14 @@ export default function CustomerDetailPage() {
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
                                     </div>
                                     {paymentErrors.amount && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{paymentErrors.amount[0]}</p>}
+
+                                    {/* Show Nasiya limit here */}
+                                    <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-900/20 mt-2">
+                                        <p className="text-[11px] text-blue-500 uppercase font-bold tracking-wider mb-0.5">Nasiya Limiti</p>
+                                        <p className="text-[14px] font-bold text-blue-600 dark:text-blue-400">
+                                            {effectiveIsUnlimited ? 'Cheksiz' : `${effectiveRemaining ?? 0} ta qoldi`}
+                                        </p>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="label">To'lov sanasi (ixtiyoriy)</label>
