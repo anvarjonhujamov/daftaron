@@ -1,12 +1,36 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Drawer } from 'vaul'
 import { Bot, ChevronRight, MessageCircle, Users, X } from 'lucide-react'
 
-const TELEGRAM_SUPPORT_URL = 'https://t.me/backend_php_dev'
-const TELEGRAM_DISCUSSION_URL = 'https://t.me/+_Vv2x0u1HmE5Nzhi'
+// Default fallbacks (used if backend doesn't provide links)
+const DEFAULT_TELEGRAM_SUPPORT_URL = 'https://t.me/backend_php_dev'
+const DEFAULT_TELEGRAM_DISCUSSION_URL = 'https://t.me/+_Vv2x0u1HmE5Nzhi'
+
+import appApi from '../api/app.api'
 
 export default function SupportDrawer({ isOpen, onClose }) {
+    const [supportUrl, setSupportUrl] = useState(DEFAULT_TELEGRAM_SUPPORT_URL)
+    const [discussionUrl, setDiscussionUrl] = useState(DEFAULT_TELEGRAM_DISCUSSION_URL)
+
+    useEffect(() => {
+        let mounted = true
+        ;(async () => {
+            try {
+                const data = await appApi.getLegal()
+                if (!mounted) return
+                if (data) {
+                    if (data.telegram_support) setSupportUrl(data.telegram_support)
+                    if (data.telegram_discussion) setDiscussionUrl(data.telegram_discussion)
+                    // some APIs may return full fields under different keys
+                }
+            } catch (e) {
+                // ignore
+            }
+        })()
+        return () => { mounted = false }
+    }, [])
+
     const navigate = useNavigate()
 
     const openLink = (url) => {
@@ -61,7 +85,7 @@ export default function SupportDrawer({ isOpen, onClose }) {
 
                             {/* Telegram support */}
                             <button
-                                onClick={() => openLink(TELEGRAM_SUPPORT_URL)}
+                                onClick={() => openLink(supportUrl)}
                                 className="w-full flex items-center justify-between p-4 rounded-[20px] border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 active:scale-[0.98] transition-all"
                             >
                                 <div className="flex items-center gap-4">
@@ -77,7 +101,7 @@ export default function SupportDrawer({ isOpen, onClose }) {
 
                             {/* Discussion group */}
                             <button
-                                onClick={() => openLink(TELEGRAM_DISCUSSION_URL)}
+                                onClick={() => openLink(discussionUrl)}
                                 className="w-full flex items-center justify-between p-4 rounded-[20px] border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 active:scale-[0.98] transition-all"
                             >
                                 <div className="flex items-center gap-4">

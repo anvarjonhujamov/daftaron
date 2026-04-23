@@ -1,6 +1,6 @@
 # Daftaron — Texnik Topshiriq (TZ)
 
-> So'nggi yangilanish: 2026-04-01
+> So'nggi yangilanish: 2026-04-23
 
 ## Mundarija
 
@@ -331,11 +331,11 @@ Qoidalar:
 
 | Holat | Qoida |
 |-------|-------|
-| Trial davrida | Faqat **Oddiy** ta'rif, bepul |
+| Trial davrida | Istalgan ta'rifni tanlash mumkin (narx bo'lsa balansdan yechiladi) |
 | Trial tugagandan keyin | Barcha ta'riflar, narx **balansdan** yechiladi |
 | Shu ta'rif allaqachon faol | **422** — muddat uzaytirilmaydi |
 | Balans yetmasa | **422** — `"Mablag' yetarli emas"` + `plan_price`, `balance` |
-| Muvaffaqiyatli tanlash | `trial_ends_at` 1 oyga uzayadi, `PlanPurchase` yozuvi yaratiladi |
+| Muvaffaqiyatli tanlash | `trial_ends_at` sotib olingan kundan **30 kun**, `PlanPurchase` yozuvi yaratiladi |
 
 ### 6.4. Obuna endpointlari
 
@@ -796,7 +796,7 @@ https://my.click.uz/services/pay
 | Order turi | Amal |
 |-----------|------|
 | `balance_deposit` | User balansiga summa qo'shish, `Transaction` (type=deposit) yaratish, `BalanceToppedUp` notification |
-| `subscription` | `trial_ends_at` 1 oyga uzaytirish, `user.status = 1`, `PlanPurchase` yaratish, `tenant.plan_id` yangilash (balansdan yechilmaydi) |
+| `subscription` | `trial_ends_at` = sotib olingan kundan **30 kun**, `user.status = 1`, `PlanPurchase` yaratish, `tenant.plan_id` yangilash (balansdan yechilmaydi) |
 
 ### 12.5. Click ilovasidan to'g'ridan-to'g'ri to'lov
 
@@ -1185,7 +1185,16 @@ Body: `name`, `category_id`, `region_id`, `district_id`, `street_id`
 - Tanlov `users.tenant_id` da saqlanadi va tenant selector (`tenant_id`/`X-Tenant-Id`) yuborilmagan so'rovlarda default scope bo'ladi.
 - Xodim CRUD (`/workers`) doim active do'kon scope ida ishlaydi.
 
-### 17.4. Joylashuv ma'lumotlari (authsiz API)
+### 17.4. Do'konni o'chirish
+
+- **Web:** `DELETE /shops/{tenant}` — do'kon egasi active yoki o'ziga tegishli boshqa do'konni o'chira oladi.
+- **API:** `DELETE /api/v1/tenants/{tenant}` — faqat `shop_owner` va faqat o'z do'koni uchun.
+- O'chirish **hard delete** tarzida bajariladi.
+- Shu do'konga tegishli `shop_worker`, `customers`, `debts`, `payments`, `sms_dispatch_logs` yozuvlari birga o'chiriladi.
+- Agar owner’da boshqa do'kon bo'lsa, `users.tenant_id` keyingi do'konga o'tkaziladi; qolmasa `null` bo'ladi.
+- Admin paneldagi `/admin/tenants/{tenant}` delete ham shu servis logikasidan foydalanadi.
+
+### 17.5. Joylashuv ma'lumotlari (authsiz API)
 
 | Endpoint | Tavsif |
 |----------|--------|
@@ -1253,7 +1262,7 @@ users ──────────┐
 | Jadval | Tavsif |
 |--------|--------|
 | `users` | Foydalanuvchilar |
-| `tenants` | Do'konlar (soft delete) |
+| `tenants` | Do'konlar (hard delete, owner/admin delete qo'llab-quvvatlanadi) |
 | `customers` | Mijozlar |
 | `debts` | Nasiyalar |
 | `payments` | To'lovlar (nasiya bo'yicha) |
@@ -1330,6 +1339,7 @@ users ──────────┐
 | POST | `/promo-codes/check` | Promocode tekshirish (2026-03-26) |
 | GET | `/tenants` | Foydalanuvchiga ruxsat etilgan do'konlar + active tenant |
 | PUT | `/tenants/active` | Active do'konni tanlash (`tenant_id`) |
+| DELETE | `/tenants/{tenant}` | Owner o'z do'konini va unga tegishli ma'lumotlarni o'chiradi |
 | POST | `/support/chat` | AI support bot — xabar yuborish |
 | GET | `/support/history` | AI support bot — chat tarixi |
 | DELETE | `/support/history` | AI support bot — tarixni tozalash |
@@ -1413,6 +1423,7 @@ users ──────────┐
 | `/subscription/balance-topup` | POST | Balans to'ldirish |
 | `/subscription/plan-pay/{plan}` | POST | Ta'rif to'lash (to'lov tizimi orqali) |
 | `/shops/switch` | POST | Active do'konni almashtirish (`tenant_id`) |
+| `/shops/{tenant}` | DELETE | Owner do'konni va uning barcha tenant ma'lumotlarini o'chiradi |
 | `/payment/return` | GET | To'lovdan qaytish |
 | `/payment/cancel` | GET | To'lov bekor |
 
@@ -1945,12 +1956,14 @@ GROQ_API_KEY=...
     {
       "id": 1,
       "name": "Bozor Market",
-      "category_id": 1,
-      "region_id": 1,
-      "district_id": 5,
-      "street_id": 120,
+      "region": "Andijon viloyati",
+      "district": "Andijon tumani",
+      "street": "Navro'z MFY",
+      "category": "Oziq-ovqat",
       "plan_id": 2,
-      "status": "active"
+      "status": "active",
+      "balance": 0,
+      "is_active": true
     }
   ],
   "active_tenant_id": 1
@@ -1973,8 +1986,11 @@ GROQ_API_KEY=...
 **Response (200):**
 ```json
 {
-  "message": "Do'kon muvaffaqiyatli tanlandi.",
-  "active_tenant_id": 1
+  "message": "Faol do'kon yangilandi.",
+  "active_tenant": {
+    "id": 1,
+    "name": "Bozor Market"
+  }
 }
 ```
 
@@ -1998,11 +2014,21 @@ GROQ_API_KEY=...
 **Response (201 — Muvaffaqiyatli):**
 ```json
 {
-  "id": 2,
-  "name": "Yangi Dukoni",
-  "category_id": 2,
-  "plan_id": null,
-  "status": "active"
+  "message": "Do'kon qo'shildi.",
+  "tenant": {
+    "id": 2,
+    "name": "Yangi Dukoni",
+    "category_id": 2,
+    "plan_id": 2,
+    "status": "active"
+  },
+  "usage": {
+    "base": 3,
+    "extra": 0,
+    "total": 3,
+    "used": 2,
+    "remaining": 1
+  }
 }
 ```
 
@@ -2011,6 +2037,26 @@ GROQ_API_KEY=...
 {
   "message": "Basic (Oddiy) ta'rifda faqat bitta do'kon mumkin.",
   "requires_upgrade": true
+}
+```
+
+#### Do'konni O'chirish
+
+**Endpoint:** `DELETE /tenants/{tenant}`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Qoidalar:**
+- Faqat `shop_owner` o'ziga tegishli do'konni o'chira oladi.
+- Do'kon bilan birga `shop_worker`, `customers`, `debts`, `payments`, `sms_dispatch_logs` ham o'chiriladi.
+- Agar owner’da boshqa do'kon bo'lsa, `active_tenant_id` keyingi do'konga o'tadi.
+
+**Response (200):**
+```json
+{
+  "message": "Do'kon va unga tegishli ma'lumotlar o'chirildi.",
+  "active_tenant_id": null,
+  "tenants": []
 }
 ```
 
@@ -2641,4 +2687,22 @@ GROQ_API_KEY=...
 
 ---
 
-*TZ oxirgi yangilanish: 2026-04-01. Loyiha versiyasi: Laravel 12, API v1.*
+## Yangilanishlar tarixi
+
+| Sana | Yangilanish | Tavsif |
+|------|-------------|--------|
+| 2026-04-23 | v1.1.0 | - Public Offer, Privacy Policy va aloqa ma'lumotlari admin panelda qo'shildi<br>- OpenAPI 3.0 spesifikatsiyasi yaratildi<br>- Tashkent mahalla seederini yangilandi (placeholder o'rniga haqiqiy nomlar)<br>- Admin sozlamalariga yangi maydonlar qo'shildi<br>- Public API endpointlari qo'shildi |
+| 2026-04-01 | v1.0.0 | - Dastlabki versiya<br>- Laravel 12, PHP 8.2+, MySQL<br>- Multi-tenant arxitektura<br>- Click va Payme to'lov tizimlari<br>- Eskiz SMS integratsiyasi<br>- AI SupportBot (Groq)<br>- Admin panel<br>- Mobil API<br>- Promocodlar tizimi |
+| 2026-03-26 | v0.9.0 | - Promocodlar tizimi qo'shildi<br>- Managerlar uchun chegirma boshqaruvi<br>- Promo usage tracking |
+| 2026-03-22 | v0.8.0 | - UserFlow-Mobile.md hujjati yaratildi<br>- Mobil ilova uchun batafsil flow<br>- API endpointlar dokumentatsiyasi |
+| 2026-03-15 | v0.7.0 | - Qo'shimcha paketlar tizimi<br>- Nasiya va SMS paketlari<br>- Limit boshqaruvi |
+| 2026-03-01 | v0.6.0 | - Trial va obuna tizimi<br>- Balans to'ldirish<br>- Ta'riflar boshqaruvi |
+| 2026-02-15 | v0.5.0 | - Mijozlar, nasiyalar, to'lovlar CRUD<br>- SMS bildirishnomalar<br>- Muddati o'tgan qarzdorlar |
+| 2026-02-01 | v0.4.0 | - Autentifikatsiya tizimi<br>- Sanctum Bearer token<br>- Telegram login |
+| 2026-01-15 | v0.3.0 | - Ma'lumotlar bazasi sxemasi<br>- Migrationlar<br>- Seedlar |
+| 2026-01-01 | v0.2.0 | - Laravel loyihasi yaratildi<br>- Asosiy arxitektura<br>- Routing va controllerlar |
+| 2025-12-15 | v0.1.0 | - TZ va UserFlow hujjatlari<br>- Loyiha rejalashtiruvi |
+
+---
+
+*So'nggi yangilanish: 2026-04-23* | **Muallif:** Daftaron Development Team

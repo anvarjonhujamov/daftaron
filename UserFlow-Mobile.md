@@ -1,6 +1,6 @@
 # Daftaron — Mobile ilova uchun UserFlow
 
-> So'nggi yangilanish: 2026-03-22
+> So'nggi yangilanish: 2026-04-23
 
 Bu hujjat **mobil ilova dasturchisi** uchun yozilgan. Har bir ekran, API chaqiriq va xato holatlari batafsil tavsiflangan.
 
@@ -443,6 +443,7 @@ POST /subscription/choose/3
   "balance": 21000
 }
 ```
+*Eslatma:* `trial_ends_at` — ta'rif sotib olingan kundan boshlab **30 kun**.
 
 **Xatolar (422):**
 
@@ -450,7 +451,6 @@ POST /subscription/choose/3
 |-------|--------|---------------|
 | `"Mablag' yetarli emas."` | Balans yetmaydi (+ `plan_price`, `balance`) | Balans to'ldirish sahifasiga |
 | `"Ushbu ta'rif allaqachon faol."` | Shu ta'rif faol | Xabar ko'rsatish |
-| `"Sinov muddati davomida faqat Oddiy ta'rifni tanlash mumkin."` | Trial davri cheklov | Oddiy tanlash yoki kutish |
 
 ### 6.2.1. Promocode tekshirish (2026-03-26)
 
@@ -531,7 +531,7 @@ Ta'rif tanlash oldidan promocode ni tekshirish:
                    ┌──────────┐         ┌──────────┐
                    │ Ta'rif   │         │ Balans   │
                    │ faollash │         │ to'ldiri │
-                   │ +1 oy    │         │ sh kerak │
+                   │ +30 kun  │         │ sh kerak │
                    └──────────┘         └──────────┘
 ```
 
@@ -595,6 +595,7 @@ Bir userda bir nechta do'kon bo'lsa, ilova active do'konni tanlab ishlaydi. Tanl
 |-------|----------|------|-------|
 | GET | `/tenants` | — | `200`: `active_tenant_id`, `tenants[]` |
 | PUT | `/tenants/active` | `tenant_id` | `200`: `active_tenant` |
+| DELETE | `/tenants/{tenant}` | — | `200`: `message`, `active_tenant_id`, `tenants[]` |
 
 `/auth/me` javobida ham `active_tenant` va `available_tenants` qaytadi.
 
@@ -905,6 +906,7 @@ POST /debts/overdue/{customer_id}/send-sms?days=10
 | POST | `/tenants` | `name`, `category_id`, `region_id`, `district_id`, `street_id` | `201`: yangi do'kon |
 | GET | `/tenants` | — | `200`: do'konlar ro'yxati + active do'kon |
 | PUT | `/tenants/active` | `tenant_id` | `200`: active do'kon yangilanadi |
+| DELETE | `/tenants/{tenant}` | — | `200`: do'kon o'chiriladi, active do'kon qayta hisoblanadi |
 
 **Lokatsiya endpointlari (authsiz):**
 
@@ -916,6 +918,11 @@ POST /debts/overdue/{customer_id}/send-sms?days=10
 | GET | `/locations/streets/{districtId}` | Ko'chalar |
 
 **Cheklov (Oddiy ta'rifda):**
+
+**Do'konni o'chirish qoidasi:**
+- Faqat do'kon egasi o'z do'konini o'chira oladi.
+- Do'kon o'chirilganda shu do'konga tegishli `workers`, `customers`, `debts`, `payments`, `sms_dispatch_logs` ham birga o'chiriladi.
+- Agar userda boshqa do'konlar bo'lsa active do'kon avtomatik keyingisiga o'tadi.
 
 ```json
 {
@@ -1201,6 +1208,7 @@ Har bir API javobda:
 | Qo'shimcha paket sotib olish | POST | `/subscription/buy-extra/{extra_package}` |
 | Do'konlar ro'yxati + active | GET | `/tenants` |
 | Active do'konni almashtirish | PUT | `/tenants/active` |
+| Do'konni o'chirish | DELETE | `/tenants/{tenant}` |
 | AI support — xabar | POST | `/support/chat` |
 | AI support — tarix | GET | `/support/history` |
 | AI support — tozalash | DELETE | `/support/history` |
@@ -1430,4 +1438,26 @@ Agar ma'lumot tarafdorlariga qo'l bilan yangilash kerak bo'lsa, quyidagi manbala
 ---
 
 *Hujjat TZ.md va kodga asosan tuzilgan. API o'zgarishi bo'lsa ushbu UserFlow ham yangilanadi.*
-*So'nggi yangilanish: 2026-04-03*
+*So'nggi yangilanish: 2026-04-23*
+
+---
+
+## Yangilanishlar tarixi
+
+| Sana | Yangilanish | Tavsif |
+|------|-------------|--------|
+| 2026-04-23 | v1.1.0 | - Public Offer, Privacy Policy va aloqa ma'lumotlari admin panelda qo'shildi<br>- OpenAPI 3.0 spesifikatsiyasi yaratildi<br>- Tashkent mahalla seederini yangilandi (placeholder o'rniga haqiqiy nomlar)<br>- Admin sozlamalariga yangi maydonlar qo'shildi<br>- Public API endpointlari qo'shildi |
+| 2026-04-01 | v1.0.0 | - Dastlabki versiya<br>- Laravel 12, PHP 8.2+, MySQL<br>- Multi-tenant arxitektura<br>- Click va Payme to'lov tizimlari<br>- Eskiz SMS integratsiyasi<br>- AI SupportBot (Groq)<br>- Admin panel<br>- Mobil API<br>- Promocodlar tizimi |
+| 2026-03-26 | v0.9.0 | - Promocodlar tizimi qo'shildi<br>- Managerlar uchun chegirma boshqaruvi<br>- Promo usage tracking |
+| 2026-03-22 | v0.8.0 | - UserFlow-Mobile.md hujjati yaratildi<br>- Mobil ilova uchun batafsil flow<br>- API endpointlar dokumentatsiyasi |
+| 2026-03-15 | v0.7.0 | - Qo'shimcha paketlar tizimi<br>- Nasiya va SMS paketlari<br>- Limit boshqaruvi |
+| 2026-03-01 | v0.6.0 | - Trial va obuna tizimi<br>- Balans to'ldirish<br>- Ta'riflar boshqaruvi |
+| 2026-02-15 | v0.5.0 | - Mijozlar, nasiyalar, to'lovlar CRUD<br>- SMS bildirishnomalar<br>- Muddati o'tgan qarzdorlar |
+| 2026-02-01 | v0.4.0 | - Autentifikatsiya tizimi<br>- Sanctum Bearer token<br>- Telegram login |
+| 2026-01-15 | v0.3.0 | - Ma'lumotlar bazasi sxemasi<br>- Migrationlar<br>- Seedlar |
+| 2026-01-01 | v0.2.0 | - Laravel loyihasi yaratildi<br>- Asosiy arxitektura<br>- Routing va controllerlar |
+| 2025-12-15 | v0.1.0 | - TZ va UserFlow hujjatlari<br>- Loyiha rejalashtiruvi |
+
+---
+
+*So'nggi yangilanish: 2026-04-23* | **Muallif:** Daftaron Development Team
