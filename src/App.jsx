@@ -26,6 +26,7 @@ import SubscriptionPage from './pages/SubscriptionPage'
 import OverduePage from './pages/OverduePage'
 import NotificationsPage from './pages/NotificationsPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import LegalManagementPage from './pages/LegalManagementPage'
 import ShopsPage from './pages/ShopsPage'
 import StaffPage from './pages/StaffPage'
 import SupportPage from './pages/SupportPage'
@@ -82,6 +83,7 @@ export default function App() {
                     <Route path="/staff" element={<StaffPage />} />
                     <Route path="/support" element={<SupportPage />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                    <Route path="/admin/legal" element={<LegalManagementPage />} />
                 </Route>
 
                 {/* 404 */}
