@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
+import { toLatin } from '../utils/transliterate'
 import { useSubscription } from '../contexts/SubscriptionContext'
 import { CustomerDetailSkeleton } from '../components/Skeleton'
 
@@ -196,7 +197,7 @@ export default function CustomerDetailPage() {
             for (const debt of openDebts) {
                 if (remainingPayment <= 0) break
 
-                const debtBalance = parseFloat(debt.remaining_amount) || 0
+                const debtBalance = parseCurrency(debt.remaining_amount) || 0
                 const paymentForThisDebt = Math.min(remainingPayment, debtBalance)
 
                 if (paymentForThisDebt > 0) {
@@ -204,7 +205,8 @@ export default function CustomerDetailPage() {
                         debt_id: debt.id,
                         amount: paymentForThisDebt,
                         paid_at: paymentForm.paid_at || null,
-                        send_sms: paymentForm.send_sms
+                        send_sms: paymentForm.send_sms,
+                        description: toLatin(paymentForm.description)
                     })
                     remainingPayment -= paymentForThisDebt
                 }
@@ -216,7 +218,8 @@ export default function CustomerDetailPage() {
                     customer_id: parseInt(id),
                     amount: amountToCredit,
                     paid_at: paymentForm.paid_at || null,
-                    send_sms: paymentForm.send_sms
+                    send_sms: paymentForm.send_sms,
+                    description: toLatin(paymentForm.description)
                 })
                 creditedAmount = amountToCredit
             }
@@ -361,11 +364,11 @@ export default function CustomerDetailPage() {
         return <div className="flex items-center justify-center min-h-screen"><p className="text-gray-500">Mijoz topilmadi</p></div>
     }
 
-    const sumRemaining = debts.reduce((sum, d) => sum + (parseFloat(d.remaining_amount) || 0), 0)
+    const sumRemaining = debts.reduce((sum, d) => sum + (parseCurrency(d.remaining_amount) || 0), 0)
 
     const totalDebt = debts.length > 0
         ? sumRemaining
-        : parseFloat(
+        : parseCurrency(
             customer.remaining_amount ??
             customer.remaining_debts ??
             customer.debt_sum ??
@@ -497,9 +500,16 @@ export default function CustomerDetailPage() {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Qoldi</p>
-                                        <p className={`text-[16px] font-bold ${debt.remaining_amount > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                            {formatCurrency(debt.remaining_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
-                                        </p>
+                                        {
+                                            (() => {
+                                                const numericRem = parseCurrency(debt.remaining_amount)
+                                                return (
+                                                    <p className={`text-[16px] font-bold ${numericRem > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                        {formatCurrency(numericRem)} <span className="text-[12px] font-normal opacity-60">so'm</span>
+                                                    </p>
+                                                )
+                                            })()
+                                        }
                                     </div>
                                 </div>
 
@@ -515,7 +525,7 @@ export default function CustomerDetailPage() {
                                 {debt.status !== 'closed' && (
                                     <button
                                         onClick={() => {
-                                            setPaymentForm({ ...paymentForm, amount: debt.remaining_amount.toString(), debt_id: debt.id })
+                                            setPaymentForm({ ...paymentForm, amount: formatCurrency(parseCurrency(debt.remaining_amount)).toString(), debt_id: debt.id })
                                             setShowPaymentDrawer(true)
                                         }}
                                         className="btn btn-primary w-full py-2.5 text-[14px] bg-blue-500 hover:bg-blue-600 text-white border-0"

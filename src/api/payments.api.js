@@ -24,6 +24,10 @@ export const paymentsApi = {
             payload.send_sms = data.send_sms
         }
 
+        if (data.description != null) {
+            payload.description = data.description
+        }
+
         const response = await api.post('/payments', payload)
         return response.data
     }
