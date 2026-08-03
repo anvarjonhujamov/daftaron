@@ -190,6 +190,7 @@ export default function CustomerDetailPage() {
 
         setSubmitting(true)
         setPaymentErrors({})
+        let creditedAmount = 0
         try {
             // Process payments sequentially
             for (const debt of openDebts) {
@@ -210,12 +211,14 @@ export default function CustomerDetailPage() {
             }
 
             if (remainingPayment > 0 || openDebts.length === 0) {
+                const amountToCredit = remainingPayment > 0 ? remainingPayment : parseCurrency(paymentForm.amount)
                 await paymentsApi.createPayment({
                     customer_id: parseInt(id),
-                    amount: remainingPayment > 0 ? remainingPayment : parseCurrency(paymentForm.amount),
+                    amount: amountToCredit,
                     paid_at: paymentForm.paid_at || null,
                     send_sms: paymentForm.send_sms
                 })
+                creditedAmount = amountToCredit
             }
 
             setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
@@ -227,6 +230,11 @@ export default function CustomerDetailPage() {
                     <p className="text-sm">Yangi bildirishnoma bor</p>
                 </div>
             )
+
+            if (creditedAmount > 0) {
+                toast.success(`Ortiqcha miqdor balansga yozildi: ${formatCurrency(creditedAmount)} so'm`)
+            }
+
             loadData()
         } catch (err) {
             if (err.response?.status === 422 && err.response?.data?.errors) {
