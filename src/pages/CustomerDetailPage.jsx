@@ -9,12 +9,13 @@ import { subscriptionApi } from '../api/subscription.api'
 import toast from 'react-hot-toast'
 import {
     ChevronLeft, MoreVertical, Phone as PhoneIcon, MessageSquare,
-    Plus, CreditCard, Loader2, FileText, X, Trash2
+    Plus, CreditCard, Loader2, FileText, X, Trash2, Edit3,
+    AlertCircle, Zap, RefreshCw
 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '../utils/format'
+import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 import { useSubscription } from '../contexts/SubscriptionContext'
 import { CustomerDetailSkeleton } from '../components/Skeleton'
-import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
 
 
 export default function CustomerDetailPage() {
@@ -39,6 +40,10 @@ export default function CustomerDetailPage() {
     const [debtErrors, setDebtErrors] = useState({})
     const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
     const [paymentErrors, setPaymentErrors] = useState({})
+    const [showEditDrawer, setShowEditDrawer] = useState(false)
+    const [editForm, setEditForm] = useState({ name: '', phone: PHONE_PREFIX, address: '', note: '' })
+    const [editErrors, setEditErrors] = useState({})
+    const [editSubmitting, setEditSubmitting] = useState(false)
     const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
     const [blockedType, setBlockedType] = useState(null) // 'limit' | 'expired'
     const [limitMeta, setLimitMeta] = useState({
@@ -106,7 +111,14 @@ export default function CustomerDetailPage() {
                 customersApi.getCustomer(id),
                 debtsApi.getDebts({ per_page: 100 })
             ])
-            setCustomer(customerData.data || customerData)
+            const fetchedCustomer = customerData.data || customerData
+            setCustomer(fetchedCustomer)
+            setEditForm({
+                name: fetchedCustomer.name || '',
+                phone: fetchedCustomer.phone ? formatPhoneNumber(fetchedCustomer.phone) : PHONE_PREFIX,
+                address: fetchedCustomer.address || '',
+                note: fetchedCustomer.note || ''
+            })
             // Filter debts to only show this customer's debts
             const allDebts = Array.isArray(debtsData) ? debtsData : (debtsData.data || [])
             const customerDebts = allDebts.filter(d =>
@@ -167,11 +179,6 @@ export default function CustomerDetailPage() {
             .filter(d => d.status === 'open')
             .sort((a, b) => a.id - b.id)
 
-        if (openDebts.length === 0) {
-            toast.error('Faol nasiya topilmadi')
-            return
-        }
-
         // If a specific debt was selected via "To'lov qilish" on a card, move it to the front
         if (paymentForm.debt_id) {
             const targetIdx = openDebts.findIndex(d => d.id === paymentForm.debt_id)
@@ -200,6 +207,15 @@ export default function CustomerDetailPage() {
                     })
                     remainingPayment -= paymentForThisDebt
                 }
+            }
+
+            if (remainingPayment > 0 || openDebts.length === 0) {
+                await paymentsApi.createPayment({
+                    customer_id: parseInt(id),
+                    amount: remainingPayment > 0 ? remainingPayment : parseCurrency(paymentForm.amount),
+                    paid_at: paymentForm.paid_at || null,
+                    send_sms: paymentForm.send_sms
+                })
             }
 
             setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
@@ -247,6 +263,44 @@ export default function CustomerDetailPage() {
         } finally {
             setSubmitting(false)
             setShowDeleteConfirm(false)
+        }
+    }
+
+    const handleEditCustomer = async (e) => {
+        e.preventDefault()
+        if (!editForm.name.trim()) return
+
+        setEditSubmitting(true)
+        setEditErrors({})
+
+        try {
+            const rawPhone = getRawPhoneNumber(editForm.phone)
+            const submitData = {
+                name: editForm.name.trim(),
+                phone: rawPhone !== PHONE_PREFIX ? rawPhone : null,
+                address: editForm.address || null,
+                note: editForm.note || null
+            }
+
+            const response = await customersApi.updateCustomer(id, submitData)
+            const updatedCustomer = response.data || response
+            setCustomer(updatedCustomer)
+            setEditForm({
+                name: updatedCustomer.name || '',
+                phone: updatedCustomer.phone ? formatPhoneNumber(updatedCustomer.phone) : PHONE_PREFIX,
+                address: updatedCustomer.address || '',
+                note: updatedCustomer.note || ''
+            })
+            setShowEditDrawer(false)
+            toast.success('Mijoz yangilandi')
+        } catch (err) {
+            if (err.response?.status === 422 && err.response?.data?.errors) {
+                setEditErrors(err.response.data.errors)
+            } else {
+                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            }
+        } finally {
+            setEditSubmitting(false)
         }
     }
 
@@ -315,6 +369,8 @@ export default function CustomerDetailPage() {
     const hasKnownDebtRemaining = effectiveRemaining !== null && effectiveRemaining !== undefined && effectiveRemaining !== ''
     // Only block by limit when we have a reliable remaining value.
     const isDebtLimitReached = !effectiveIsUnlimited && hasKnownDebtRemaining && Number(effectiveRemaining) <= 0
+    const openDebts = debts.filter(d => d.status === 'open').sort((a, b) => a.id - b.id)
+    const hasOpenDebts = openDebts.length > 0
 
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors overflow-x-hidden">
@@ -390,8 +446,8 @@ export default function CustomerDetailPage() {
                     </button>
                     <button
                         onClick={() => setShowPaymentDrawer(true)}
-                        disabled={totalDebt <= 0}
-                        className={`btn flex-1 py-3 shadow-lg active:scale-95 transition-all ${totalDebt > 0 ? 'btn-success shadow-green-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'}`}
+                        disabled={submitting}
+                        className="btn btn-success flex-1 py-3 shadow-lg active:scale-95 transition-all shadow-green-500/20"
                     >
                         <Plus size={18} />To'lov
                     </button>
@@ -660,6 +716,11 @@ export default function CustomerDetailPage() {
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
                                     </div>
                                     {paymentErrors.amount && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{paymentErrors.amount[0]}</p>}
+                                    {!hasOpenDebts && (
+                                       <div className="mt-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-[13px]">
+                                           Hozircha faol nasiya yo'q. To'lov miqdori ortiqcha bo'lsa, u mijoz balansiga + sifatida yoziladi.
+                                       </div>
+                                    )}
 
                                     {/* Show Nasiya limit here */}
                                     <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-900/20 mt-2">
@@ -724,6 +785,16 @@ export default function CustomerDetailPage() {
                                 <button
                                     onClick={() => {
                                         setShowOptionsDrawer(false)
+                                        setShowEditDrawer(true)
+                                    }}
+                                    className="w-full flex items-center gap-3 p-4 text-blue-600 font-bold active:bg-gray-50 dark:active:bg-gray-700/50 rounded-2xl transition-colors"
+                                >
+                                    <Edit3 size={20} />
+                                    <span>Mijozni tahrirlash</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowOptionsDrawer(false)
                                         setShowDeleteConfirm(true)
                                     }}
                                     className="w-full flex items-center gap-3 p-4 text-red-500 font-bold active:bg-gray-50 dark:active:bg-gray-700/50 rounded-2xl transition-colors"
@@ -737,6 +808,104 @@ export default function CustomerDetailPage() {
                                 >
                                     Bekor qilish
                                 </button>
+                            </div>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
+
+            {/* Edit Customer Drawer */}
+            <Drawer.Root open={showEditDrawer} onOpenChange={(open) => {
+                setShowEditDrawer(open)
+                if (!open) {
+                    setEditErrors({})
+                    setTimeout(() => {
+                        if (customer) {
+                            setEditForm({
+                                name: customer.name || '',
+                                phone: customer.phone ? formatPhoneNumber(customer.phone) : PHONE_PREFIX,
+                                address: customer.address || '',
+                                note: customer.note || ''
+                            })
+                        }
+                    }, 300)
+                }
+            }} repositionInputs={false}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
+                                        Mijozni tahrirlash
+                                    </Drawer.Title>
+                                    <Drawer.Description className="text-gray-400 text-[14px]">
+                                        {customer?.name} ma'lumotlarini yangilang
+                                    </Drawer.Description>
+                                </div>
+                                <button onClick={() => setShowEditDrawer(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                    <X size={18} className="text-gray-500" />
+                                </button>
+                            </div>
+                            <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-4 pb-8">
+                                <form onSubmit={handleEditCustomer} className="space-y-4">
+                                    <div>
+                                        <label className="label">Ism *</label>
+                                        <input
+                                            type="text"
+                                            className={`input ${editErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                                            placeholder="Mijoz ismi"
+                                            value={editForm.name}
+                                            onChange={(e) => {
+                                                setEditForm({ ...editForm, name: e.target.value })
+                                                if (editErrors.name) setEditErrors({ ...editErrors, name: null })
+                                            }}
+                                            required
+                                        />
+                                        {editErrors.name && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{editErrors.name[0]}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="label">Telefon raqam</label>
+                                        <input
+                                            type="tel"
+                                            inputMode="tel"
+                                            autoComplete="tel"
+                                            className={`input ${editErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                                            placeholder="+998 XX XXX XX XX"
+                                            value={editForm.phone}
+                                            onChange={(e) => {
+                                                const formatted = formatPhoneNumber(e.target.value)
+                                                setEditForm({ ...editForm, phone: formatted })
+                                                if (editErrors.phone) setEditErrors({ ...editErrors, phone: null })
+                                            }}
+                                        />
+                                        {editErrors.phone && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{editErrors.phone[0]}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="label">Manzil</label>
+                                        <input
+                                            type="text"
+                                            className="input"
+                                            placeholder="To'liq manzil"
+                                            value={editForm.address}
+                                            onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="label">Izoh</label>
+                                        <textarea
+                                            className="input min-h-[80px] resize-none"
+                                            placeholder="Qo'shimcha ma'lumot..."
+                                            value={editForm.note}
+                                            onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
+                                        />
+                                    </div>
+                                    <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={editSubmitting}>
+                                        {editSubmitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </Drawer.Content>

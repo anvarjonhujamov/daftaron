@@ -1120,12 +1120,16 @@ paths:
           application/json:
             schema:
               type: object
-              required: [tenant_id, debt_id, amount]
+              required: [tenant_id, amount]
               properties:
                 tenant_id:
                   type: integer
                 debt_id:
                   type: integer
+                  description: "Faol nasiya uchun to'lov. Agar to'lov faqat balansga yozilsa, bu maydon tashlab ketilishi mumkin."
+                customer_id:
+                  type: integer
+                  description: "Mijoz balansiga + miqdor yozish uchun ishlatiladi. debt_id mavjud bo'lmasa, bu maydon talab qilinadi."
                 amount:
                   type: number
                 paid_at:

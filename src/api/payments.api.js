@@ -8,9 +8,16 @@ export const paymentsApi = {
 
     createPayment: async (data) => {
         const payload = {
-            debt_id: data.debt_id,
             amount: data.amount,
             paid_at: data.paid_at || null
+        }
+
+        if (data.debt_id != null) {
+            payload.debt_id = data.debt_id
+        }
+
+        if (data.customer_id != null) {
+            payload.customer_id = data.customer_id
         }
 
         if (typeof data.send_sms === 'boolean') {
