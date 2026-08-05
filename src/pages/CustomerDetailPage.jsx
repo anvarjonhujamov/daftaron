@@ -389,8 +389,8 @@ export default function CustomerDetailPage() {
                     </button>
                     <button
                         onClick={() => setShowPaymentDrawer(true)}
-                        disabled={totalDebt <= 0}
-                        className={`btn flex-1 py-3 shadow-lg active:scale-95 transition-all ${totalDebt > 0 ? 'btn-success shadow-green-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'}`}
+                        disabled={debts.length === 0 || totalDebt <= 0}
+                        className={`btn flex-1 py-3 shadow-lg active:scale-95 transition-all ${debts.length > 0 && totalDebt > 0 ? 'btn-success shadow-green-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'}`}
                     >
                         <Plus size={18} />To'lov
                     </button>
