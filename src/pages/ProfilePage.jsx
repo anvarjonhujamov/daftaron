@@ -504,22 +504,6 @@ export default function ProfilePage() {
                     <ChevronRight size={18} className="text-gray-400" />
                 </button>
 
-                {/* Admin - Hujjatlarni tahrirlash */}
-                {!isStaff && (
-                <button
-                    type="button"
-                    onClick={() => navigate('/admin/legal')}
-                    className="w-full flex items-center justify-between py-4"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                            <Edit3 size={18} className="text-purple-500" />
-                        </div>
-                        <span className="text-[15px] font-medium text-gray-900 dark:text-white">Admin: Hujjatlarni tahrirlash</span>
-                    </div>
-                    <ChevronRight size={18} className="text-gray-400" />
-                </button>
-                )}
 
                 {/* Balance top-up */}
                 {!isStaff && (
