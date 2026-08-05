@@ -300,6 +300,7 @@ export default function CustomerDetailPage() {
     }
 
     const sumRemaining = debts.reduce((sum, d) => sum + (parseFloat(d.remaining_amount) || 0), 0)
+    const hasOutstandingDebt = debts.some((d) => (parseFloat(d.remaining_amount) || 0) > 0)
 
     const totalDebt = debts.length > 0
         ? sumRemaining
@@ -388,9 +389,9 @@ export default function CustomerDetailPage() {
                         <Plus size={18} />Nasiya
                     </button>
                     <button
-                        onClick={() => setShowPaymentDrawer(true)}
-                        disabled={debts.length === 0 || totalDebt <= 0}
-                        className={`btn flex-1 py-3 shadow-lg active:scale-95 transition-all ${debts.length > 0 && totalDebt > 0 ? 'btn-success shadow-green-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'}`}
+                        onClick={() => hasOutstandingDebt && setShowPaymentDrawer(true)}
+                        disabled={!hasOutstandingDebt}
+                        className={`btn flex-1 py-3 shadow-lg active:scale-95 transition-all ${hasOutstandingDebt ? 'btn-success shadow-green-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'}`}
                     >
                         <Plus size={18} />To'lov
                     </button>
