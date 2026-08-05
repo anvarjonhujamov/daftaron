@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Drawer } from 'vaul'
 import { tenantsApi } from '../api/tenants.api'
 import { categoriesApi } from '../api/categories.api'
-import { Store, Plus, ArrowLeft, MapPin, CheckCircle2, X, Loader2, Trash2 } from 'lucide-react'
+import { Store, Plus, ArrowLeft, MapPin, CheckCircle2, X, Loader2, Trash2, Edit2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import LocationSelector from '../components/LocationSelector'
@@ -15,10 +15,13 @@ export default function ShopsPage() {
     const [loading, setLoading] = useState(true)
     const [activeId, setActiveId] = useState(null)
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [categories, setCategories] = useState([])
     const [savingShop, setSavingShop] = useState(false)
+    const [savingEditShop, setSavingEditShop] = useState(false)
     const [deletingShopId, setDeletingShopId] = useState(null)
     const [shopToDelete, setShopToDelete] = useState(null)
+
     const [newShop, setNewShop] = useState({
         name: '',
         category_id: null,
@@ -27,7 +30,19 @@ export default function ShopsPage() {
         street_id: null,
         location: ''
     })
+
+    const [editShopForm, setEditShopForm] = useState({
+        name: '',
+        category_id: null,
+        region_id: null,
+        district_id: null,
+        street_id: null,
+        location: ''
+    })
+
+    const [editingShopId, setEditingShopId] = useState(null)
     const [formErrors, setFormErrors] = useState({})
+    const [editFormErrors, setEditFormErrors] = useState({})
 
     useEffect(() => {
         loadShops()
@@ -172,6 +187,58 @@ export default function ShopsPage() {
         navigate('/')
     }
 
+    const openEditModal = async (shop) => {
+        setEditFormErrors({})
+        setEditingShopId(shop?.id ?? null)
+        setEditShopForm({
+            name: shop?.name || '',
+            category_id: shop?.category_id ?? shop?.category?.id ?? categories?.[0]?.id ?? null,
+            region_id: shop?.region_id ?? shop?.region ?? null,
+            district_id: shop?.district_id ?? shop?.district ?? null,
+            street_id: shop?.street_id ?? shop?.street ?? null,
+            location: shop?.location || getShopLocationLabel(shop) || ''
+        })
+        if (categories.length === 0) await loadCategories()
+        setIsEditModalOpen(true)
+    }
+
+    const closeEditModal = () => {
+        setIsEditModalOpen(false)
+        setEditingShopId(null)
+        setEditFormErrors({})
+        setEditShopForm({ name: '', category_id: categories?.[0]?.id ?? null, region_id: null, district_id: null, street_id: null, location: '' })
+    }
+
+    const handleUpdateShop = async (e) => {
+        e.preventDefault()
+        if (!editingShopId) return
+        setSavingEditShop(true)
+        setEditFormErrors({})
+        try {
+            await tenantsApi.updateTenant(editingShopId, {
+                name: editShopForm.name.trim(),
+                category_id: editShopForm.category_id,
+                region_id: editShopForm.region_id,
+                district_id: editShopForm.district_id,
+                street_id: editShopForm.street_id
+            })
+            toast.success("Biznes ma'lumotlari yangilandi")
+            closeEditModal()
+            await loadShops()
+        } catch (err) {
+            const resp = err.response?.data
+            if (err.response?.status === 422 && resp?.errors) {
+                setEditFormErrors(resp.errors)
+                const firstError = Object.values(resp.errors)?.[0]?.[0]
+                toast.error(firstError || "Kiritilgan ma'lumotlar noto'g'ri")
+            } else {
+                toast.error(resp?.message || "Biznesni yangilashda xatolik yuz berdi")
+            }
+        } finally {
+            setSavingEditShop(false)
+        }
+    }
+
     const requestDeleteShop = (shop) => {
         setShopToDelete(shop)
     }
@@ -297,18 +364,29 @@ export default function ShopsPage() {
                     )}
                                 </div>
                             </div>
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    requestDeleteShop(shop)
-                                }}
-                                disabled={deletingShopId === shop.id}
-                                className={`absolute top-3 ${isActive ? 'right-12' : 'right-3'} w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors`}
-                                title="Biznesni o'chirish"
-                            >
-                                {deletingShopId === shop.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                            </button>
+                            <div className="absolute top-3 right-3 flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); openEditModal(shop); }}
+                                    className="w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                                    title="Biznesni tahrirlash"
+                                >
+                                    <Edit2 size={16} />
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        requestDeleteShop(shop)
+                                    }}
+                                    disabled={deletingShopId === shop.id}
+                                    className={`w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors ${isActive ? 'ml-2' : ''}`}
+                                    title="Biznesni o'chirish"
+                                >
+                                    {deletingShopId === shop.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                </button>
+                            </div>
                         </div>
                     )})}
                 </div>
@@ -404,6 +482,98 @@ export default function ShopsPage() {
                                     }`}
                                 >
                                     {savingShop ? <Loader2 size={18} className="animate-spin" /> : "Biznesni qo'shish"}
+                                </button>
+                            </form>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
+
+            {/* Edit Shop Drawer */}
+            <Drawer.Root open={isEditModalOpen} onOpenChange={(open) => { if (!open) closeEditModal() }} repositionInputs={false}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
+                    <Drawer.Content className="fixed bg-white dark:bg-gray-900 bottom-0 left-0 right-0 max-h-[90vh] rounded-t-[28px] z-50 flex flex-col focus:outline-none">
+                        <Drawer.Title className="sr-only">Do'konni tahrirlash</Drawer.Title>
+                        <Drawer.Description className="sr-only">Do'kon ma'lumotlarini yangilang</Drawer.Description>
+                        <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 my-4" />
+
+                        <div className="w-full max-w-md mx-auto px-5 pb-8 overflow-y-auto">
+                            <div className="sticky top-0 bg-white dark:bg-gray-900 z-10 pb-3 mb-2 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-[18px] font-bold text-gray-900 dark:text-white">Do'konni tahrirlash</h3>
+                                    <p className="text-[12px] text-gray-500 dark:text-gray-400">Do'kon ma'lumotlarini yangilang</p>
+                                </div>
+                                <button
+                                    onClick={closeEditModal}
+                                    className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleUpdateShop} className="space-y-4">
+                                <div>
+                                    <label className="label">Biznes nomi</label>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        value={editShopForm.name}
+                                        onChange={(e) => setEditShopForm(prev => ({ ...prev, name: e.target.value }))}
+                                        placeholder="Masalan: Nurli Zamin"
+                                        required
+                                    />
+                                    {editFormErrors.name && <p className="text-red-500 text-xs mt-1">{editFormErrors.name[0]}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="label">Faoliyat turi (kategoriya)</label>
+                                    <select
+                                        className="input"
+                                        value={editShopForm.category_id ?? ''}
+                                        onChange={(e) => setEditShopForm(prev => ({
+                                            ...prev,
+                                            category_id: e.target.value ? parseInt(e.target.value, 10) : null
+                                        }))}
+                                        required
+                                    >
+                                        <option value="">Tanlang...</option>
+                                        {categories.map((cat) => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                    {editFormErrors.category_id && <p className="text-red-500 text-xs mt-1">{editFormErrors.category_id[0]}</p>}
+                                </div>
+
+                                <LocationSelector
+                                    value={{
+                                        region_id: editShopForm.region_id,
+                                        district_id: editShopForm.district_id,
+                                        street_id: editShopForm.street_id
+                                    }}
+                                    onChange={(location) => setEditShopForm(prev => ({ ...prev, ...location }))}
+                                    onAddressChange={(addr) => setEditShopForm(prev => ({ ...prev, location: addr }))}
+                                />
+
+                                {editShopForm.location ? (
+                                    <div className="space-y-1">
+                                        <label className="label">Tanlangan manzil</label>
+                                        <input
+                                            type="text"
+                                            className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                                            value={editShopForm.location}
+                                            readOnly
+                                            disabled
+                                        />
+                                    </div>
+                                ) : null}
+
+                                <button
+                                    type="submit"
+                                    disabled={savingEditShop || !editShopForm.name.trim() || !editShopForm.category_id}
+                                    className={`w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 ${savingEditShop || !editShopForm.name.trim() || !editShopForm.category_id ? 'bg-gray-200 dark:bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+                                >
+                                    {savingEditShop ? <Loader2 size={18} className="animate-spin" /> : "Saqlash"}
                                 </button>
                             </form>
                         </div>

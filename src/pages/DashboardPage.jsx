@@ -272,7 +272,7 @@ export default function DashboardPage() {
     const topDebtors = debtorsSource
         .map(customer => ({
             ...customer,
-            computed_debt: parseFloat(customer.remaining_amount ?? customer.remaining_debts ?? customer.debt_sum ?? customer.balance ?? customer.total_debt ?? 0)
+            computed_debt: parseFloat(customer.remaining_amount ?? customer.remaining_debts ?? customer.debt_sum ?? customer.total_debt ?? 0)
         }))
         .sort((a, b) => b.computed_debt - a.computed_debt) // Descending order
 

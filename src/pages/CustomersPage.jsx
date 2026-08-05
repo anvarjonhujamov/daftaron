@@ -113,12 +113,12 @@ export default function CustomersPage() {
 
         if (filter === 'debtors') {
             result = result.filter(c => {
-                const debt = parseFloat(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.balance ?? c.total_debt ?? 0)
+                const debt = parseFloat(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.total_debt ?? 0)
                 return debt > 0
             })
         } else if (filter === 'paid') {
             result = result.filter(c => {
-                const debt = parseFloat(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.balance ?? c.total_debt ?? 0)
+                const debt = parseFloat(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.total_debt ?? 0)
                 return debt <= 0
             })
         }
@@ -456,7 +456,6 @@ export default function CustomersPage() {
                                                 customer.remaining_amount ??
                                                 customer.remaining_debts ??
                                                 customer.debt_sum ??
-                                                customer.balance ??
                                                 customer.total_debt ?? 0
                                             );
                                             return (

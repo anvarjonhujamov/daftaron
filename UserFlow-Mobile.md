@@ -796,7 +796,7 @@ Nasiya yaratishda ta'rif limiti tekshiriladi:
 | Metod | Endpoint | Body / Param | Javob |
 |-------|----------|-------------|-------|
 | GET | `/payments` | `debt_id` (ixtiyoriy filter) | `200`: to'lovlar ro'yxati |
-| POST | `/payments` | `debt_id`, `amount`, `paid_at` (ixtiyoriy, ISO8601), `send_sms` (boolean, ixtiyoriy) | `201`: yaratilgan to'lov |
+| POST | `/payments` | `debt_id` (ixtiyoriy), `customer_id` (ixtiyoriy), `amount`, `paid_at` (ixtiyoriy, ISO8601), `send_sms` (boolean, ixtiyoriy) | `201`: yaratilgan to'lov — debt_id bo'lmasa customer_id talab qilinadi; tizim mijoz uchun avtomatik nasiya yozuvi yaratadi va mijozning balansi ijobiy bo'ladi. |
 
 ### 11.3. To'lov SMS (ixtiyoriy)
 

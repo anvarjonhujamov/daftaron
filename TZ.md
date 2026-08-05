@@ -632,7 +632,7 @@ Nasiya bo'yicha to'lovlar — `payments` jadvalida.
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
 | GET | `/payments` | `debt_id` (ixtiyoriy) | To'lovlar ro'yxati |
-| POST | `/payments` | `debt_id`, `amount`, `paid_at`, `send_sms` | 201: yaratilgan to'lov |
+| POST | `/payments` | `debt_id` (ixtiyoriy), `customer_id` (ixtiyoriy), `amount`, `paid_at`, `send_sms` | 201: yaratilgan to'lov — debt_id bo'lmasa, customer_id talab qilinadi va tizim mijoz uchun avtomatik nasiya yozuvi yaratadi (to'lov mijoz balansini ijobiy qiladi). |
 
 **Qoidalar:**
 - To'lov yozilganda `debt.remaining_amount` kamayadi

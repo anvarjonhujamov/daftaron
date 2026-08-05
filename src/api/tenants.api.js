@@ -11,6 +11,11 @@ export const tenantsApi = {
         return response.data
     },
 
+    updateTenant: async (tenantId, data) => {
+        const response = await axios.put(`/tenants/${tenantId}`, data)
+        return response.data
+    },
+
     setActiveTenant: async (tenantId) => {
         const response = await axios.put('/tenants/active', { tenant_id: tenantId })
         return response.data

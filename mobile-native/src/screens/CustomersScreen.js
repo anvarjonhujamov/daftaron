@@ -207,7 +207,7 @@ function FilterPill({ theme, active, label, onPress }) {
 }
 
 function getDebt(c) {
-  return Number(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.balance ?? c.total_debt ?? 0)
+  return Number(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.total_debt ?? 0)
 }
 
 function normalizeArray(data) {
