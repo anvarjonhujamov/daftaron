@@ -19,6 +19,8 @@ export default function ShopsPage() {
     const [categories, setCategories] = useState([])
     const [savingShop, setSavingShop] = useState(false)
     const [savingEditShop, setSavingEditShop] = useState(false)
+
+    const isNumericId = (v) => typeof v === 'number' || (typeof v === 'string' && String(parseInt(v, 10)) === String(v))
     const [deletingShopId, setDeletingShopId] = useState(null)
     const [shopToDelete, setShopToDelete] = useState(null)
 
@@ -440,6 +442,10 @@ export default function ShopsPage() {
                                         required
                                     >
                                         <option value="">Tanlang...</option>
+                                        {/* Show synthetic option if newShop.category_id is a non-numeric name so the select displays it */}
+                                        {newShop.category_id && !isNumericId(newShop.category_id) && (
+                                            <option value={newShop.category_id} key="initial-new-category">{String(newShop.category_id)}</option>
+                                        )}
                                         {categories.map((cat) => (
                                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                                         ))}
@@ -538,6 +544,10 @@ export default function ShopsPage() {
                                         required
                                     >
                                         <option value="">Tanlang...</option>
+                                        {/* Show synthetic option if editShopForm.category_id is a non-numeric name so the select displays it */}
+                                        {editShopForm.category_id && !isNumericId(editShopForm.category_id) && (
+                                            <option value={editShopForm.category_id} key="initial-edit-category">{String(editShopForm.category_id)}</option>
+                                        )}
                                         {categories.map((cat) => (
                                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                                         ))}
