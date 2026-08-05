@@ -17,9 +17,27 @@ export default function LocationSelector({
     const [districtsError, setDistrictsError] = useState('')
     const [streetsError, setStreetsError] = useState('')
 
-    const getRegionName = (id) => regions.find((region) => region.id === id)?.name || ''
-    const getDistrictName = (id) => districts.find((district) => district.id === id)?.name || ''
-    const getStreetName = (id) => streets.find((street) => street.id === id)?.name || ''
+    const isNumericId = (v) => typeof v === 'number' || (typeof v === 'string' && String(parseInt(v, 10)) === String(v))
+
+    const getRegionName = (idOrName) => {
+        const found = regions.find((region) => String(region.id) === String(idOrName))
+        if (found) return found.name
+        // if no numeric match and a string was passed, return it (it's likely the name)
+        if (idOrName && !isNumericId(idOrName)) return String(idOrName)
+        return ''
+    }
+    const getDistrictName = (idOrName) => {
+        const found = districts.find((district) => String(district.id) === String(idOrName))
+        if (found) return found.name
+        if (idOrName && !isNumericId(idOrName)) return String(idOrName)
+        return ''
+    }
+    const getStreetName = (idOrName) => {
+        const found = streets.find((street) => String(street.id) === String(idOrName))
+        if (found) return found.name
+        if (idOrName && !isNumericId(idOrName)) return String(idOrName)
+        return ''
+    }
 
     const buildLocationLabel = (regionId, districtId, streetId) => {
         const parts = []
@@ -37,19 +55,25 @@ export default function LocationSelector({
     }, [])
 
     useEffect(() => {
-        if (value.region_id) {
+        // Only attempt to load districts by region id when a numeric id is provided
+        if (value.region_id && isNumericId(value.region_id)) {
             loadDistricts(value.region_id)
-        } else {
+        } else if (!value.region_id) {
             setDistricts([])
             setStreets([])
+        } else {
+            // non-numeric region provided (likely a name) — keep districts/street arrays as-is so the synthetic options can show
+            // do not call API with non-numeric id
         }
     }, [value.region_id])
 
     useEffect(() => {
-        if (value.district_id) {
+        if (value.district_id && isNumericId(value.district_id)) {
             loadStreets(value.district_id)
-        } else {
+        } else if (!value.district_id) {
             setStreets([])
+        } else {
+            // non-numeric district provided — skip API call
         }
     }, [value.district_id])
 
@@ -138,6 +162,10 @@ export default function LocationSelector({
                     required={required}
                 >
                     <option value="">{loadingRegions ? 'Yuklanmoqda...' : regions.length ? 'Tanlang...' : regionsError || 'Viloyatlar mavjud emas'}</option>
+                    {/* If value.region_id is a non-numeric name, show it as a synthetic option so the select displays it */}
+                    {value.region_id && !isNumericId(value.region_id) && (
+                        <option value={value.region_id} key="initial-region">{String(value.region_id)}</option>
+                    )}
                     {regions.map(region => (
                         <option key={region.id} value={region.id}>{region.name}</option>
                     ))}
@@ -154,6 +182,10 @@ export default function LocationSelector({
                     required={required}
                 >
                     <option value="">{loadingDistricts ? 'Yuklanmoqda...' : value.region_id ? districts.length ? 'Tanlang...' : districtsError || 'Tumanlar mavjud emas' : 'Avval viloyatni tanlang'}</option>
+                    {/* Show synthetic district option if a non-numeric district name was provided */}
+                    {value.district_id && !isNumericId(value.district_id) && (
+                        <option value={value.district_id} key="initial-district">{String(value.district_id)}</option>
+                    )}
                     {districts.map(district => (
                         <option key={district.id} value={district.id}>{district.name}</option>
                     ))}
@@ -170,6 +202,10 @@ export default function LocationSelector({
                     required={required}
                 >
                     <option value="">{loadingStreets ? 'Yuklanmoqda...' : value.district_id ? streets.length ? 'Tanlang...' : streetsError || 'Koʻchalar mavjud emas' : 'Avval tumanni tanlang'}</option>
+                    {/* Show synthetic street option if a non-numeric street name was provided */}
+                    {value.street_id && !isNumericId(value.street_id) && (
+                        <option value={value.street_id} key="initial-street">{String(value.street_id)}</option>
+                    )}
                     {streets.map(street => (
                         <option key={street.id} value={street.id}>{street.name}</option>
                     ))}
