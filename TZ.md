@@ -1189,6 +1189,8 @@ Body: `name`, `category_id`, `region_id`, `district_id`, `street_id`
 
 - **Web:** `DELETE /shops/{tenant}` — do'kon egasi active yoki o'ziga tegishli boshqa do'konni o'chira oladi.
 - **API:** `DELETE /api/v1/tenants/{tenant}` — faqat `shop_owner` va faqat o'z do'koni uchun.
+
+> NOTE: API yangilanishi: Do'kon ma'lumotlarini tahrirlash uchun server PATCH metodini qo'llab-quvvatlashi kerak. OpenAPI dokumentatsiyasida ham bu PATCH sifatida qayd etildi. Frontend end-point hozir PATCH -> PUT ketma-ketligini sinab ko'radi. Agar server PATCH/PUT ni qo'llamasa, backendga PATCH/PUT endpoint qo'shish lozim.
 - O'chirish **hard delete** tarzida bajariladi.
 - Shu do'konga tegishli `shop_worker`, `customers`, `debts`, `payments`, `sms_dispatch_logs` yozuvlari birga o'chiriladi.
 - Agar owner’da boshqa do'kon bo'lsa, `users.tenant_id` keyingi do'konga o'tkaziladi; qolmasa `null` bo'ladi.
@@ -2037,6 +2039,48 @@ GROQ_API_KEY=...
 {
   "message": "Basic (Oddiy) ta'rifda faqat bitta do'kon mumkin.",
   "requires_upgrade": true
+}
+```
+
+#### Do'konni Tahrirash
+
+**Endpoint:** `PUT /tenants/{tenant}`
+
+**Headers:** `Authorization: ******`
+
+**Request:**
+```json
+{
+  "name": "Tahrirlangan Do'kon Nomi",
+  "category_id": 3,
+  "region_id": 2,
+  "district_id": 8,
+  "street_id": 200
+}
+```
+
+**Response (200 — Muvaffaqiyatli):**
+```json
+{
+  "message": "Do'kon yangilandi.",
+  "tenant": {
+    "id": 1,
+    "name": "Tahrirlangan Do'kon Nomi",
+    "region": "Tashkent shahri",
+    "district": "Chilonzor tumani",
+    "street": "Toshkent shahri, Chilonzor tumani",
+    "category": "Oziq-ovqat",
+    "plan_id": 2,
+    "status": "active",
+    "balance": 0
+  }
+}
+```
+
+**Response (403 — Ruxsat yo'q):**
+```json
+{
+  "message": "Bu do'konni tahrirsh huquqingiz yo'q."
 }
 ```
 

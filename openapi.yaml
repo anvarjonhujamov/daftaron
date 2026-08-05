@@ -14,7 +14,7 @@ info:
     - Query/body: `tenant_id`
     - Header: `X-Tenant-Id`
 
-    **So'nggi yangilanish:** 2026-04-23
+    **So'nggi yangilanish:** 2026-08-05
   version: "1.0.0"
   contact:
     name: Daftaron Support
@@ -883,6 +883,245 @@ paths:
                     type: string
                     example: "https://t.me/daftaron_group"
 
+  /tenants:
+    get:
+      summary: Barcha do'konlar
+      description: Foydalanuvchiga tegishli va u boshqaradigan barcha do'konlarni olish
+      tags:
+        - Tenants (Do'konlar)
+      responses:
+        '200':
+          description: Do'konlar ro'yxati
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active_tenant_id:
+                    type: integer
+                    nullable: true
+                    example: 1
+                  tenants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        region:
+                          type: string
+                        district:
+                          type: string
+                        street:
+                          type: string
+                        category:
+                          type: string
+                        plan_id:
+                          type: integer
+                          nullable: true
+                        status:
+                          type: string
+                        balance:
+                          type: number
+                        is_active:
+                          type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Yangi do'kon qo'shish
+      description: Yangi do'kon qo'shish. Plan limiti tugasa 422 xatosi qaytadi.
+      tags:
+        - Tenants (Do'konlar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - category_id
+                - region_id
+                - district_id
+              properties:
+                name:
+                  type: string
+                  example: "Savdo Markazi"
+                category_id:
+                  type: integer
+                  example: 1
+                region_id:
+                  type: integer
+                  example: 1
+                district_id:
+                  type: integer
+                  example: 1
+                street_id:
+                  type: integer
+                  nullable: true
+                  example: 1
+      responses:
+        '201':
+          description: Do'kon muvaffaqiyatli qo'shildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  tenant:
+                    type: object
+                  usage:
+                    type: object
+        '422':
+          description: Validatsiya xatosi yoki plan limiti
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  requires_upgrade:
+                    type: boolean
+                  usage:
+                    type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tenants/active:
+    put:
+      summary: Faol do'konni o'zartirish
+      description: Joriy foydalanuvchining faol do'konini o'zartirish
+      tags:
+        - Tenants (Do'konlar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenant_id
+              properties:
+                tenant_id:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: Faol do'kon yangilandi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  active_tenant:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+        '403':
+          description: Ruxsat yo'q
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tenants/{tenant}:
+    patch:
+      summary: Do'konni tahrirlash (qisman yangilash)
+      description: Do'konning ma'lumotlarini qisman yangilash (nom, kategoriya, hudud va h.k.) — tavsiya etilgan API metodi PATCH
+      tags:
+        - Tenants (Do'konlar)
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Do'kon ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Tahrirlangan Do'kon"
+                category_id:
+                  type: integer
+                  example: 2
+                region_id:
+                  type: integer
+                  example: 2
+                district_id:
+                  type: integer
+                  example: 3
+                street_id:
+                  type: integer
+                  nullable: true
+                  example: 5
+      responses:
+        '200':
+          description: Do'kon muvaffaqiyatli yangilandi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  tenant:
+                    type: object
+        '403':
+          description: Ruxsat yo'q
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    delete:
+      summary: Do'konni o'chirish
+      description: Do'konni va unga tegishli ma'lumotlarni butunlay o'chirish
+      tags:
+        - Tenants (Do'konlar)
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Do'kon ID
+      responses:
+        '200':
+          description: Do'kon muvaffaqiyatli o'chirildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  active_tenant_id:
+                    type: integer
+                    nullable: true
+                  tenants:
+                    type: array
+                    items:
+                      type: object
+        '403':
+          description: Ruxsat yo'q
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1153,6 +1392,7 @@ components:
 | Sana | Yangilanish | Tavsif |
 |------|-------------|--------|
 | 2026-04-23 | v1.1.0 | - Public Offer, Privacy Policy va aloqa ma'lumotlari admin panelda qo'shildi<br>- OpenAPI 3.0 spesifikatsiyasi yaratildi<br>- Tashkent mahalla seederini yangilandi (placeholder o'rniga haqiqiy nomlar)<br>- Admin sozlamalariga yangi maydonlar qo'shildi<br>- Public API endpointlari qo'shildi |
+| 2026-08-05 | v1.2.0 | - Do'konni tahrirash API qo'shildi (PUT /tenants/{tenant})<br>- OpenAPI dokumentatsiyasi yangilandi<br>- TZ.md dokumentatsiyasiga yangi endpoint qo'shildi |
 | 2026-04-01 | v1.0.0 | - Dastlabki versiya<br>- Laravel 12, PHP 8.2+, MySQL<br>- Multi-tenant arxitektura<br>- Click va Payme to'lov tizimlari<br>- Eskiz SMS integratsiyasi<br>- AI SupportBot (Groq)<br>- Admin panel<br>- Mobil API<br>- Promocodlar tizimi |
 | 2026-03-26 | v0.9.0 | - Promocodlar tizimi qo'shildi<br>- Managerlar uchun chegirma boshqaruvi<br>- Promo usage tracking |
 | 2026-03-22 | v0.8.0 | - UserFlow-Mobile.md hujjati yaratildi<br>- Mobil ilova uchun batafsil flow<br>- API endpointlar dokumentatsiyasi |
@@ -1166,4 +1406,4 @@ components:
 
 ---
 
-*So'nggi yangilanish: 2026-04-23* | **Muallif:** Daftaron Development Team
+*So'nggi yangilanish: 2026-08-05* | **Muallif:** Daftaron Development Team
