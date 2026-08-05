@@ -307,7 +307,6 @@ export default function CustomerDetailPage() {
             customer.remaining_amount ??
             customer.remaining_debts ??
             customer.debt_sum ??
-            customer.balance ??
             customer.total_debt ?? 0
         )
     const effectiveIsUnlimited = limitMeta.loaded ? limitMeta.isUnlimited : (remaining == null && total == null)
