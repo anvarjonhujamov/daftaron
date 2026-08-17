@@ -1,1409 +1,1460 @@
 openapi: 3.0.3
 info:
   title: Daftaron API
+  version: 1.0.0
   description: |
-    Daftaron — do'konlar uchun nasiya (qarz) boshqaruv tizimi API.
-
-    **Base URL:** `https://your-domain.com/api/v1`
-
-    **Autentifikatsiya:** Bearer token (Laravel Sanctum).
-    Login yoki register/complete dan keyin `token` beriladi.
-    So'rovlarda: `Authorization: Bearer <token>`.
-
-    **Multi-tenant:** `customers`, `debts`, `payments` endpointlari uchun:
-    - Query/body: `tenant_id`
-    - Header: `X-Tenant-Id`
-
-    **So'nggi yangilanish:** 2026-08-05
-  version: "1.0.0"
-  contact:
-    name: Daftaron Support
-    email: support@daftaron.uz
+    **Daftaron** — Do'konlar uchun nasiya (qarz) boshqaruv tizimi REST API.
+    
+    **Base URL:** `/api/v1`
+    
+    **Tillar:** O'zbek tili, **Valyuta:** UZS (so'm), **Vaqt zonasi:** Asia/Tashkent
+    
+    ## Multi-tenant arxitekturasi
+    
+    - **Model:** Shared DB + Shared Schema + `tenant_id` isolation
+    - Barcha tenantga bog'liq so'rovlar `tenant_id` selector orqali:
+      - Query param: `?tenant_id=5`
+      - Body: `{ "tenant_id": 5 }`
+      - Header: `X-Tenant-Id: 5`
+    - Active tenant: `GET /tenants`, `PUT /tenants/active`, `DELETE /tenants/{tenant}`
+    - Shop owner faqat o'z tenantini tanlay oladi
+    - Unauthorized tenant: 403 Forbidden
+    
+    ## Autentifikatsiya
+    
+    - **Bearer Token** (Laravel Sanctum)
+    - Login: `POST /auth/login` (telefon + parol)
+    - Register: `POST /auth/register` → `POST /auth/verify` → `POST /auth/register/password` → `POST /auth/register/complete`
+    - Telegram: `POST /auth/telegram-login`
+    - Parol tiklash: 3 bosqich (`/auth/password/forgot`, `/auth/password/verify`, `/auth/password/reset`)
+    - Token format: `Authorization: Bearer <token>`
+    
+    ## Obuna va balans tizimi
+    
+    - **Trial:** Ro'yxatdan o'tganda 15 kun (sozlanadi)
+    - **Ta'riflar:** Oddiy (29,000 so'm/oy), Pro, Premium
+    - **Limit:** Nasiya, SMS, do'kon, xodim
+    - **Qo'shimcha paketlar:** Extra nasiya, SMS, do'kon, xodim
+    - **Promocodlar:** Manager tomonidan berilib, obuna sotib olishda chegirma
+    - **Balans:** Foydalanuvchida saqlanadi, ta'rif va SMS uchun yechiladi
+    - **Subscription status endpoint** — trial tugaganda ham ishlaydi (read-only)
+    
+    ## To'lov tizimlari
+    
+    - **Click:** Merchant API callback (Prepare → Complete)
+      - Redirect: `https://my.click.uz/services/pay?service_id=...&amount=...&transaction_param=...`
+      - Callback (authsiz): `POST /payment/click/prepare`, `POST /payment/click/complete`
+    - **Payme:** JSON-RPC 2.0 Merchant API (HTTP Basic Auth)
+      - Endpoint: `POST /api/payme/merchant`
+      - Metodlar: CheckPerformTransaction, CreateTransaction, PerformTransaction, CancelTransaction, CheckTransaction, GetStatement
+      - Account field: `user_id` (pending order create)
+    
+    ## Qo'shimcha linqlar
+    
+    - **Texnik topshiriq:** [/TZ.md](/TZ.md)
+    - **Userflow (Mobil):** [/UserFlow-Mobile.md](/UserFlow-Mobile.md)
+    - **OpenAPI spec:** [/public/docs/openapi.yaml](/public/docs/openapi.yaml)
 
 servers:
-  - url: https://your-domain.com/api/v1
-    description: Production server
-  - url: http://localhost:8000/api/v1
-    description: Local development server
+  - url: /api/v1
+    description: Production API
 
-security:
-  - bearerAuth: []
-
-paths:
-  /auth/login:
-    post:
-      summary: Login
-      description: Telefon raqam va parol bilan kirish
-      tags:
-        - Authentication
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - phone
-                - password
-              properties:
-                phone:
-                  type: string
-                  example: "+998901234567"
-                  description: "Telefon raqam (9 xonali yoki +998 bilan)"
-                password:
-                  type: string
-                  example: "password123"
-                  description: "Parol"
-      responses:
-        '200':
-          description: Muvaffaqiyatli login
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                    example: "1|abc123def456"
-                    description: "Bearer token"
-                  user:
-                    $ref: '#/components/schemas/User'
-                  requires_verification:
-                    type: boolean
-                    example: false
-                    description: "SMS tasdiqlash kerakmi"
-        '422':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /auth/register:
-    post:
-      summary: Ro'yxatdan o'tish - 1-qadam
-      description: Ism va telefon bilan ro'yxatdan o'tish (SMS yuboriladi)
-      tags:
-        - Authentication
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - name
-                - phone
-              properties:
-                name:
-                  type: string
-                  example: "Ali Valiyev"
-                  description: "Foydalanuvchi ismi"
-                phone:
-                  type: string
-                  example: "+998901234567"
-                  description: "Telefon raqam"
-      responses:
-        '200':
-          description: SMS yuborildi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "SMS kod yuborildi"
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  /auth/verify:
-    post:
-      summary: SMS kodni tasdiqlash
-      description: Login yoki register uchun SMS kodni tasdiqlash
-      tags:
-        - Authentication
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - phone
-                - code
-                - type
-              properties:
-                phone:
-                  type: string
-                  example: "+998901234567"
-                code:
-                  type: string
-                  example: "123456"
-                  description: "6 xonali SMS kod"
-                type:
-                  type: string
-                  enum: [login, register]
-                  example: "register"
-      responses:
-        '200':
-          description: Kod to'g'ri
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                    example: "1|abc123def456"
-                  user:
-                    $ref: '#/components/schemas/User'
-                  next_step:
-                    type: string
-                    enum: [complete_registration, login_success]
-                    example: "complete_registration"
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  /auth/register/complete:
-    post:
-      summary: Ro'yxatdan o'tish - 2-qadam
-      description: Do'kon ma'lumotlari bilan ro'yxatdan o'tishni yakunlash
-      tags:
-        - Authentication
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - shop_name
-                - category_id
-                - region_id
-                - district_id
-                - street_id
-                - password
-              properties:
-                shop_name:
-                  type: string
-                  example: "Ali Do'koni"
-                  description: "Do'kon nomi"
-                category_id:
-                  type: integer
-                  example: 1
-                  description: "Kategoriya ID"
-                region_id:
-                  type: integer
-                  example: 1
-                  description: "Viloyat ID"
-                district_id:
-                  type: integer
-                  example: 137
-                  description: "Tuman ID"
-                street_id:
-                  type: integer
-                  example: 1234
-                  description: "Ko'cha ID"
-                password:
-                  type: string
-                  example: "password123"
-                  description: "Parol"
-      responses:
-        '200':
-          description: Ro'yxatdan o'tish muvaffaqiyatli
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                    example: "1|abc123def456"
-                  user:
-                    $ref: '#/components/schemas/User'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  /auth/me:
-    get:
-      summary: Joriy foydalanuvchi ma'lumotlari
-      description: Token bilan foydalanuvchi ma'lumotlarini olish
-      tags:
-        - Authentication
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Foydalanuvchi ma'lumotlari
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    $ref: '#/components/schemas/User'
-                  active_tenant:
-                    $ref: '#/components/schemas/Tenant'
-                  available_tenants:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Tenant'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /dashboard:
-    get:
-      summary: Dashboard statistikasi
-      description: Do'kon uchun asosiy statistika va ma'lumotlar
-      tags:
-        - Dashboard
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: integer
-          description: "Tenant ID (ixtiyoriy, agar ko'p do'kon bo'lsa)"
-      responses:
-        '200':
-          description: Dashboard ma'lumotlari
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  total_customers:
-                    type: integer
-                    example: 150
-                  total_debts:
-                    type: integer
-                    example: 45
-                  total_debt_amount:
-                    type: number
-                    format: float
-                    example: 12500000
-                  overdue_debts:
-                    type: integer
-                    example: 12
-                  overdue_amount:
-                    type: number
-                    format: float
-                    example: 3500000
-                  today_payments:
-                    type: integer
-                    example: 8
-                  today_payment_amount:
-                    type: number
-                    format: float
-                    example: 1200000
-                  recent_debts:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Debt'
-                  recent_payments:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Payment'
-        '403':
-          $ref: '#/components/responses/TrialExpired'
-
-  /customers:
-    get:
-      summary: Mijozlar ro'yxatini olish
-      description: Do'kon mijozlarini ro'yxatini olish
-      tags:
-        - Customers
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: integer
-          description: "Tenant ID"
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-          description: "Sahifa raqami"
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 15
-          description: "Har sahifada nechta"
-        - name: search
-          in: query
-          schema:
-            type: string
-          description: "Qidiruv so'zi (ism yoki telefon)"
-      responses:
-        '200':
-          description: Mijozlar ro'yxati
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Customer'
-                  meta:
-                    $ref: '#/components/schemas/PaginationMeta'
-        '403':
-          $ref: '#/components/responses/TrialExpired'
-
-    post:
-      summary: Yangi mijoz qo'shish
-      description: Do'konga yangi mijoz qo'shish
-      tags:
-        - Customers
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - name
-                - phone
-              properties:
-                tenant_id:
-                  type: integer
-                  description: "Tenant ID"
-                name:
-                  type: string
-                  example: "Valijon Aliyev"
-                phone:
-                  type: string
-                  example: "+998901234567"
-                region_id:
-                  type: integer
-                  example: 1
-                district_id:
-                  type: integer
-                  example: 137
-                street_id:
-                  type: integer
-                  example: 1234
-                address:
-                  type: string
-                  example: "Amir Temur ko'chasi 15"
-      responses:
-        '201':
-          description: Mijoz muvaffaqiyatli qo'shildi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  customer:
-                    $ref: '#/components/schemas/Customer'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  /customers/{customer}:
-    get:
-      summary: Mijoz tafsilotlari
-      description: Bitta mijoz haqida batafsil ma'lumot
-      tags:
-        - Customers
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: customer
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: "Customer ID"
-        - name: tenant_id
-          in: query
-          schema:
-            type: integer
-          description: "Tenant ID"
-      responses:
-        '200':
-          description: Mijoz tafsilotlari
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  customer:
-                    $ref: '#/components/schemas/Customer'
-                  debts:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Debt'
-                  payments:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Payment'
-        '404':
-          description: Mijoz topilmadi
-
-    put:
-      summary: Mijozni tahrirlash
-      description: Mijoz ma'lumotlarini yangilash
-      tags:
-        - Customers
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: customer
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: "Customer ID"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                tenant_id:
-                  type: integer
-                name:
-                  type: string
-                  example: "Valijon Aliyev"
-                phone:
-                  type: string
-                  example: "+998901234567"
-                region_id:
-                  type: integer
-                district_id:
-                  type: integer
-                street_id:
-                  type: integer
-                address:
-                  type: string
-      responses:
-        '200':
-          description: Mijoz yangilandi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  customer:
-                    $ref: '#/components/schemas/Customer'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-    delete:
-      summary: Mijozni o'chirish
-      description: Mijozni va uning barcha nasiyalarini o'chirish
-      tags:
-        - Customers
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: customer
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: "Customer ID"
-        - name: tenant_id
-          in: query
-          schema:
-            type: integer
-          description: "Tenant ID"
-      responses:
-        '204':
-          description: Mijoz o'chirildi
-        '404':
-          description: Mijoz topilmadi
-
-  /debts:
-    get:
-      summary: Nasiyalar ro'yxatini olish
-      description: Do'kon nasiyalarini ro'yxatini olish
-      tags:
-        - Debts
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: integer
-          description: "Tenant ID"
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 15
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [active, closed, overdue]
-          description: "Nasiya holati"
-      responses:
-        '200':
-          description: Nasiyalar ro'yxati
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Debt'
-                  meta:
-                    $ref: '#/components/schemas/PaginationMeta'
-
-    post:
-      summary: Yangi nasiya yaratish
-      description: Mijoz uchun yangi nasiya yaratish
-      tags:
-        - Debts
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - customer_id
-                - amount
-                - description
-              properties:
-                tenant_id:
-                  type: integer
-                  description: "Tenant ID"
-                customer_id:
-                  type: integer
-                  example: 123
-                  description: "Mijoz ID"
-                amount:
-                  type: number
-                  format: float
-                  example: 500000
-                  description: "Nasiya summasi (so'm)"
-                description:
-                  type: string
-                  example: "Telefon uchun nasiya"
-                  description: "Nasiya tavsifi"
-                due_date:
-                  type: string
-                  format: date
-                  example: "2026-05-01"
-                  description: "To'lash muddati"
-      responses:
-        '201':
-          description: Nasiya yaratildi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  debt:
-                    $ref: '#/components/schemas/Debt'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  /debts/{debt}/close:
-    patch:
-      summary: Nasiyani yopish
-      description: Nasiyani to'liq to'langan deb belgilash
-      tags:
-        - Debts
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: debt
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: "Debt ID"
-        - name: tenant_id
-          in: query
-          schema:
-            type: integer
-          description: "Tenant ID"
-      responses:
-        '200':
-          description: Nasiya yopildi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  debt:
-                    $ref: '#/components/schemas/Debt'
-
-  /payments:
-    get:
-      summary: To'lovlar ro'yxatini olish
-      description: Do'kon to'lovlarini ro'yxatini olish
-      tags:
-        - Payments
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: integer
-          description: "Tenant ID"
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 15
-      responses:
-        '200':
-          description: To'lovlar ro'yxati
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Payment'
-                  meta:
-                    $ref: '#/components/schemas/PaginationMeta'
-
-    post:
-      summary: Yangi to'lov qo'shish
-      description: |
-        To'lov yaratish — mavjud nasiya (debt_id) bo'yicha yoki mijozga (customer_id) nisbatan bajarilishi mumkin.
-        Agar debt_id ko'rsatilsa, to'lov shu nasiyaga bog'lanadi va qolgan summa (remaining_amount) kamayadi; to'lov jami qarzdan katta bo'lsa, qolgan summa manfiy bo'lib mijozning ijobiy balansi hosil bo'ladi.
-        Agar debt_id ko'rsatilmasa, customer_id berilishi kerak: tizim mijozga tegishli avtomatik "placeholder" nasiya yozuvi yaratadi va unga to'lovni bog'laydi — bu mijoz uchun ijobiy balansni anglatadi.
-      tags:
-        - Payments
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - amount
-              properties:
-                tenant_id:
-                  type: integer
-                  description: "Tenant ID"
-                debt_id:
-                  type: integer
-                  example: 456
-                  description: "Nasiya ID (ixtiyoriy). Agar berilsa, to'lov shu nasiyaga bog'lanadi."
-                customer_id:
-                  type: integer
-                  example: 123
-                  description: "Mijoz ID (ixtiyoriy). Agar debt_id berilmasa, customer_id talab qilinadi — tizim mijoz uchun avtomatik nasiya yozuvi yaratadi va to'lovni unga bog'laydi."
-                amount:
-                  type: number
-                  format: float
-                  example: 100000
-                  description: "To'lov summasi (so'm)"
-                description:
-                  type: string
-                  example: "Birinchi to'lov"
-      responses:
-        '201':
-          description: To'lov qo'shildi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  payment:
-                    $ref: '#/components/schemas/Payment'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  /subscription/status:
-    get:
-      summary: Obuna holati
-      description: Foydalanuvchi obuna holatini tekshirish
-      tags:
-        - Subscription
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Obuna holati
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  is_expired:
-                    type: boolean
-                    example: false
-                  plan:
-                    $ref: '#/components/schemas/Plan'
-                  balance:
-                    type: number
-                    format: float
-                    example: 50000
-                  trial_ends_at:
-                    type: string
-                    format: date-time
-                    nullable: true
-                    example: "2026-04-30T23:59:59Z"
-
-  /subscription/choose/{plan}:
-    post:
-      summary: Ta'rif tanlash
-      description: Obuna uchun ta'rif tanlash
-      tags:
-        - Subscription
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: plan
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: "Plan ID"
-      responses:
-        '200':
-          description: Ta'rif tanlandi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  redirect_url:
-                    type: string
-                    example: "https://click.uz/payment/..."
-                    description: "To'lov sahifasiga yo'naltirish URL"
-
-  /profile:
-    get:
-      summary: Profil ma'lumotlari
-      description: Joriy foydalanuvchi profili
-      tags:
-        - Profile
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Profil ma'lumotlari
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    $ref: '#/components/schemas/User'
-
-    put:
-      summary: Profilni yangilash
-      description: Foydalanuvchi profilini tahrirlash
-      tags:
-        - Profile
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  example: "Ali Valiyev"
-                phone:
-                  type: string
-                  example: "+998901234567"
-      responses:
-        '200':
-          description: Profil yangilandi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user:
-                    $ref: '#/components/schemas/User'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  /public/settings:
-    get:
-      summary: Umumiy sozlamalar
-      description: Public offer, privacy policy va aloqa ma'lumotlari
-      tags:
-        - Public
-      responses:
-        '200':
-          description: Umumiy sozlamalar
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  public_offer:
-                    type: string
-                    example: "Ommaviy taklif matni..."
-                  privacy_policy:
-                    type: string
-                    example: "Maxfiylik siyosati matni..."
-                  contact_phone:
-                    type: string
-                    example: "+998901234567"
-                  contact_telegram:
-                    type: string
-                    example: "@daftaron_support"
-                  contact_group:
-                    type: string
-                    example: "https://t.me/daftaron_group"
-
-  /tenants:
-    get:
-      summary: Barcha do'konlar
-      description: Foydalanuvchiga tegishli va u boshqaradigan barcha do'konlarni olish
-      tags:
-        - Tenants (Do'konlar)
-      responses:
-        '200':
-          description: Do'konlar ro'yxati
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  active_tenant_id:
-                    type: integer
-                    nullable: true
-                    example: 1
-                  tenants:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        name:
-                          type: string
-                        region:
-                          type: string
-                        district:
-                          type: string
-                        street:
-                          type: string
-                        category:
-                          type: string
-                        plan_id:
-                          type: integer
-                          nullable: true
-                        status:
-                          type: string
-                        balance:
-                          type: number
-                        is_active:
-                          type: boolean
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    post:
-      summary: Yangi do'kon qo'shish
-      description: Yangi do'kon qo'shish. Plan limiti tugasa 422 xatosi qaytadi.
-      tags:
-        - Tenants (Do'konlar)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - name
-                - category_id
-                - region_id
-                - district_id
-              properties:
-                name:
-                  type: string
-                  example: "Savdo Markazi"
-                category_id:
-                  type: integer
-                  example: 1
-                region_id:
-                  type: integer
-                  example: 1
-                district_id:
-                  type: integer
-                  example: 1
-                street_id:
-                  type: integer
-                  nullable: true
-                  example: 1
-      responses:
-        '201':
-          description: Do'kon muvaffaqiyatli qo'shildi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  tenant:
-                    type: object
-                  usage:
-                    type: object
-        '422':
-          description: Validatsiya xatosi yoki plan limiti
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  requires_upgrade:
-                    type: boolean
-                  usage:
-                    type: object
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /tenants/active:
-    put:
-      summary: Faol do'konni o'zartirish
-      description: Joriy foydalanuvchining faol do'konini o'zartirish
-      tags:
-        - Tenants (Do'konlar)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - tenant_id
-              properties:
-                tenant_id:
-                  type: integer
-                  example: 1
-      responses:
-        '200':
-          description: Faol do'kon yangilandi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  active_tenant:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      name:
-                        type: string
-        '403':
-          description: Ruxsat yo'q
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /tenants/{tenant}:
-    patch:
-      summary: Do'konni tahrirlash (qisman yangilash)
-      description: Do'konning ma'lumotlarini qisman yangilash (nom, kategoriya, hudud va h.k.) — tavsiya etilgan API metodi PATCH
-      tags:
-        - Tenants (Do'konlar)
-      parameters:
-        - name: tenant
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Do'kon ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  example: "Tahrirlangan Do'kon"
-                category_id:
-                  type: integer
-                  example: 2
-                region_id:
-                  type: integer
-                  example: 2
-                district_id:
-                  type: integer
-                  example: 3
-                street_id:
-                  type: integer
-                  nullable: true
-                  example: 5
-      responses:
-        '200':
-          description: Do'kon muvaffaqiyatli yangilandi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  tenant:
-                    type: object
-        '403':
-          description: Ruxsat yo'q
-        '422':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    delete:
-      summary: Do'konni o'chirish
-      description: Do'konni va unga tegishli ma'lumotlarni butunlay o'chirish
-      tags:
-        - Tenants (Do'konlar)
-      parameters:
-        - name: tenant
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Do'kon ID
-      responses:
-        '200':
-          description: Do'kon muvaffaqiyatli o'chirildi
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  active_tenant_id:
-                    type: integer
-                    nullable: true
-                  tenants:
-                    type: array
-                    items:
-                      type: object
-        '403':
-          description: Ruxsat yo'q
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+tags:
+  - name: Auth
+    description: Autentifikatsiya va registratsiya
+  - name: Subscription
+    description: Obuna va balans tizimi
+  - name: Tenants
+    description: Do'konlar (multi-tenant)
+  - name: Customers
+    description: Mijozlar boshqaruvi
+  - name: Debts
+    description: Nasiyalar va qarzdorlar
+  - name: Payments
+    description: To'lovlar
+  - name: Workers
+    description: Xodimlar (do'kon uchun)
+  - name: Profile
+    description: Foydalanuvchi profili
+  - name: Notifications
+    description: Bildirishnomalar
+  - name: Support
+    description: AI SupportBot
+  - name: Locations
+    description: Joylashuv ma'lumotlari
+  - name: Webhooks
+    description: Tashqi webhook (to'lov callback)
 
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
+      bearerFormat: Token
+      description: "Sanctum Bearer Token. Format: `Authorization: Bearer <token>`"
+
+  parameters:
+    TenantId:
+      name: tenant_id
+      in: query
+      required: false
+      schema:
+        type: integer
+      description: "Multi-tenant selector. Biznesga bog'liq endpointlarda qo'llaniladi. Body yoki header da ham bo'lishi mumkin."
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 1
+      description: Varaq raqami (pagination)
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 20
+      description: Har bir varaqda necha satr
 
   schemas:
     User:
       type: object
+      description: Authenticated user
       properties:
         id:
           type: integer
-          example: 1
+          description: Internal user ID
+        public_id:
+          type: integer
+          description: "Ko'rinadigan ID: id + 1000 (masalan 1001)"
         name:
           type: string
-          example: "Ali Valiyev"
+          description: Foydalanuvchi ismi
         phone:
           type: string
-          example: "+998901234567"
+          description: "Telefon raqam. Format: +998XXXXXXXXX"
         email:
           type: string
           nullable: true
-          example: "ali@example.com"
-        role:
-          type: string
-          enum: [shop_owner, shop_worker, admin, manager]
-          example: "shop_owner"
+        tenant_id:
+          type: integer
+          nullable: true
+          description: Aktiv do'kon ID
         status:
           type: integer
-          example: 1
-          description: "1 - faol, 0 - faol emas"
-        created_at:
+          description: "1 = faol, 0 = bloklangan"
+        trial_ends_at:
           type: string
           format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    Tenant:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        name:
-          type: string
-          example: "Ali Do'koni"
-        category_id:
-          type: integer
-          example: 1
-        region_id:
-          type: integer
-          example: 1
-        district_id:
-          type: integer
-          example: 137
-        street_id:
-          type: integer
-          example: 1234
-        address:
-          type: string
-          example: "Amir Temur ko'chasi 15"
-        created_at:
-          type: string
-          format: date-time
-
-    Customer:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 123
-        tenant_id:
-          type: integer
-          example: 1
-        name:
-          type: string
-          example: "Valijon Aliyev"
-        phone:
-          type: string
-          example: "+998901234567"
-        region_id:
-          type: integer
-          example: 1
-        district_id:
-          type: integer
-          example: 137
-        street_id:
-          type: integer
-          example: 1234
-        address:
-          type: string
-          example: "Amir Temur ko'chasi 15"
-        total_debt:
-          type: number
-          format: float
-          example: 500000
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    Debt:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 456
-        tenant_id:
-          type: integer
-          example: 1
-        customer_id:
-          type: integer
-          example: 123
-        amount:
-          type: number
-          format: float
-          example: 500000
-        paid_amount:
-          type: number
-          format: float
-          example: 100000
-        remaining_amount:
-          type: number
-          format: float
-          example: 400000
-        description:
-          type: string
-          example: "Telefon uchun nasiya"
-        due_date:
-          type: string
-          format: date
-          example: "2026-05-01"
-        status:
-          type: string
-          enum: [active, closed, overdue]
-          example: "active"
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    Payment:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 789
-        tenant_id:
-          type: integer
-          example: 1
-        debt_id:
-          type: integer
-          example: 456
-        customer_id:
-          type: integer
-          example: 123
-        amount:
-          type: number
-          format: float
-          example: 100000
-        description:
-          type: string
-          example: "Birinchi to'lov"
-        created_at:
-          type: string
-          format: date-time
+          nullable: true
+          description: Trial/obuna tugash vaqti (ISO 8601)
 
     Plan:
       type: object
+      description: Obuna ta'rifi
       properties:
         id:
           type: integer
-          example: 1
         name:
           type: string
-          example: "Basic"
+          example: "Oddiy"
         price:
           type: number
-          format: float
-          example: 50000
-        duration_days:
+          example: 29000
+        debt_limit:
           type: integer
-          example: 30
-        features:
-          type: array
-          items:
-            type: string
-          example: ["100 mijoz", "Cheksiz nasiya", "SMS bildirishnomalar"]
+          nullable: true
+          description: "Nasiya limiti (null = cheksiz)"
+        sms_limit:
+          type: integer
+          nullable: true
+        shop_limit:
+          type: integer
+          nullable: true
+        worker_limit:
+          type: integer
+          nullable: true
 
-    PaginationMeta:
+    ExtraPackage:
+      type: object
+      description: Qo'shimcha paket
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [debt, sms, shop, worker]
+        quantity:
+          type: integer
+        price:
+          type: number
+        is_active:
+          type: boolean
+
+    SubscriptionStatus:
+      type: object
+      description: Obuna va balans holati
+      properties:
+        balance:
+          type: number
+          description: Foydalanuvchi balansi (so'm)
+        current_plan_id:
+          type: integer
+          nullable: true
+        trial_info:
+          type: object
+          properties:
+            trial_ends_at:
+              type: string
+              format: date-time
+            days_remaining:
+              type: integer
+            is_expired:
+              type: boolean
+            status:
+              type: integer
+        usage:
+          type: object
+          properties:
+            subscription_status:
+              type: string
+              enum: [active, expired]
+            plan_name:
+              type: string
+            plan_price:
+              type: number
+            debt_total_limit:
+              type: integer
+              nullable: true
+            debt_used:
+              type: integer
+            debt_remaining:
+              type: integer
+              nullable: true
+            sms_total_limit:
+              type: integer
+            sms_used:
+              type: integer
+            sms_remaining:
+              type: integer
+            extra_sms_price:
+              type: number
+            allowed_extra_package_types:
+              type: array
+              items:
+                type: string
+
+    Tenant:
+      type: object
+      description: Do'kon (tenant)
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        region:
+          type: string
+          nullable: true
+        district:
+          type: string
+          nullable: true
+        street:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        plan_id:
+          type: integer
+          nullable: true
+        status:
+          type: string
+        balance:
+          type: number
+        is_active:
+          type: boolean
+
+    Customer:
+      type: object
+      description: Mijoz
+      properties:
+        id:
+          type: integer
+        tenant_id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        total_debt:
+          type: number
+
+    Debt:
+      type: object
+      description: Nasiya
+      properties:
+        id:
+          type: integer
+        customer_id:
+          type: integer
+        customer_name:
+          type: string
+        total_amount:
+          type: number
+        remaining_amount:
+          type: number
+        debt_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [open, closed]
+        description:
+          type: string
+          nullable: true
+        sms_sent:
+          type: boolean
+
+    Payment:
+      type: object
+      description: To'lov
+      properties:
+        id:
+          type: integer
+        debt_id:
+          type: integer
+        customer_name:
+          type: string
+        amount:
+          type: number
+        paid_at:
+          type: string
+          format: date-time
+
+    Worker:
+      type: object
+      description: Xodim
+      properties:
+        id:
+          type: integer
+        public_id:
+          type: integer
+        tenant_id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+        status:
+          type: integer
+        stats:
+          type: object
+          properties:
+            customers_served:
+              type: integer
+            debts_created:
+              type: integer
+            payments_received:
+              type: number
+
+    Notification:
+      type: object
+      description: Bildirishnoma
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          example: "debt_created"
+        message:
+          type: string
+        data:
+          type: object
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Region:
       type: object
       properties:
-        current_page:
+        id:
           type: integer
-          example: 1
-        per_page:
-          type: integer
-          example: 15
-        total:
-          type: integer
-          example: 150
-        last_page:
-          type: integer
-          example: 10
-        from:
-          type: integer
-          example: 1
-        to:
-          type: integer
-          example: 15
+        name:
+          type: string
 
-  responses:
-    Unauthorized:
-      description: Token noto'g'ri yoki yo'q
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Unauthenticated."
+    District:
+      type: object
+      properties:
+        id:
+          type: integer
+        region_id:
+          type: integer
+        name:
+          type: string
 
-    TrialExpired:
-      description: Trial muddati tugagan
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Trial period expired. Please choose a plan."
-              error_code:
-                type: string
-                example: "trial_expired"
+    Street:
+      type: object
+      properties:
+        id:
+          type: integer
+        district_id:
+          type: integer
+        name:
+          type: string
 
-    ValidationError:
-      description: Validatsiya xatosi
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "The given data was invalid."
-              errors:
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    PaginatedResponse:
+      type: object
+      properties:
+        data:
+          type: array
+        links:
+          type: object
+        meta:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          nullable: true
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login (telefon + parol)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, password]
+              properties:
+                phone:
+                  type: string
+                  example: "+998901234567"
+                password:
+                  type: string
+                device_name:
+                  type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
                 type: object
-                additionalProperties:
-                  type: array
-                  items:
+                properties:
+                  token:
                     type: string
-                example:
-                  phone: ["The phone field is required."]
-                  password: ["The password must be at least 8 characters."]
+                  user:
+                    $ref: "#/components/schemas/User"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
----
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: "Ro'yxat — 1-bosqich (ism + telefon)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone]
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                  example: "+998901234567"
+                device_name:
+                  type: string
+                  example: "mobile"
+      responses:
+        "200":
+          description: SMS yuborildi, /auth/verify kerak
 
-## Yangilanishlar tarixi
+  /auth/verify:
+    post:
+      tags: [Auth]
+      summary: SMS kodini tasdiqlash
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code, type]
+              properties:
+                phone:
+                  type: string
+                code:
+                  type: string
+                  example: "1234"
+                type:
+                  type: string
+                  enum: [login, register]
+      responses:
+        "200":
+          description: "type=register: requires_password_setup true; type=login: token"
 
-| Sana | Yangilanish | Tavsif |
-|------|-------------|--------|
-| 2026-04-23 | v1.1.0 | - Public Offer, Privacy Policy va aloqa ma'lumotlari admin panelda qo'shildi<br>- OpenAPI 3.0 spesifikatsiyasi yaratildi<br>- Tashkent mahalla seederini yangilandi (placeholder o'rniga haqiqiy nomlar)<br>- Admin sozlamalariga yangi maydonlar qo'shildi<br>- Public API endpointlari qo'shildi |
-| 2026-08-05 | v1.2.0 | - Do'konni tahrirash API qo'shildi (PUT /tenants/{tenant})<br>- OpenAPI dokumentatsiyasi yangilandi<br>- TZ.md dokumentatsiyasiga yangi endpoint qo'shildi |
-| 2026-04-01 | v1.0.0 | - Dastlabki versiya<br>- Laravel 12, PHP 8.2+, MySQL<br>- Multi-tenant arxitektura<br>- Click va Payme to'lov tizimlari<br>- Eskiz SMS integratsiyasi<br>- AI SupportBot (Groq)<br>- Admin panel<br>- Mobil API<br>- Promocodlar tizimi |
-| 2026-03-26 | v0.9.0 | - Promocodlar tizimi qo'shildi<br>- Managerlar uchun chegirma boshqaruvi<br>- Promo usage tracking |
-| 2026-03-22 | v0.8.0 | - UserFlow-Mobile.md hujjati yaratildi<br>- Mobil ilova uchun batafsil flow<br>- API endpointlar dokumentatsiyasi |
-| 2026-03-15 | v0.7.0 | - Qo'shimcha paketlar tizimi<br>- Nasiya va SMS paketlari<br>- Limit boshqaruvi |
-| 2026-03-01 | v0.6.0 | - Trial va obuna tizimi<br>- Balans to'ldirish<br>- Ta'riflar boshqaruvi |
-| 2026-02-15 | v0.5.0 | - Mijozlar, nasiyalar, to'lovlar CRUD<br>- SMS bildirishnomalar<br>- Muddati o'tgan qarzdorlar |
-| 2026-02-01 | v0.4.0 | - Autentifikatsiya tizimi<br>- Sanctum Bearer token<br>- Telegram login |
-| 2026-01-15 | v0.3.0 | - Ma'lumotlar bazasi sxemasi<br>- Migrationlar<br>- Seedlar |
-| 2026-01-01 | v0.2.0 | - Laravel loyihasi yaratildi<br>- Asosiy arxitektura<br>- Routing va controllerlar |
-| 2025-12-15 | v0.1.0 | - TZ va UserFlow hujjatlari<br>- Loyiha rejalashtiruvi |
+  /auth/register/password:
+    post:
+      tags: [Auth]
+      summary: "Ro'yxat — 2-bosqich (parol)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, password, password_confirmation]
+              properties:
+                phone:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+                password_confirmation:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: "Parol saqlanadi, keyin /auth/register/complete kerak"
 
----
+  /auth/register/complete:
+    post:
+      tags: [Auth]
+      summary: "Ro'yxat — 3-bosqich (do'kon)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, shop_name, category_id, region_id, district_id]
+              properties:
+                phone:
+                  type: string
+                shop_name:
+                  type: string
+                category_id:
+                  type: integer
+                region_id:
+                  type: integer
+                district_id:
+                  type: integer
+                street_id:
+                  type: integer
+      responses:
+        "201":
+          description: User yaratildi, token qaytarildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: "#/components/schemas/User"
 
-*So'nggi yangilanish: 2026-08-05* | **Muallif:** Daftaron Development Team
+  /auth/telegram-login:
+    post:
+      tags: [Auth]
+      summary: Telegram orqali login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+                device_name:
+                  type: string
+      responses:
+        "200":
+          description: Token va user
+        "404":
+          description: "Foydalanuvchi topilmadi, requires_registration: true"
+
+  /auth/password/forgot:
+    post:
+      tags: [Auth]
+      summary: Parol tiklash — bosqich 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+      responses:
+        "200":
+          description: SMS yuborildi
+
+  /auth/password/verify:
+    post:
+      tags: [Auth]
+      summary: Parol tiklash — bosqich 2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code]
+              properties:
+                phone:
+                  type: string
+                code:
+                  type: string
+      responses:
+        "200":
+          description: reset_token qaytarildi
+
+  /auth/password/reset:
+    post:
+      tags: [Auth]
+      summary: Parol tiklash — bosqich 3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reset_token, password]
+              properties:
+                reset_token:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Parol yangilandi
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Chiqish
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Muvaffaqiyatli chiqdingiz
+
+  /subscription/status:
+    get:
+      tags: [Subscription]
+      summary: Obuna va balans holati (trial tugaganda ham ishlaydi)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Balans, trial_info, usage, plans, extra_packages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionStatus"
+
+  /subscription/choose/{planId}:
+    post:
+      tags: [Subscription]
+      summary: Ta'rif tanlash
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                promo_code:
+                  type: string
+      responses:
+        "200":
+          description: Ta'rif tanlandi, muddati sotib olingan kundan 30 kun
+        "422":
+          description: Mablag' yetarli emas
+
+  /subscription/buy-extra/{extraPackageId}:
+    post:
+      tags: [Subscription]
+      summary: Qo'shimcha paket sotib olish
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: extraPackageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Paket sotib olingani
+        "422":
+          description: Xatolik
+
+  /promo-codes/check:
+    post:
+      tags: [Subscription]
+      summary: Promocode tekshirish
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        "200":
+          description: "valid: true/false, discount info"
+
+  /tenants:
+    get:
+      tags: [Tenants]
+      summary: "Tenantlar ro'yxati (foydalanuvchiga ruxsat etilgan)"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Tenantlar va active_tenant_id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Tenant"
+                  active_tenant_id:
+                    type: integer
+
+    post:
+      tags: [Tenants]
+      summary: Yangi tenant (do'kon) qo'shish
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, category_id, region_id, district_id, street_id]
+              properties:
+                name:
+                  type: string
+                category_id:
+                  type: integer
+                region_id:
+                  type: integer
+                district_id:
+                  type: integer
+                street_id:
+                  type: integer
+      responses:
+        "201":
+          description: Tenant yaratildi
+        "422":
+          description: "Basic ta'rifda faqat bitta do'kon mumkin"
+
+  /tenants/active:
+    put:
+      tags: [Tenants]
+      summary: Active tenantni o'zgartirish
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id]
+              properties:
+                tenant_id:
+                  type: integer
+      responses:
+        "200":
+          description: Active tenant tanlandi
+        "403":
+          description: Ruxsat yo'q
+
+  /tenants/{tenant}:
+    delete:
+      tags: [Tenants]
+      summary: Owner o'z do'konini o'chirish
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Do'kon va unga tegishli tenant ma'lumotlari o'chirildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  active_tenant_id:
+                    type: integer
+                    nullable: true
+                  tenants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Tenant"
+        "403":
+          description: Bu do'konni o'chirish huquqi yo'q
+        "404":
+          description: Tenant topilmadi
+
+  /customers:
+    get:
+      tags: [Customers]
+      summary: Mijozlar ro'yxati
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/PageParam"
+      responses:
+        "200":
+          description: Mijozlar ro'yxati
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponse"
+        "403":
+          description: Trial tugagan
+
+    post:
+      tags: [Customers]
+      summary: Mijoz yaratish
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, name, phone]
+              properties:
+                tenant_id:
+                  type: integer
+                name:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: string
+      responses:
+        "201":
+          description: Mijoz yaratildi
+
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Bitta mijoz
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Mijoz ma'lumotlari
+
+    put:
+      tags: [Customers]
+      summary: Mijozni yangilash
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: string
+      responses:
+        "200":
+          description: Yangilandi
+
+    delete:
+      tags: [Customers]
+      summary: Mijozni o'chirish
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: O'chirildi
+
+  /debts:
+    get:
+      tags: [Debts]
+      summary: Nasiyalar ro'yxati
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - name: customer_id
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Nasiyalar ro'yxati
+
+    post:
+      tags: [Debts]
+      summary: Nasiya yaratish (limit tekshiruvi bilan)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, customer_id, total_amount]
+              properties:
+                tenant_id:
+                  type: integer
+                customer_id:
+                  type: integer
+                total_amount:
+                  type: number
+                debt_date:
+                  type: string
+                  format: date
+                description:
+                  type: string
+                send_sms:
+                  type: boolean
+      responses:
+        "201":
+          description: Nasiya yaratildi (remaining_limit ko'rsatiladi)
+        "403":
+          description: "Nasiya limiti tugadi, remaining_limit: 0"
+        "422":
+          description: Validatsiya xatosi
+
+  /debts/{id}:
+    get:
+      tags: [Debts]
+      summary: Bitta nasiya
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Nasiya ma'lumotlari
+
+    put:
+      tags: [Debts]
+      summary: Nasiyani yangilash
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Yangilandi
+
+    delete:
+      tags: [Debts]
+      summary: Nasiyani o'chirish
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: O'chirildi
+
+  /debts/{id}/close:
+    patch:
+      tags: [Debts]
+      summary: Nasiyani yopish
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Yopildi
+
+  /debts/overdue:
+    get:
+      tags: [Debts]
+      summary: Muddati o'tgan qarzdorlar
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Muddati o'tgan qarzdorlar ro'yxati
+
+  /debts/overdue/{customerId}/send-sms:
+    post:
+      tags: [Debts]
+      summary: Eslatma SMS yuborish
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: SMS yuborildi
+
+  /payments:
+    get:
+      tags: [Payments]
+      summary: To'lovlar ro'yxati
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: To'lovlar ro'yxati
+
+    post:
+      tags: [Payments]
+      summary: To'lov qo'shish
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, debt_id, amount]
+              properties:
+                tenant_id:
+                  type: integer
+                debt_id:
+                  type: integer
+                amount:
+                  type: number
+                paid_at:
+                  type: string
+                  format: date-time
+                send_sms:
+                  type: boolean
+      responses:
+        "201":
+          description: To'lov qo'shildi
+
+  /workers:
+    get:
+      tags: [Workers]
+      summary: Xodimlar ro'yxati (active tenantdan)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Xodimlar ro'yxati
+
+    post:
+      tags: [Workers]
+      summary: Xodim yaratish
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, name, phone, password]
+              properties:
+                tenant_id:
+                  type: integer
+                name:
+                  type: string
+                phone:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "201":
+          description: Xodim yaratildi
+
+  /workers/{id}:
+    get:
+      tags: [Workers]
+      summary: Bitta xodim va uning statistikasi
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Xodim ma'lumotlari va stats
+
+    put:
+      tags: [Workers]
+      summary: Xodimni yangilash
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Yangilandi
+
+    delete:
+      tags: [Workers]
+      summary: Xodimni o'chirish
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: O'chirildi
+
+  /profile:
+    get:
+      tags: [Profile]
+      summary: Profil ma'lumotlari
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profili
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+    put:
+      tags: [Profile]
+      summary: Profil yangilash
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+      responses:
+        "200":
+          description: Yangilandi
+
+  /profile/password:
+    put:
+      tags: [Profile]
+      summary: Parol o'zgartirish
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, password]
+              properties:
+                current_password:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Parol o'zgartirildi
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Bildirishnomalar ro'yxati
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+      responses:
+        "200":
+          description: Bildirishnomalar ro'yxati
+
+  /notifications/{id}:
+    get:
+      tags: [Notifications]
+      summary: Bitta bildirishnoma (read_at yangilandi)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bildirishnoma
+
+  /support/chat:
+    post:
+      tags: [Support]
+      summary: AI Support Bot — xabar yuborish
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+      responses:
+        "200":
+          description: "Bot javobi (reply maydon)"
+
+  /support/history:
+    get:
+      tags: [Support]
+      summary: Chat tarixi
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Chat history
+
+    delete:
+      tags: [Support]
+      summary: Chat tarixini tozalash
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Tozalandi
+
+  /locations/regions:
+    get:
+      tags: [Locations]
+      summary: Viloyatlar ro'yxati
+      responses:
+        "200":
+          description: Viloyatlar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  regions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Region"
+
+  /locations/categories:
+    get:
+      tags: [Locations]
+      summary: Do'kon kategoriyalari
+      responses:
+        "200":
+          description: Kategoriyalar
+
+  /locations/districts/{regionId}:
+    get:
+      tags: [Locations]
+      summary: Tumanlar
+      parameters:
+        - name: regionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tumanlar
+
+  /locations/streets/{districtId}:
+    get:
+      tags: [Locations]
+      summary: Ko'chalar
+      parameters:
+        - name: districtId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ko'chalar
+
+  /payment/click/prepare:
+    post:
+      tags: [Webhooks]
+      summary: Click callback — Prepare (formatsiz)
+      description: "Click server tomonidan chaqiriladi. MD5 sign tekshiruvi, order topish yoki yaratish, merchant_prepare_id qaytarish."
+      parameters: []
+      responses:
+        "200":
+          description: "{merchant_trans_id, merchant_prepare_id}"
+        "400":
+          description: "Sign error yoki order error"
+
+  /payment/click/complete:
+    post:
+      tags: [Webhooks]
+      summary: Click callback — Complete
+      description: "Click server tomonidan chaqiriladi. Order completed qilish, balans/obuna yangilash, merchant_confirm_id qaytarish."
+      responses:
+        "200":
+          description: "{merchant_trans_id, merchant_confirm_id}"
+        "400":
+          description: "Sign error yoki order error"
+
+  /api/payme/merchant:
+    post:
+      tags: [Webhooks]
+      summary: Payme Merchant API (JSON-RPC 2.0)
+      description: "HTTP Basic Auth: login=merchant_id, password=test_key|key. Metodlar: CheckPerformTransaction, CreateTransaction, PerformTransaction, CancelTransaction, CheckTransaction, GetStatement."
+      responses:
+        "200":
+          description: "JSON-RPC 2.0 response (result yoki error)"

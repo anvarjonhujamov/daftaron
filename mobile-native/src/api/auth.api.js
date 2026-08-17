@@ -16,6 +16,15 @@ export const authApi = {
     return response.data
   },
 
+  registerPassword: async (phone, password, password_confirmation) => {
+    const response = await api.post('/auth/register/password', {
+      phone,
+      password,
+      password_confirmation
+    })
+    return response.data
+  },
+
   registerComplete: async (data) => {
     const response = await api.post('/auth/register/complete', {
       phone: data.phone,
@@ -23,9 +32,7 @@ export const authApi = {
       category_id: data.category_id,
       region_id: data.region_id,
       district_id: data.district_id,
-      street_id: data.street_id,
-      password: data.password,
-      password_confirmation: data.password_confirmation
+      street_id: data.street_id
     })
     return response.data
   },

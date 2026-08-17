@@ -69,8 +69,8 @@ export default function ForgotPasswordPage() {
 
     const handleStep3 = async (e) => {
         e.preventDefault()
-        if (password.length < 6) {
-            toast.error('Parol kamida 6 belgidan iborat bo\'lishi kerak')
+        if (password.length < 8) {
+            toast.error('Parol kamida 8 belgidan iborat bo\'lishi kerak')
             return
         }
         if (password !== passwordConfirmation) {
@@ -162,7 +162,7 @@ export default function ForgotPasswordPage() {
                                     <input
                                         type="password"
                                         className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white pl-11"
-                                        placeholder="Kamida 6 belgi"
+                                        placeholder="Kamida 8 belgi"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         required

@@ -21,7 +21,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useThemeMode } from '../../context/ThemeContext'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../../utils/phone'
 
-const STEPS = { base: 1, verify: 2, complete: 3 }
+const STEPS = { base: 1, verify: 2, password: 3, complete: 4 }
 
 export default function RegisterScreen({ navigation }) {
   const { theme } = useThemeMode()
@@ -40,14 +40,17 @@ export default function RegisterScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
+  const [formPassword, setFormPassword] = useState({
+    password: '',
+    password_confirmation: ''
+  })
+
   const [complete, setComplete] = useState({
     shop_name: '',
     category_id: null,
     region_id: null,
     district_id: null,
-    street_id: null,
-    password: '',
-    password_confirmation: ''
+    street_id: null
   })
 
   const [categories, setCategories] = useState([])
@@ -188,6 +191,12 @@ export default function RegisterScreen({ navigation }) {
     try {
       const data = await authApi.verify(phoneCache, code, 'register')
 
+      if (data?.requires_password_setup) {
+        setFormPassword({ password: '', password_confirmation: '' })
+        setStep(STEPS.password)
+        return
+      }
+
       if (data?.requires_completion) {
         setStep(STEPS.complete)
         return
@@ -208,19 +217,44 @@ export default function RegisterScreen({ navigation }) {
     }
   }
 
+  const handlePasswordSubmit = async () => {
+    if (formPassword.password.length < 8) {
+      setErrorText('Parol kamida 8 ta belgi bo\'lishi kerak')
+      return
+    }
+
+    if (formPassword.password !== formPassword.password_confirmation) {
+      setErrorText('Parollar bir xil emas')
+      return
+    }
+
+    setErrorText('')
+    setLoading(true)
+
+    try {
+      const data = await authApi.registerPassword(
+        phoneCache,
+        formPassword.password,
+        formPassword.password_confirmation
+      )
+
+      if (data?.requires_completion) {
+        setStep(STEPS.complete)
+      } else {
+        setErrorText('Noma\'lum javob keldi')
+      }
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Parolni saqlashda xatolik'
+      setErrorText(message)
+      Alert.alert('Parol xatosi', message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleCompleteSubmit = async () => {
     if (!complete.shop_name.trim()) {
       setErrorText('Do\'kon nomini kiriting')
-      return
-    }
-
-    if (complete.password.length < 6) {
-      setErrorText('Parol kamida 6 belgi bo\'lishi kerak')
-      return
-    }
-
-    if (complete.password !== complete.password_confirmation) {
-      setErrorText('Parollar bir xil emas')
       return
     }
 
@@ -234,9 +268,7 @@ export default function RegisterScreen({ navigation }) {
         category_id: complete.category_id,
         region_id: complete.region_id,
         district_id: complete.district_id,
-        street_id: complete.street_id,
-        password: complete.password,
-        password_confirmation: complete.password_confirmation
+        street_id: complete.street_id
       })
 
       if (data?.token) {
@@ -254,6 +286,13 @@ export default function RegisterScreen({ navigation }) {
     }
   }
 
+  const goBack = () => {
+    if (step === STEPS.base) navigation.goBack()
+    else if (step === STEPS.verify) setStep(STEPS.base)
+    else if (step === STEPS.password) setStep(STEPS.verify)
+    else setStep(STEPS.password)
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -261,19 +300,12 @@ export default function RegisterScreen({ navigation }) {
     >
       <ScrollView contentContainerStyle={styles.scrollWrap} keyboardShouldPersistTaps="handled">
         <View style={styles.headerRow}>
-          <Pressable
-            onPress={() => {
-              if (step === STEPS.base) navigation.goBack()
-              else if (step === STEPS.verify) setStep(STEPS.base)
-              else setStep(STEPS.verify)
-            }}
-            style={styles.backBtn}
-          >
+          <Pressable onPress={goBack} style={styles.backBtn}>
             <ArrowLeft size={18} color={theme.text} />
           </Pressable>
           <View>
             <Text style={styles.title}>Ro'yxatdan o'tish</Text>
-            <Text style={styles.stepText}>{step}/3 bosqich</Text>
+            <Text style={styles.stepText}>{step}/4 bosqich</Text>
           </View>
         </View>
 
@@ -325,6 +357,50 @@ export default function RegisterScreen({ navigation }) {
 
               <Pressable style={styles.primaryBtn} onPress={handleVerifySubmit} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Tasdiqlash</Text>}
+              </Pressable>
+            </>
+          ) : null}
+
+          {step === STEPS.password ? (
+            <>
+              <Text style={styles.helperText}>Hisobingiz uchun parol yarating (kamida 8 ta belgi).</Text>
+
+              <Text style={styles.label}>Parol</Text>
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={[styles.input, styles.flexInput]}
+                  value={formPassword.password}
+                  secureTextEntry={!showPassword}
+                  placeholder="Kamida 8 belgi"
+                  placeholderTextColor={theme.muted}
+                  onChangeText={(value) =>
+                    setFormPassword((prev) => ({ ...prev, password: value }))
+                  }
+                />
+                <Pressable style={styles.iconBtn} onPress={() => setShowPassword((s) => !s)}>
+                  {showPassword ? <EyeOff size={18} color={theme.muted} /> : <Eye size={18} color={theme.muted} />}
+                </Pressable>
+              </View>
+
+              <Text style={styles.label}>Parolni tasdiqlang</Text>
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={[styles.input, styles.flexInput]}
+                  value={formPassword.password_confirmation}
+                  secureTextEntry={!showConfirm}
+                  placeholder="Parolni qaytaring"
+                  placeholderTextColor={theme.muted}
+                  onChangeText={(value) =>
+                    setFormPassword((prev) => ({ ...prev, password_confirmation: value }))
+                  }
+                />
+                <Pressable style={styles.iconBtn} onPress={() => setShowConfirm((s) => !s)}>
+                  {showConfirm ? <EyeOff size={18} color={theme.muted} /> : <Eye size={18} color={theme.muted} />}
+                </Pressable>
+              </View>
+
+              <Pressable style={styles.primaryBtn} onPress={handlePasswordSubmit} disabled={loading}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Davom etish</Text>}
               </Pressable>
             </>
           ) : null}
@@ -394,36 +470,6 @@ export default function RegisterScreen({ navigation }) {
                     <Picker.Item key={item.id} label={item.name} value={item.id} />
                   ))}
                 </Picker>
-              </View>
-
-              <Text style={styles.label}>Parol</Text>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.flexInput]}
-                  value={complete.password}
-                  secureTextEntry={!showPassword}
-                  placeholder="Kamida 6 belgi"
-                  placeholderTextColor={theme.muted}
-                  onChangeText={(value) => setComplete((prev) => ({ ...prev, password: value }))}
-                />
-                <Pressable style={styles.iconBtn} onPress={() => setShowPassword((s) => !s)}>
-                  {showPassword ? <EyeOff size={18} color={theme.muted} /> : <Eye size={18} color={theme.muted} />}
-                </Pressable>
-              </View>
-
-              <Text style={styles.label}>Parolni tasdiqlang</Text>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.flexInput]}
-                  value={complete.password_confirmation}
-                  secureTextEntry={!showConfirm}
-                  placeholder="Parolni qaytaring"
-                  placeholderTextColor={theme.muted}
-                  onChangeText={(value) => setComplete((prev) => ({ ...prev, password_confirmation: value }))}
-                />
-                <Pressable style={styles.iconBtn} onPress={() => setShowConfirm((s) => !s)}>
-                  {showConfirm ? <EyeOff size={18} color={theme.muted} /> : <Eye size={18} color={theme.muted} />}
-                </Pressable>
               </View>
 
               <Pressable style={styles.primaryBtn} onPress={handleCompleteSubmit} disabled={loading}>

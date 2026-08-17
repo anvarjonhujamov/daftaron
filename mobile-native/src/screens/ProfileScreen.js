@@ -83,8 +83,8 @@ export default function ProfileScreen() {
   }
 
   async function handleSavePassword() {
-    if (passwordForm.password.length < 6) {
-      Alert.alert('Xatolik', 'Yangi parol kamida 6 belgi bo\'lishi kerak')
+    if (passwordForm.password.length < 8) {
+      Alert.alert('Xatolik', 'Yangi parol kamida 8 belgi bo\'lishi kerak')
       return
     }
 
@@ -192,7 +192,7 @@ export default function ProfileScreen() {
           secureTextEntry
           value={passwordForm.password}
           onChangeText={(v) => setPasswordForm((p) => ({ ...p, password: v }))}
-          placeholder="Kamida 6 belgi"
+          placeholder="Kamida 8 belgi"
           placeholderTextColor={theme.muted}
         />
 

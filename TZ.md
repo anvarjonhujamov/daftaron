@@ -1,6 +1,6 @@
 # Daftaron — Texnik Topshiriq (TZ)
 
-> So'nggi yangilanish: 2026-04-23
+> So'nggi yangilanish: 2026-08-16
 
 ## Mundarija
 
@@ -213,9 +213,10 @@ Quyidagi jadvallarga `*_translations` JSON ustunlari qo'shildi:
 | Login | `GET/POST /login` | Telefon + parol. SMS yoqilgan bo'lsa → verify |
 | Telegram login | `GET /telegram/web-login?phone=+998...` | Bazada bor → darhol `/dashboard`. Yo'q → `/register?phone=...` |
 | Ro'yxatdan o'tish 1 | `GET/POST /register` | Ism + telefon (30 daqiqa cache) |
-| SMS tasdiqlash | `POST /verify` | 4 xonali kod (type=register) |
-| Ro'yxatdan o'tish 2 | `GET/POST /register/complete` | Do'kon nomi, category_id, viloyat/tuman/ko'cha, parol |
-| Parol tiklash | `/password/forgot` → `/password/verify` → `/password/new` | SMS orqali |
+| SMS tasdiqlash | `POST /verify` | 4 xonali kod (type=register) → register/password ga redirect |
+| Ro'yxatdan o'tish 2 | `GET/POST /register/password` | Parol yaratish (kamida 8 ta belgi), cache ga saqlanadi |
+| Ro'yxatdan o'tish 3 | `GET/POST /register/complete` | Do'kon nomi, category_id, viloyat/tuman/ko'cha (parol cache dan olinadi) |
+| Parol tiklash | `/password/forgot` → `/password/verify` → `/password/new` | SMS orqali. Yangi parol kamida 8 ta belgi |
 | Admin kirish | `GET/POST /admin/login` | Faqat `admin` roli |
 | Chiqish | `POST /logout` | Sessiya tugatish |
 
@@ -230,11 +231,12 @@ Barcha himoyalangan endpointlar: `Authorization: Bearer <token>`
 | Login | `POST /auth/login` | `phone`, `password`, `device_name` | `token`, `user` yoki `requires_verification: true` |
 | Telegram login | `POST /auth/telegram-login` | `phone`, `device_name` | `token`, `user` yoki `404 + requires_registration: true` |
 | Ro'yxat 1 | `POST /auth/register` | `name`, `phone`, `device_name` | `requires_verification: true` |
-| SMS tasdiq | `POST /auth/verify` | `phone`, `code`, `type: "register"` | Muvaffaqiyat (token hali yo'q) |
-| Ro'yxat 2 | `POST /auth/register/complete` | `phone`, `shop_name`, `category_id`, `region_id`, `district_id`, `street_id`, `password`, `password_confirmation` | `token`, `user` |
+| SMS tasdiq | `POST /auth/verify` | `phone`, `code`, `type: "register"` | `requires_password_setup: true`, `next_step: "register_password"` |
+| Ro'yxat 2 | `POST /auth/register/password` | `phone`, `password`, `password_confirmation` | `requires_completion: true`, `next_step: "register_complete"` (parol kamida 8 ta belgi) |
+| Ro'yxat 3 | `POST /auth/register/complete` | `phone`, `shop_name`, `category_id`, `region_id`, `district_id`, `street_id` (ixtiyoriy) | `token`, `user` (parol POST da emas, cache dan olinadi) |
 | Parol tiklash 1 | `POST /auth/password/forgot` | `phone` | SMS yuboriladi |
 | Parol tiklash 2 | `POST /auth/password/verify` | `phone`, `code` | `reset_token` (10 daqiqa) |
-| Parol tiklash 3 | `POST /auth/password/reset` | `reset_token`, `password`, `password_confirmation` | Parol yangilandi |
+| Parol tiklash 3 | `POST /auth/password/reset` | `reset_token`, `password`, `password_confirmation` | Parol yangilandi (kamida 8 ta belgi) |
 
 ### 4.3. API tenant selector (multi-tenant)
 
@@ -1189,8 +1191,6 @@ Body: `name`, `category_id`, `region_id`, `district_id`, `street_id`
 
 - **Web:** `DELETE /shops/{tenant}` — do'kon egasi active yoki o'ziga tegishli boshqa do'konni o'chira oladi.
 - **API:** `DELETE /api/v1/tenants/{tenant}` — faqat `shop_owner` va faqat o'z do'koni uchun.
-
-> NOTE: API yangilanishi: Do'kon ma'lumotlarini tahrirlash uchun server PATCH metodini qo'llab-quvvatlashi kerak. OpenAPI dokumentatsiyasida ham bu PATCH sifatida qayd etildi. Frontend end-point hozir PATCH -> PUT ketma-ketligini sinab ko'radi. Agar server PATCH/PUT ni qo'llamasa, backendga PATCH/PUT endpoint qo'shish lozim.
 - O'chirish **hard delete** tarzida bajariladi.
 - Shu do'konga tegishli `shop_worker`, `customers`, `debts`, `payments`, `sms_dispatch_logs` yozuvlari birga o'chiriladi.
 - Agar owner’da boshqa do'kon bo'lsa, `users.tenant_id` keyingi do'konga o'tkaziladi; qolmasa `null` bo'ladi.

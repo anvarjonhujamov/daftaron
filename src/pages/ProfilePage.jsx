@@ -638,7 +638,7 @@ export default function ProfilePage() {
                                         Parolni o'zgartirish
                                     </Drawer.Title>
                                     <Drawer.Description className="text-gray-400 text-[14px]">
-                                        Xavfsizlik maqsadida yangi parol kamida 6 belgidan iborat bo'lishi kerak
+                                        Xavfsizlik maqsadida yangi parol kamida 8 belgidan iborat bo'lishi kerak
                                     </Drawer.Description>
                                 </div>
                                 <button

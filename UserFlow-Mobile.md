@@ -1,6 +1,6 @@
 # Daftaron — Mobile ilova uchun UserFlow
 
-> So'nggi yangilanish: 2026-04-23
+> So'nggi yangilanish: 2026-08-16
 
 Bu hujjat **mobil ilova dasturchisi** uchun yozilgan. Har bir ekran, API chaqiriq va xato holatlari batafsil tavsiflangan.
 
@@ -186,14 +186,48 @@ Telegram Mini App / bot orqali foydalanuvchi kirganda.
 
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
-| POST | `/auth/verify` | `phone`, `code` (4 raqam), `type: "register"` | `200`: tasdiq muvaffaqiyatli |
+| POST | `/auth/verify` | `phone`, `code` (4 raqam), `type: "register"` | `200`: `{ requires_password_setup: true, next_step: "register_password", phone }` — keyingi bosqich parol yaratish |
 
 | Xato | Tavsif |
 |------|--------|
 | 422 | Kod noto'g'ri |
 | 404 | Cache muddati tugagan → qayta register |
 
-### 4.3. Bosqich 3 — Do'kon va parol
+### 4.3. Bosqich 3 — Parol yaratish
+
+```
+┌──────────────────────────┐
+│    PAROL YARATISH         │
+│                          │
+│  +998901234567           │
+│                          │
+│  🔒 Yangi parol          │
+│  ┌──────────────────┐    │
+│  │ ••••••••         │    │
+│  └──────────────────┘    │
+│  (kamida 8 ta belgi)     │
+│                          │
+│  🔒 Parolni takrorlang   │
+│  ┌──────────────────┐    │
+│  │ ••••••••         │    │
+│  └──────────────────┘    │
+│                          │
+│  ┌──────────────────┐    │
+│  │    DAVOM ETISH    │    │
+│  └──────────────────┘    │
+└──────────────────────────┘
+```
+
+| Metod | Endpoint | Body | Javob |
+|-------|----------|------|-------|
+| POST | `/auth/register/password` | `phone`, `password`, `password_confirmation` (parol kamida 8 ta belgi) | `200`: `{ requires_completion: true, next_step: "register_complete", phone }` |
+
+| Xato | Tavsif |
+|------|--------|
+| 422 | Validatsiya xatosi (parol 8 tadan kam, parollar mos emas) |
+| 404 | Verify muddati tugagan → qayta register |
+
+### 4.4. Bosqich 4 — Do'kon ma'lumotlari
 
 **Avval lokatsiya va kategoriya ro'yxatlarini olish (authsiz):**
 
@@ -232,30 +266,21 @@ Telegram Mini App / bot orqali foydalanuvchi kirganda.
 │  ┌──────────────────┐    │
 │  │ Amir Temur ▼     │    │
 │  └──────────────────┘    │
-│                          │
-│  🔒 Parol               │
-│  ┌──────────────────┐    │
-│  │ ••••••           │    │
-│  └──────────────────┘    │
-│                          │
-│  🔒 Parol (qayta)       │
-│  ┌──────────────────┐    │
-│  │ ••••••           │    │
-│  └──────────────────┘    │
+│  (ixtiyoriy, bo'sh bo'lishi mumkin) │
 │                          │
 │  ┌──────────────────┐    │
-│  │    YAKUNLASH      │    │
+│  │    RO'YXATDAN O'TISH │    │
 │  └──────────────────┘    │
 └──────────────────────────┘
 ```
 
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
-| POST | `/auth/register/complete` | `phone`, `shop_name`, `category_id`, `region_id`, `district_id`, `street_id`, `password`, `password_confirmation` | `201`: `{ token, user }` |
+| POST | `/auth/register/complete` | `phone`, `shop_name`, `category_id`, `region_id`, `district_id`, `street_id` (ixtiyoriy) — **parol maydonlari yo'q, parol avvalgi bosqichda cache ga saqlandi** | `201`: `{ token, user }` |
 
 | Xato | Tavsif |
 |------|--------|
-| 404 | Verify muddati tugagan → qayta register |
+| 404 | Verify yoki parol muddati tugagan → qayta register |
 | 422 | Validatsiya xatosi |
 
 **Ro'yxatdan keyin:** Token saqlash → `GET /subscription/status` → Dashboard.
@@ -280,7 +305,7 @@ Bosqich 1                Bosqich 2               Bosqich 3
 |-------|-------|----------|------|-------|
 | 1 | POST | `/auth/password/forgot` | `phone` | `200`: SMS yuborildi. `404`: raqam yo'q |
 | 2 | POST | `/auth/password/verify` | `phone`, `code` | `200`: `{ reset_token }` (10 daqiqa). `422`: kod noto'g'ri |
-| 3 | POST | `/auth/password/reset` | `reset_token`, `password`, `password_confirmation` | `200`: parol yangilandi → Login ekrani |
+| 3 | POST | `/auth/password/reset` | `reset_token`, `password`, `password_confirmation` | `200`: parol yangilandi → Login ekrani. **Parol kamida 8 ta belgi bo'lishi kerak** |
 
 ---
 
@@ -1187,12 +1212,13 @@ Har bir API javobda:
 |--------|-------|----------|
 | Login | POST | `/auth/login` |
 | Telegram login | POST | `/auth/telegram-login` |
-| Ro'yxat 1 | POST | `/auth/register` |
+| Ro'yxat 1 (ism+telefon) | POST | `/auth/register` |
 | SMS tasdiq | POST | `/auth/verify` |
-| Ro'yxat 2 | POST | `/auth/register/complete` |
+| Ro'yxat 2 (parol, min 8 belgi) | POST | `/auth/register/password` |
+| Ro'yxat 3 (do'kon) | POST | `/auth/register/complete` |
 | Parol tiklash 1 | POST | `/auth/password/forgot` |
 | Parol tiklash 2 | POST | `/auth/password/verify` |
-| Parol tiklash 3 | POST | `/auth/password/reset` |
+| Parol tiklash 3 (min 8 belgi) | POST | `/auth/password/reset` |
 | Viloyatlar | GET | `/locations/regions` |
 | Kategoriyalar | GET | `/locations/categories` |
 | Tumanlar | GET | `/locations/districts/{regionId}` |

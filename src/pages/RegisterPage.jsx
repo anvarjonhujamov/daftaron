@@ -8,25 +8,28 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
 import toast from 'react-hot-toast'
 
-const STEP_NAMES = { namePhone: 1, verify: 2, complete: 3 }
+const STEP_NAMES = { namePhone: 1, verify: 2, password: 3, complete: 4 }
 
 export default function RegisterPage() {
     const navigate = useNavigate()
     const [step, setStep] = useState(STEP_NAMES.namePhone)
-    const [phoneCache, setPhoneCache] = useState('') // raw phone after step1, used in complete
+    const [phoneCache, setPhoneCache] = useState('')
 
     const [formStep1, setFormStep1] = useState({ name: '', phone: PHONE_PREFIX })
     const [code, setCode] = useState('')
     const [acceptedTerms, setAcceptedTerms] = useState(false)
+
+    const [formPassword, setFormPassword] = useState({
+        password: '',
+        password_confirmation: ''
+    })
 
     const [formComplete, setFormComplete] = useState({
         shop_name: '',
         category_id: null,
         region_id: null,
         district_id: null,
-        street_id: null,
-        password: '',
-        password_confirmation: ''
+        street_id: null
     })
     const [categories, setCategories] = useState([])
 
@@ -85,7 +88,10 @@ export default function RegisterPage() {
         setLoading(true)
         try {
             const data = await authApi.verify(phoneCache, code, 'register')
-            if (data.requires_completion) {
+            if (data.requires_password_setup) {
+                setFormPassword({ password: '', password_confirmation: '' })
+                setStep(STEP_NAMES.password)
+            } else if (data.requires_completion) {
                 setStep(STEP_NAMES.complete)
             } else if (data.token) {
                 localStorage.setItem('token', data.token)
@@ -96,6 +102,43 @@ export default function RegisterPage() {
             }
         } catch (err) {
             toast.error(err.response?.data?.message || 'Kod noto\'g\'ri yoki muddati tugagan')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handlePasswordSubmit = async (e) => {
+        e.preventDefault()
+        setErrors({})
+
+        if (formPassword.password.length < 8) {
+            toast.error('Parol kamida 8 ta belgi bo\'lishi kerak')
+            return
+        }
+        if (formPassword.password !== formPassword.password_confirmation) {
+            toast.error('Parollar bir xil emas')
+            return
+        }
+
+        setLoading(true)
+        try {
+            const data = await authApi.registerPassword(
+                phoneCache,
+                formPassword.password,
+                formPassword.password_confirmation
+            )
+            if (data.requires_completion) {
+                setStep(STEP_NAMES.complete)
+            } else {
+                toast.error('Kutilmagan javob')
+            }
+        } catch (err) {
+            if (err.response?.status === 422) {
+                setErrors(err.response.data.errors || {})
+                toast.error(err.response.data.message || 'Parolni tekshiring')
+            } else {
+                toast.error(err.response?.data?.message || 'Parol saqlashda xatolik')
+            }
         } finally {
             setLoading(false)
         }
@@ -112,9 +155,7 @@ export default function RegisterPage() {
                 category_id: formComplete.category_id,
                 region_id: formComplete.region_id,
                 district_id: formComplete.district_id,
-                street_id: formComplete.street_id,
-                password: formComplete.password,
-                password_confirmation: formComplete.password_confirmation
+                street_id: formComplete.street_id
             })
             if (data.token) {
                 localStorage.setItem('token', data.token)
@@ -136,6 +177,12 @@ export default function RegisterPage() {
         }
     }
 
+    const goBack = () => {
+        if (step === STEP_NAMES.verify) setStep(STEP_NAMES.namePhone)
+        else if (step === STEP_NAMES.password) setStep(STEP_NAMES.verify)
+        else if (step === STEP_NAMES.complete) setStep(STEP_NAMES.password)
+    }
+
     return (
         <div className="min-h-screen px-6 py-8 bg-gradient-to-b from-primary-50 to-white dark:from-gray-900 dark:to-gray-900">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -146,7 +193,7 @@ export default function RegisterPage() {
                     {step > STEP_NAMES.namePhone && (
                         <button
                             type="button"
-                            onClick={() => setStep(step === STEP_NAMES.verify ? STEP_NAMES.namePhone : STEP_NAMES.verify)}
+                            onClick={goBack}
                             className="text-primary-600 text-sm"
                         >
                             ← Orqaga
@@ -154,9 +201,10 @@ export default function RegisterPage() {
                     )}
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-4">Ro'yxatdan o'tish</h1>
                     <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">
-                        {step === STEP_NAMES.namePhone && "1/3 — Ism va telefon"}
-                        {step === STEP_NAMES.verify && "2/3 — SMS kodni tasdiqlang"}
-                        {step === STEP_NAMES.complete && "3/3 — Do'kon va parol"}
+                        {step === STEP_NAMES.namePhone && "1/4 — Ism va telefon"}
+                        {step === STEP_NAMES.verify && "2/4 — SMS kodni tasdiqlang"}
+                        {step === STEP_NAMES.password && "3/4 — Parol yarating"}
+                        {step === STEP_NAMES.complete && "4/4 — Do'kon ma'lumotlari"}
                     </p>
                 </div>
 
@@ -241,7 +289,67 @@ export default function RegisterPage() {
                         </form>
                     )}
 
-                    {/* Step 3: Shop + location + password */}
+                    {/* Step 3: Password setup */}
+                    {step === STEP_NAMES.password && (
+                        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">
+                                Hisobingiz uchun parol yarating (kamida 8 ta belgi).
+                            </p>
+                            <div>
+                                <label className="label">Parol</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        className="input pr-12"
+                                        placeholder="Kamida 8 belgi"
+                                        value={formPassword.password}
+                                        onChange={(e) => setFormPassword({ ...formPassword, password: e.target.value })}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password[0]}</p>}
+                            </div>
+                            <div>
+                                <label className="label">Parolni tasdiqlang</label>
+                                <div className="relative">
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        className="input pr-12"
+                                        placeholder="Parolni qaytaring"
+                                        value={formPassword.password_confirmation}
+                                        onChange={(e) => setFormPassword({ ...formPassword, password_confirmation: e.target.value })}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    >
+                                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                                {errors.password_confirmation && (
+                                    <p className="text-red-500 text-xs mt-1">{errors.password_confirmation[0]}</p>
+                                )}
+                            </div>
+                            <button
+                                type="submit"
+                                className="btn btn-primary w-full"
+                                disabled={loading}
+                            >
+                                {loading ? <LoadingSpinner size="sm" /> : 'Davom etish'}
+                            </button>
+                        </form>
+                    )}
+
+                    {/* Step 4: Shop + location */}
                     {step === STEP_NAMES.complete && (
                         <form onSubmit={handleCompleteSubmit} className="space-y-4">
                             <div>
@@ -279,47 +387,6 @@ export default function RegisterPage() {
                                 }}
                                 onChange={handleLocationChange}
                             />
-                            <div>
-                                <label className="label">Parol</label>
-                                <div className="relative">
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        className="input pr-12"
-                                        placeholder="Kamida 6 belgi"
-                                        value={formComplete.password}
-                                        onChange={(e) => setFormComplete({ ...formComplete, password: e.target.value })}
-                                        required
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                    >
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                    </button>
-                                </div>
-                                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password[0]}</p>}
-                            </div>
-                            <div>
-                                <label className="label">Parolni tasdiqlang</label>
-                                <div className="relative">
-                                    <input
-                                        type={showConfirmPassword ? "text" : "password"}
-                                        className="input pr-12"
-                                        placeholder="Parolni qaytaring"
-                                        value={formComplete.password_confirmation}
-                                        onChange={(e) => setFormComplete({ ...formComplete, password_confirmation: e.target.value })}
-                                        required
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                    >
-                                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                    </button>
-                                </div>
-                            </div>
                             <button type="submit" className="btn btn-primary w-full" disabled={loading || !formComplete.category_id}>
                                 {loading ? <LoadingSpinner size="sm" /> : 'Ro\'yxatdan o\'tish'}
                             </button>
