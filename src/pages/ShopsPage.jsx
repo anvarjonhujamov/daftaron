@@ -206,7 +206,6 @@ export default function ShopsPage() {
     const openEditModal = async (shop) => {
         setEditFormErrors({})
         setEditingShopId(shop?.id ?? null)
-        setLoadingSingleShop(true)
 
         const toNum = (v) => {
             if (v === null || v === undefined || v === '') return null
@@ -214,76 +213,38 @@ export default function ShopsPage() {
             return Number.isFinite(n) ? n : null
         }
 
-        const extractId = (v, fallbackId) => {
-            if (v === null || v === undefined || v === '') {
-                return fallbackId ? toNum(fallbackId) : null
-            }
-            if (typeof v === 'number' || typeof v === 'string') {
-                return toNum(v) ?? (typeof v === 'number' ? v : null)
-            }
-            if (typeof v === 'object') {
-                return toNum(v.id) ?? toNum(v.value) ?? toNum(fallbackId) ?? null
-            }
-            return toNum(fallbackId) ?? null
+        const pickId = (nested, flat) => {
+            const fromNested = typeof nested === 'object' && nested ? toNum(nested.id) : null
+            return fromNested ?? toNum(flat) ?? null
         }
-
-        const extractName = (v, fallbackName = '') => {
-            if (v === null || v === undefined || v === '') return fallbackName || ''
-            if (typeof v === 'string') return v
-            if (typeof v === 'number') return fallbackName || String(v)
-            if (typeof v === 'object') {
-                return v.name || v.title || v.label || String(v.nomi || v.label_name || '') || fallbackName || ''
-            }
-            return fallbackName || ''
+        const pickName = (nested, flatName, flatId) => {
+            if (typeof nested === 'object' && nested && nested.name) return String(nested.name)
+            if (flatName) return String(flatName)
+            if (typeof flatId === 'number' || typeof flatId === 'string') return String(flatId)
+            return ''
         }
-
-        let fullShop = shop
-        try {
-            if (shop?.id) {
-                const fetched = await tenantsApi.getTenant(shop.id)
-                if (fetched && typeof fetched === 'object') {
-                    fullShop = { ...shop, ...fetched }
-                }
-            }
-        } catch (err) {
-            console.warn('[ShopsPage.openEditModal] getTenant fetch failed, using list item data', err?.response?.status, err?.message)
-        }
-
-        const catId = extractId(fullShop?.category ?? fullShop?.category_id, fullShop?.category_id)
-        const catName = extractName(fullShop?.category ?? fullShop?.category_name, extractName(fullShop?.category_id))
-
-        const rId = extractId(fullShop?.region ?? fullShop?.region_id, fullShop?.region_id)
-        const rName = extractName(fullShop?.region ?? fullShop?.region_name, extractName(fullShop?.region_id))
-
-        const dId = extractId(fullShop?.district ?? fullShop?.district_id, fullShop?.district_id)
-        const dName = extractName(fullShop?.district ?? fullShop?.district_name, extractName(fullShop?.district_id))
-
-        const sId = extractId(fullShop?.street ?? fullShop?.street_id, fullShop?.street_id)
-        const sName = extractName(fullShop?.street ?? fullShop?.street_name, extractName(fullShop?.street_id))
-
-        let finalCategoryId = catId
-        let finalCategoryName = catName
 
         if (categories.length === 0) {
-            try {
-                await loadCategories()
-            } catch {}
+            try { await loadCategories() } catch {}
         }
 
-        if (!finalCategoryId && categories?.[0]?.id) {
-            finalCategoryId = toNum(categories[0].id)
-            finalCategoryName = categories[0].name || ''
-        }
+        const catId = pickId(shop?.category, shop?.category_id)
+        const catName = pickName(shop?.category, shop?.category_name, catId) || (catId != null ? (categories.find((c) => toNum(c.id) === catId)?.name || '') : '')
 
-        if (finalCategoryId && !finalCategoryName) {
-            const match = categories.find((c) => toNum(c.id) === finalCategoryId)
-            if (match) {
-                finalCategoryName = match.name || ''
-            }
-        }
+        const rId = pickId(shop?.region, shop?.region_id)
+        const rName = pickName(shop?.region, shop?.region_name, rId)
+
+        const dId = pickId(shop?.district, shop?.district_id)
+        const dName = pickName(shop?.district, shop?.district_name, dId)
+
+        const sId = pickId(shop?.street, shop?.street_id)
+        const sName = pickName(shop?.street, shop?.street_name, sId)
+
+        const finalCategoryId = catId ?? toNum(categories?.[0]?.id) ?? null
+        const finalCategoryName = catName || (finalCategoryId != null ? (categories.find((c) => toNum(c.id) === finalCategoryId)?.name || '') : '') || ''
 
         setEditShopForm({
-            name: fullShop?.name || fullShop?.shop_name || '',
+            name: String(shop?.name || shop?.shop_name || ''),
             category_id: finalCategoryId,
             category_name: finalCategoryName,
             region_id: rId,
@@ -292,15 +253,13 @@ export default function ShopsPage() {
             district_name: dName,
             street_id: sId,
             street_name: sName,
-            location: fullShop?.location || fullShop?.address || getShopLocationLabel({
-                ...fullShop,
+            location: String(shop?.location || shop?.address || getShopLocationLabel({
                 region_id: rId, region_name: rName,
                 district_id: dId, district_name: dName,
                 street_id: sId, street_name: sName
-            }) || ''
+            }) || '')
         })
 
-        setLoadingSingleShop(false)
         setIsEditModalOpen(true)
     }
 
@@ -538,7 +497,7 @@ export default function ShopsPage() {
                                         value={newShop.category_id != null ? String(newShop.category_id) : ''}
                                         onChange={(e) => {
                                             const id = e.target.value ? parseInt(e.target.value, 10) : null
-                                            const name = id ? (categories.find(c => c.id === id || String(c.id) === String(id))?.name || newShop.category_name) || '' : ''
+                                            const name = id ? (categories.find(c => Number(c.id) === id || String(c.id) === String(id))?.name || '') : ''
                                             setNewShop(prev => ({
                                                 ...prev,
                                                 category_id: id,
@@ -548,13 +507,21 @@ export default function ShopsPage() {
                                         required
                                     >
                                         <option value="">Tanlang...</option>
-                                        {newShop.category_id != null && (
-                                            <option value={String(newShop.category_id)} key="always-new-category">
-                                                {newShop.category_name || 'Tanlangan kategoriya'}
-                                            </option>
-                                        )}
+                                        {(() => {
+                                            const targetId = Number(newShop.category_id)
+                                            const found = categories.some(c => Number(c.id) === targetId)
+                                            if (newShop.category_id != null && !found) {
+                                                const label = newShop.category_name || 'Tanlangan kategoriya'
+                                                return (
+                                                    <option value={String(newShop.category_id)} key={`s-cat-new-${newShop.category_id}`}>
+                                                        {label}
+                                                    </option>
+                                                )
+                                            }
+                                            return null
+                                        })()}
                                         {categories.map((cat) => (
-                                            <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
+                                            <option key={`cat-new-${cat.id}`} value={String(cat.id)}>{cat.name}</option>
                                         ))}
                                     </select>
                                     {formErrors.category_id && <p className="text-red-500 text-xs mt-1">{formErrors.category_id[0]}</p>}
@@ -649,7 +616,7 @@ export default function ShopsPage() {
                                         value={editShopForm.category_id != null ? String(editShopForm.category_id) : ''}
                                         onChange={(e) => {
                                             const id = e.target.value ? parseInt(e.target.value, 10) : null
-                                            const name = id ? (categories.find(c => c.id === id || String(c.id) === String(id))?.name || editShopForm.category_name) || '' : ''
+                                            const name = id ? (categories.find(c => Number(c.id) === id || String(c.id) === String(id))?.name || '') : ''
                                             setEditShopForm(prev => ({
                                                 ...prev,
                                                 category_id: id,
@@ -659,13 +626,21 @@ export default function ShopsPage() {
                                         required
                                     >
                                         <option value="">Tanlang...</option>
-                                        {editShopForm.category_id != null && (
-                                            <option value={String(editShopForm.category_id)} key="always-edit-category">
-                                                {editShopForm.category_name || 'Tanlangan kategoriya'}
-                                            </option>
-                                        )}
+                                        {(() => {
+                                            const targetId = Number(editShopForm.category_id)
+                                            const found = categories.some(c => Number(c.id) === targetId)
+                                            if (editShopForm.category_id != null && !found) {
+                                                const label = editShopForm.category_name || 'Tanlangan kategoriya'
+                                                return (
+                                                    <option value={String(editShopForm.category_id)} key={`s-cat-edit-${editShopForm.category_id}`}>
+                                                        {label}
+                                                    </option>
+                                                )
+                                            }
+                                            return null
+                                        })()}
                                         {categories.map((cat) => (
-                                            <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
+                                            <option key={`cat-edit-${cat.id}`} value={String(cat.id)}>{cat.name}</option>
                                         ))}
                                     </select>
                                     {editFormErrors.category_id && <p className="text-red-500 text-xs mt-1">{editFormErrors.category_id[0]}</p>}
