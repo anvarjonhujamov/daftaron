@@ -830,6 +830,120 @@ paths:
           description: Ruxsat yo'q
 
   /tenants/{tenant}:
+    put:
+      tags: [Tenants]
+      summary: Do'konni tahrirlash (faqat owner o'z do'konini)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Tenant (do'kon) ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Barcha maydonlar ixtiyoriy (faiz o'zgartirilayotganlarini yuboring)
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                  description: Do'kon nomi
+                category_id:
+                  type: integer
+                  description: categories jadvalidan ID
+                region_id:
+                  type: integer
+                  description: regions jadvalidan ID
+                district_id:
+                  type: integer
+                  description: districts jadvalidan ID
+                street_id:
+                  type: integer
+                  nullable: true
+                  description: streets jadvalidan ID yoki null
+      responses:
+        "200":
+          description: Do'kon yangilandi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Do'kon yangilandi."
+                  tenant:
+                    allOf:
+                      - $ref: "#/components/schemas/Tenant"
+                      - type: object
+                        properties:
+                          region:
+                            type: object
+                            properties:
+                              id: { type: integer }
+                              name: { type: string }
+                          district:
+                            type: object
+                            properties:
+                              id: { type: integer }
+                              name: { type: string }
+                          street:
+                            type: object
+                            nullable: true
+                            properties:
+                              id: { type: integer }
+                              name: { type: string }
+                          category:
+                            type: object
+                            properties:
+                              id: { type: integer }
+                              name: { type: string }
+        "403":
+          description: "Bu do'konni tahrirlash huquqingiz yo'q yoki obuna tugagan"
+        "404":
+          description: Tenant topilmadi
+        "422":
+          description: Validatsiya xatosi
+
+    patch:
+      tags: [Tenants]
+      summary: Do'konni qisman yangilash (PUT bilan bir xil)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 255 }
+                category_id: { type: integer }
+                region_id: { type: integer }
+                district_id: { type: integer }
+                street_id: { type: integer, nullable: true }
+      responses:
+        "200":
+          description: Do'kon yangilandi (PUT bilan bir xil javob)
+        "403":
+          description: Ruxsat yo'q yoki obuna tugagan
+        "404":
+          description: Tenant topilmadi
+        "422":
+          description: Validatsiya xatosi
+
     delete:
       tags: [Tenants]
       summary: Owner o'z do'konini o'chirish

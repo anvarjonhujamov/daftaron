@@ -368,13 +368,18 @@ export default function RegisterPage() {
                                 <label className="label">Faoliyat turi (kategoriya)</label>
                                 <select
                                     className="input"
-                                    value={formComplete.category_id ?? ''}
+                                    value={formComplete.category_id != null ? String(formComplete.category_id) : ''}
                                     onChange={(e) => setFormComplete({ ...formComplete, category_id: e.target.value ? parseInt(e.target.value, 10) : null })}
                                     required
                                 >
                                     <option value="">Tanlang...</option>
+                                    {formComplete.category_id != null && (
+                                        <option value={String(formComplete.category_id)} key="always-register-category">
+                                            {categories.find((c) => String(c.id) === String(formComplete.category_id))?.name || 'Tanlangan kategoriya'}
+                                        </option>
+                                    )}
                                     {categories.map((cat) => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
                                     ))}
                                 </select>
                                 {errors.category_id && <p className="text-red-500 text-xs mt-1">{errors.category_id[0]}</p>}

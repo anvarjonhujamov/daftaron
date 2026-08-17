@@ -27,20 +27,30 @@ export default function ShopsPage() {
     const [newShop, setNewShop] = useState({
         name: '',
         category_id: null,
+        category_name: '',
         region_id: null,
+        region_name: '',
         district_id: null,
+        district_name: '',
         street_id: null,
+        street_name: '',
         location: ''
     })
 
     const [editShopForm, setEditShopForm] = useState({
         name: '',
         category_id: null,
+        category_name: '',
         region_id: null,
+        region_name: '',
         district_id: null,
+        district_name: '',
         street_id: null,
+        street_name: '',
         location: ''
     })
+
+    const [loadingSingleShop, setLoadingSingleShop] = useState(false)
 
     const [editingShopId, setEditingShopId] = useState(null)
     const [formErrors, setFormErrors] = useState({})
@@ -98,9 +108,13 @@ export default function ShopsPage() {
         setNewShop({
             name: '',
             category_id: categories?.[0]?.id ?? null,
+            category_name: categories?.[0]?.name || '',
             region_id: null,
+            region_name: '',
             district_id: null,
+            district_name: '',
             street_id: null,
+            street_name: '',
             location: ''
         })
     }
@@ -192,15 +206,101 @@ export default function ShopsPage() {
     const openEditModal = async (shop) => {
         setEditFormErrors({})
         setEditingShopId(shop?.id ?? null)
+        setLoadingSingleShop(true)
+
+        const toNum = (v) => {
+            if (v === null || v === undefined || v === '') return null
+            const n = parseInt(v, 10)
+            return Number.isFinite(n) ? n : null
+        }
+
+        const extractId = (v, fallbackId) => {
+            if (v === null || v === undefined || v === '') {
+                return fallbackId ? toNum(fallbackId) : null
+            }
+            if (typeof v === 'number' || typeof v === 'string') {
+                return toNum(v) ?? (typeof v === 'number' ? v : null)
+            }
+            if (typeof v === 'object') {
+                return toNum(v.id) ?? toNum(v.value) ?? toNum(fallbackId) ?? null
+            }
+            return toNum(fallbackId) ?? null
+        }
+
+        const extractName = (v, fallbackName = '') => {
+            if (v === null || v === undefined || v === '') return fallbackName || ''
+            if (typeof v === 'string') return v
+            if (typeof v === 'number') return fallbackName || String(v)
+            if (typeof v === 'object') {
+                return v.name || v.title || v.label || String(v.nomi || v.label_name || '') || fallbackName || ''
+            }
+            return fallbackName || ''
+        }
+
+        let fullShop = shop
+        try {
+            if (shop?.id) {
+                const fetched = await tenantsApi.getTenant(shop.id)
+                if (fetched && typeof fetched === 'object') {
+                    fullShop = { ...shop, ...fetched }
+                }
+            }
+        } catch (err) {
+            console.warn('[ShopsPage.openEditModal] getTenant fetch failed, using list item data', err?.response?.status, err?.message)
+        }
+
+        const catId = extractId(fullShop?.category ?? fullShop?.category_id, fullShop?.category_id)
+        const catName = extractName(fullShop?.category ?? fullShop?.category_name, extractName(fullShop?.category_id))
+
+        const rId = extractId(fullShop?.region ?? fullShop?.region_id, fullShop?.region_id)
+        const rName = extractName(fullShop?.region ?? fullShop?.region_name, extractName(fullShop?.region_id))
+
+        const dId = extractId(fullShop?.district ?? fullShop?.district_id, fullShop?.district_id)
+        const dName = extractName(fullShop?.district ?? fullShop?.district_name, extractName(fullShop?.district_id))
+
+        const sId = extractId(fullShop?.street ?? fullShop?.street_id, fullShop?.street_id)
+        const sName = extractName(fullShop?.street ?? fullShop?.street_name, extractName(fullShop?.street_id))
+
+        let finalCategoryId = catId
+        let finalCategoryName = catName
+
+        if (categories.length === 0) {
+            try {
+                await loadCategories()
+            } catch {}
+        }
+
+        if (!finalCategoryId && categories?.[0]?.id) {
+            finalCategoryId = toNum(categories[0].id)
+            finalCategoryName = categories[0].name || ''
+        }
+
+        if (finalCategoryId && !finalCategoryName) {
+            const match = categories.find((c) => toNum(c.id) === finalCategoryId)
+            if (match) {
+                finalCategoryName = match.name || ''
+            }
+        }
+
         setEditShopForm({
-            name: shop?.name || '',
-            category_id: shop?.category_id ?? shop?.category?.id ?? categories?.[0]?.id ?? null,
-            region_id: shop?.region_id ?? shop?.region ?? null,
-            district_id: shop?.district_id ?? shop?.district ?? null,
-            street_id: shop?.street_id ?? shop?.street ?? null,
-            location: shop?.location || getShopLocationLabel(shop) || ''
+            name: fullShop?.name || fullShop?.shop_name || '',
+            category_id: finalCategoryId,
+            category_name: finalCategoryName,
+            region_id: rId,
+            region_name: rName,
+            district_id: dId,
+            district_name: dName,
+            street_id: sId,
+            street_name: sName,
+            location: fullShop?.location || fullShop?.address || getShopLocationLabel({
+                ...fullShop,
+                region_id: rId, region_name: rName,
+                district_id: dId, district_name: dName,
+                street_id: sId, street_name: sName
+            }) || ''
         })
-        if (categories.length === 0) await loadCategories()
+
+        setLoadingSingleShop(false)
         setIsEditModalOpen(true)
     }
 
@@ -208,7 +308,7 @@ export default function ShopsPage() {
         setIsEditModalOpen(false)
         setEditingShopId(null)
         setEditFormErrors({})
-        setEditShopForm({ name: '', category_id: categories?.[0]?.id ?? null, region_id: null, district_id: null, street_id: null, location: '' })
+        setEditShopForm({ name: '', category_id: categories?.[0]?.id ?? null, category_name: categories?.[0]?.name || '', region_id: null, region_name: '', district_id: null, district_name: '', street_id: null, street_name: '', location: '' })
     }
 
     const handleUpdateShop = async (e) => {
@@ -217,13 +317,14 @@ export default function ShopsPage() {
         setSavingEditShop(true)
         setEditFormErrors({})
         try {
-            await tenantsApi.updateTenant(editingShopId, {
+            const payload = {
                 name: editShopForm.name.trim(),
-                category_id: editShopForm.category_id,
-                region_id: editShopForm.region_id,
-                district_id: editShopForm.district_id,
-                street_id: editShopForm.street_id
-            })
+                category_id: editShopForm.category_id ?? null,
+                region_id: editShopForm.region_id ?? null,
+                district_id: editShopForm.district_id ?? null,
+                street_id: editShopForm.street_id ?? null
+            }
+            await tenantsApi.updateTenant(editingShopId, payload)
             toast.success("Biznes ma'lumotlari yangilandi")
             closeEditModal()
             await loadShops()
@@ -434,20 +535,26 @@ export default function ShopsPage() {
                                     <label className="label">Faoliyat turi (kategoriya)</label>
                                     <select
                                         className="input"
-                                        value={newShop.category_id ?? ''}
-                                        onChange={(e) => setNewShop(prev => ({
-                                            ...prev,
-                                            category_id: e.target.value ? parseInt(e.target.value, 10) : null
-                                        }))}
+                                        value={newShop.category_id != null ? String(newShop.category_id) : ''}
+                                        onChange={(e) => {
+                                            const id = e.target.value ? parseInt(e.target.value, 10) : null
+                                            const name = id ? (categories.find(c => c.id === id || String(c.id) === String(id))?.name || newShop.category_name) || '' : ''
+                                            setNewShop(prev => ({
+                                                ...prev,
+                                                category_id: id,
+                                                category_name: name
+                                            }))
+                                        }}
                                         required
                                     >
                                         <option value="">Tanlang...</option>
-                                        {/* Show synthetic option if newShop.category_id is a non-numeric name so the select displays it */}
-                                        {newShop.category_id && !isNumericId(newShop.category_id) && (
-                                            <option value={newShop.category_id} key="initial-new-category">{String(newShop.category_id)}</option>
+                                        {newShop.category_id != null && (
+                                            <option value={String(newShop.category_id)} key="always-new-category">
+                                                {newShop.category_name || 'Tanlangan kategoriya'}
+                                            </option>
                                         )}
                                         {categories.map((cat) => (
-                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                            <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
                                         ))}
                                     </select>
                                     {formErrors.category_id && <p className="text-red-500 text-xs mt-1">{formErrors.category_id[0]}</p>}
@@ -456,8 +563,11 @@ export default function ShopsPage() {
                                 <LocationSelector
                                     value={{
                                         region_id: newShop.region_id,
+                                        region_name: newShop.region_name,
                                         district_id: newShop.district_id,
-                                        street_id: newShop.street_id
+                                        district_name: newShop.district_name,
+                                        street_id: newShop.street_id,
+                                        street_name: newShop.street_name
                                     }}
                                     onChange={(location) => setNewShop(prev => ({ ...prev, ...location }))}
                                     onAddressChange={handleNewShopLocationChange}
@@ -536,20 +646,26 @@ export default function ShopsPage() {
                                     <label className="label">Faoliyat turi (kategoriya)</label>
                                     <select
                                         className="input"
-                                        value={editShopForm.category_id ?? ''}
-                                        onChange={(e) => setEditShopForm(prev => ({
-                                            ...prev,
-                                            category_id: e.target.value ? parseInt(e.target.value, 10) : null
-                                        }))}
+                                        value={editShopForm.category_id != null ? String(editShopForm.category_id) : ''}
+                                        onChange={(e) => {
+                                            const id = e.target.value ? parseInt(e.target.value, 10) : null
+                                            const name = id ? (categories.find(c => c.id === id || String(c.id) === String(id))?.name || editShopForm.category_name) || '' : ''
+                                            setEditShopForm(prev => ({
+                                                ...prev,
+                                                category_id: id,
+                                                category_name: name
+                                            }))
+                                        }}
                                         required
                                     >
                                         <option value="">Tanlang...</option>
-                                        {/* Show synthetic option if editShopForm.category_id is a non-numeric name so the select displays it */}
-                                        {editShopForm.category_id && !isNumericId(editShopForm.category_id) && (
-                                            <option value={editShopForm.category_id} key="initial-edit-category">{String(editShopForm.category_id)}</option>
+                                        {editShopForm.category_id != null && (
+                                            <option value={String(editShopForm.category_id)} key="always-edit-category">
+                                                {editShopForm.category_name || 'Tanlangan kategoriya'}
+                                            </option>
                                         )}
                                         {categories.map((cat) => (
-                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                            <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
                                         ))}
                                     </select>
                                     {editFormErrors.category_id && <p className="text-red-500 text-xs mt-1">{editFormErrors.category_id[0]}</p>}
@@ -558,8 +674,11 @@ export default function ShopsPage() {
                                 <LocationSelector
                                     value={{
                                         region_id: editShopForm.region_id,
+                                        region_name: editShopForm.region_name,
                                         district_id: editShopForm.district_id,
-                                        street_id: editShopForm.street_id
+                                        district_name: editShopForm.district_name,
+                                        street_id: editShopForm.street_id,
+                                        street_name: editShopForm.street_name
                                     }}
                                     onChange={(location) => setEditShopForm(prev => ({ ...prev, ...location }))}
                                     onAddressChange={(addr) => setEditShopForm(prev => ({ ...prev, location: addr }))}

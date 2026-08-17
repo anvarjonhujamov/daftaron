@@ -924,14 +924,58 @@ POST /debts/overdue/{customer_id}/send-sms?days=10
 
 ---
 
-## 13. Do'kon qo'shish
+## 13. Do'kon qo'shish va tahrirlash
 
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
 | POST | `/tenants` | `name`, `category_id`, `region_id`, `district_id`, `street_id` | `201`: yangi do'kon |
 | GET | `/tenants` | — | `200`: do'konlar ro'yxati + active do'kon |
 | PUT | `/tenants/active` | `tenant_id` | `200`: active do'kon yangilanadi |
+| **PUT** | **`/tenants/{tenant}`** | `name?`, `category_id?`, `region_id?`, `district_id?`, `street_id?` (ixtiyoriy) | **`200`: do'kon yangilandi** |
+| **PATCH** | **`/tenants/{tenant}`** | PUT bilan bir xil | **`200`: qisman yangilandi (PUT bilan bir xil)** |
 | DELETE | `/tenants/{tenant}` | — | `200`: do'kon o'chiriladi, active do'kon qayta hisoblanadi |
+
+### 13.1. Do'konni tahrirlash (mobil ilova uchun)
+
+Ilovada do'kon ro'yxatidagi har bir do'kon elementiga "Tahrirlash" tugmasi qo'shiladi. Tugma bosilganda do'kon hozirgi ma'lumotlari bilan forma ochiladi.
+
+**Forma maydonlari (ixtiyoriy to'ldirish):**
+- Do'kon nomi (name)
+- Kategoriya tanlovi (category_id) — `/locations/categories` dan
+- Viloyat (region_id) → Tuman (district_id) → Ko'cha (street_id) — lokatsiya endpointlaridan
+
+**Misol Request:**
+```json
+PUT /api/v1/tenants/5
+Authorization: Bearer <token>
+
+{
+  "name": "MTP Market — Yangi filial",
+  "street_id": 120
+}
+```
+
+**Javob (200):**
+```json
+{
+  "message": "Do'kon yangilandi.",
+  "tenant": {
+    "id": 5,
+    "name": "MTP Market — Yangi filial",
+    "region": { "id": 1, "name": "Toshkent" },
+    "district": { "id": 5, "name": "Yunusobod" },
+    "street": { "id": 120, "name": "Amir Temur ko'chasi" },
+    "category": { "id": 2, "name": "Maishiy texnika" },
+    "plan_id": 1,
+    "status": "active"
+  }
+}
+```
+
+**Xatolar:**
+- `403`: `"Bu do'konni tahrirlash huquqingiz yo'q."` (faqat owner)
+- `403`: Obuna expired bo'lsa (POST/PUT bloklanadi)
+- `422`: Validatsiya xatolari (masalan: noto'g'ri category_id)
 
 **Lokatsiya endpointlari (authsiz):**
 
@@ -1234,6 +1278,7 @@ Har bir API javobda:
 | Qo'shimcha paket sotib olish | POST | `/subscription/buy-extra/{extra_package}` |
 | Do'konlar ro'yxati + active | GET | `/tenants` |
 | Active do'konni almashtirish | PUT | `/tenants/active` |
+| Do'konni tahrirlash | PUT/PATCH | `/tenants/{tenant}` |
 | Do'konni o'chirish | DELETE | `/tenants/{tenant}` |
 | AI support — xabar | POST | `/support/chat` |
 | AI support — tarix | GET | `/support/history` |

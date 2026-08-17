@@ -10,7 +10,7 @@ import {
   TextInput,
   View
 } from 'react-native'
-import { Plus, Search, X } from 'lucide-react-native'
+import { Plus, Search, X, Edit2 } from 'lucide-react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import customersApi from '../api/customers.api'
 import { useThemeMode } from '../context/ThemeContext'
@@ -28,6 +28,7 @@ export default function CustomersScreen() {
   const [filter, setFilter] = useState('all')
 
   const [showAdd, setShowAdd] = useState(false)
+  const [editingCustomerId, setEditingCustomerId] = useState(null)
   const [formName, setFormName] = useState('')
   const [formPhone, setFormPhone] = useState(PHONE_PREFIX)
   const [submitting, setSubmitting] = useState(false)
@@ -62,12 +63,48 @@ export default function CustomersScreen() {
         phone: phone !== '+998' ? phone : null
       })
 
-      setFormName('')
-      setFormPhone(PHONE_PREFIX)
-      setShowAdd(false)
+      closeCustomerForm()
       await loadCustomers()
     } catch (err) {
       Alert.alert('Xatolik', err?.response?.data?.message || 'Mijoz qo\'shishda xatolik')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function openEditCustomer(customer) {
+    setEditingCustomerId(customer.id || customer.customer_id)
+    setFormName(customer.name || customer.customer_name || '')
+    setFormPhone(customer.phone || customer.customer_phone ? formatPhoneNumber(String(customer.phone || customer.customer_phone)) : PHONE_PREFIX)
+    setShowAdd(true)
+  }
+
+  function closeCustomerForm() {
+    setFormName('')
+    setFormPhone(PHONE_PREFIX)
+    setEditingCustomerId(null)
+    setShowAdd(false)
+  }
+
+  async function handleUpdateCustomer() {
+    if (!editingCustomerId) return
+    if (!formName.trim()) {
+      Alert.alert('Xatolik', 'Mijoz ismini kiriting')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const phone = getRawPhoneNumber(formPhone)
+      await customersApi.updateCustomer(editingCustomerId, {
+        name: formName.trim(),
+        phone: phone !== '+998' ? phone : null
+      })
+
+      closeCustomerForm()
+      await loadCustomers()
+    } catch (err) {
+      Alert.alert('Xatolik', err?.response?.data?.message || 'Mijozni yangilashda xatolik')
     } finally {
       setSubmitting(false)
     }
@@ -100,7 +137,10 @@ export default function CustomersScreen() {
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Mijozlar</Text>
-        <Pressable style={styles.addIconBtn} onPress={() => setShowAdd((v) => !v)}>
+        <Pressable style={styles.addIconBtn} onPress={() => {
+          closeCustomerForm()
+          setShowAdd((v) => !v)
+        }}>
           <Plus size={20} color="#fff" />
         </Pressable>
       </View>
@@ -129,7 +169,12 @@ export default function CustomersScreen() {
 
       {showAdd ? (
         <View style={styles.addCard}>
-          <Text style={styles.addTitle}>Yangi mijoz</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={styles.addTitle}>{editingCustomerId ? 'Mijozni tahrirlash' : 'Yangi mijoz'}</Text>
+            <Pressable hitSlop={12} onPress={closeCustomerForm}>
+              <X size={20} color={theme.muted} />
+            </Pressable>
+          </View>
           <TextInput
             style={styles.input}
             value={formName}
@@ -145,7 +190,11 @@ export default function CustomersScreen() {
             keyboardType="phone-pad"
             placeholderTextColor={theme.muted}
           />
-          <Pressable style={styles.primaryBtn} onPress={handleAddCustomer} disabled={submitting}>
+          <Pressable
+            style={styles.primaryBtn}
+            onPress={editingCustomerId ? handleUpdateCustomer : handleAddCustomer}
+            disabled={submitting}
+          >
             {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Saqlash</Text>}
           </Pressable>
         </View>
@@ -172,7 +221,7 @@ export default function CustomersScreen() {
                 <Text style={styles.rowName}>{item.name || item.customer_name || 'Mijoz'}</Text>
                 <Text style={styles.rowPhone}>{item.phone || item.customer_phone || '-'}</Text>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
+              <View style={{ alignItems: 'flex-end', marginRight: 2 }}>
                 <Text style={[styles.amount, { color: isDebtor ? theme.danger : theme.success }]}>
                   {formatCurrency(debt)}
                 </Text>
@@ -180,6 +229,22 @@ export default function CustomersScreen() {
                   {isDebtor ? 'Qarzdor' : "To'langan"}
                 </Text>
               </View>
+              <Pressable
+                hitSlop={8}
+                onPress={() => openEditCustomer(item)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: theme.cardAlt || theme.card,
+                  borderWidth: 1,
+                  borderColor: theme.border
+                }}
+              >
+                <Edit2 size={16} color={theme.primary} />
+              </Pressable>
             </View>
           )
         }}

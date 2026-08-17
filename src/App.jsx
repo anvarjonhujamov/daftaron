@@ -18,6 +18,7 @@ import DeleteAccountPage from './pages/DeleteAccountPage'
 import DashboardPage from './pages/DashboardPage'
 import CustomersPage from './pages/CustomersPage'
 import CustomerDetailPage from './pages/CustomerDetailPage'
+import CustomerFormPage from './pages/CustomerFormPage'
 import DebtsPage from './pages/DebtsPage'
 import DebtDetailPage from './pages/DebtDetailPage'
 import HistoryPage from './pages/HistoryPage'
@@ -70,7 +71,8 @@ export default function App() {
                 >
                     <Route path="/" element={<DashboardPage />} />
                     <Route path="/customers" element={<CustomersPage />} />
-                    <Route path="/customers/new" element={<Navigate to="/customers" replace />} />
+                    <Route path="/customers/new" element={<CustomerFormPage />} />
+                    <Route path="/customers/:id/edit" element={<CustomerFormPage />} />
                     <Route path="/customers/:id" element={<CustomerDetailPage />} />
                     <Route path="/debts" element={<DebtsPage />} />
                     <Route path="/debts/:id" element={<DebtDetailPage />} />

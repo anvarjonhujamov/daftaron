@@ -9,7 +9,7 @@ import { subscriptionApi } from '../api/subscription.api'
 import toast from 'react-hot-toast'
 import {
     ChevronLeft, MoreVertical, Phone as PhoneIcon, MessageSquare,
-    Plus, CreditCard, Loader2, FileText, X, Trash2
+    Plus, CreditCard, Loader2, FileText, X, Trash2, Edit2
 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { useSubscription } from '../contexts/SubscriptionContext'
@@ -721,6 +721,16 @@ export default function CustomerDetailPage() {
                         <div className="p-4">
                             <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
                             <div className="space-y-2">
+                                <button
+                                    onClick={() => {
+                                        setShowOptionsDrawer(false)
+                                        navigate(`/customers/${id}/edit`)
+                                    }}
+                                    className="w-full flex items-center gap-3 p-4 text-primary-600 dark:text-primary-400 font-bold active:bg-gray-50 dark:active:bg-gray-700/50 rounded-2xl transition-colors"
+                                >
+                                    <Edit2 size={20} />
+                                    <span>Mijozni tahrirlash</span>
+                                </button>
                                 <button
                                     onClick={() => {
                                         setShowOptionsDrawer(false)

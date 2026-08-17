@@ -1187,7 +1187,48 @@ Body: `name`, `category_id`, `region_id`, `district_id`, `street_id`
 - Tanlov `users.tenant_id` da saqlanadi va tenant selector (`tenant_id`/`X-Tenant-Id`) yuborilmagan so'rovlarda default scope bo'ladi.
 - Xodim CRUD (`/workers`) doim active do'kon scope ida ishlaydi.
 
-### 17.4. Do'konni o'chirish
+### 17.4. Do'konni tahrirlash
+
+- **API:** `PUT /api/v1/tenants/{tenant}` yoki `PATCH /api/v1/tenants/{tenant}` (ikkalasi ham bir xil ishlaydi)
+- **Huquq:** Faqat `shop_owner` roli va faqat **o'z do'konini** tahrirlay oladi
+- Barcha maydonlar **ixtiyoriy** — faqat o'zgartirmoqchi bo'lganlarini yuborish mumkin (`UpdateTenantRequest` da `sometimes`)
+
+**Body parametrlari:**
+
+| Maydon | Talab | Tavsif |
+|--------|-------|--------|
+| `name` | Ixtiyoriy | Do'kon nomi (string, max 255) |
+| `category_id` | Ixtiyoriy | Kategoriya ID (exists:categories,id) |
+| `region_id` | Ixtiyoriy | Viloyat ID |
+| `district_id` | Ixtiyoriy | Tuman ID |
+| `street_id` | Ixtiyoriy, null | Ko'cha ID yoki `null` (ko'cha tanlanmagan) |
+
+**Javob (200):**
+```json
+{
+  "message": "Do'kon yangilandi.",
+  "tenant": {
+    "id": 1,
+    "name": "Tahrirlangan nomi",
+    "category_id": 2,
+    "region_id": 1,
+    "district_id": 5,
+    "street_id": 120,
+    "plan_id": 1,
+    "status": "active",
+    "region": { "id": 1, "name": "Toshkent" },
+    "district": { "id": 5, "name": "Yunusobod" },
+    "street": { "id": 120, "name": "Amir Temur ko'chasi" },
+    "category": { "id": 2, "name": "Maishiy texnika" }
+  }
+}
+```
+
+**Xatolar:**
+- **403:** `Bu do'konni tahrirlash huquqingiz yo'q.` (owner emas yoki obuna expired)
+- **422:** Validatsiya xatolari
+
+### 17.5. Do'konni o'chirish
 
 - **Web:** `DELETE /shops/{tenant}` — do'kon egasi active yoki o'ziga tegishli boshqa do'konni o'chira oladi.
 - **API:** `DELETE /api/v1/tenants/{tenant}` — faqat `shop_owner` va faqat o'z do'koni uchun.
@@ -1196,7 +1237,7 @@ Body: `name`, `category_id`, `region_id`, `district_id`, `street_id`
 - Agar owner’da boshqa do'kon bo'lsa, `users.tenant_id` keyingi do'konga o'tkaziladi; qolmasa `null` bo'ladi.
 - Admin paneldagi `/admin/tenants/{tenant}` delete ham shu servis logikasidan foydalanadi.
 
-### 17.5. Joylashuv ma'lumotlari (authsiz API)
+### 17.6. Joylashuv ma'lumotlari (authsiz API)
 
 | Endpoint | Tavsif |
 |----------|--------|
@@ -1341,6 +1382,8 @@ users ──────────┐
 | POST | `/promo-codes/check` | Promocode tekshirish (2026-03-26) |
 | GET | `/tenants` | Foydalanuvchiga ruxsat etilgan do'konlar + active tenant |
 | PUT | `/tenants/active` | Active do'konni tanlash (`tenant_id`) |
+| PUT | `/tenants/{tenant}` | Do'konni tahrirlash (faqat owner o'z do'konini) |
+| PATCH | `/tenants/{tenant}` | Do'konni qisman yangilash (PUT bilan bir xil) |
 | DELETE | `/tenants/{tenant}` | Owner o'z do'konini va unga tegishli ma'lumotlarni o'chiradi |
 | POST | `/support/chat` | AI support bot — xabar yuborish |
 | GET | `/support/history` | AI support bot — chat tarixi |
@@ -2039,48 +2082,6 @@ GROQ_API_KEY=...
 {
   "message": "Basic (Oddiy) ta'rifda faqat bitta do'kon mumkin.",
   "requires_upgrade": true
-}
-```
-
-#### Do'konni Tahrirash
-
-**Endpoint:** `PUT /tenants/{tenant}`
-
-**Headers:** `Authorization: ******`
-
-**Request:**
-```json
-{
-  "name": "Tahrirlangan Do'kon Nomi",
-  "category_id": 3,
-  "region_id": 2,
-  "district_id": 8,
-  "street_id": 200
-}
-```
-
-**Response (200 — Muvaffaqiyatli):**
-```json
-{
-  "message": "Do'kon yangilandi.",
-  "tenant": {
-    "id": 1,
-    "name": "Tahrirlangan Do'kon Nomi",
-    "region": "Tashkent shahri",
-    "district": "Chilonzor tumani",
-    "street": "Toshkent shahri, Chilonzor tumani",
-    "category": "Oziq-ovqat",
-    "plan_id": 2,
-    "status": "active",
-    "balance": 0
-  }
-}
-```
-
-**Response (403 — Ruxsat yo'q):**
-```json
-{
-  "message": "Bu do'konni tahrirsh huquqingiz yo'q."
 }
 ```
 

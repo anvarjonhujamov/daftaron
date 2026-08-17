@@ -1,68 +1,71 @@
 import axios from './axios'
 
 export const tenantsApi = {
-    getTenants: async () => {
-        const response = await axios.get('/tenants')
-        return response.data
+    getTenants: async (params = {}) => {
+        const { page = 1, perPage = 100 } = params
+        const query = new URLSearchParams({
+            page: String(page),
+            per_page: String(perPage)
+        }).toString()
+
+        const response = await axios.get(`/tenants?${query}`)
+        const data = response.data?.data || response.data?.tenants || response.data
+        return Array.isArray(data) ? data : []
+    },
+
+    getTenant: async (tenantId) => {
+        const response = await axios.get(`/tenants/${tenantId}`)
+        return response.data?.tenant || response.data?.data || response.data
     },
 
     createTenant: async (data) => {
         const response = await axios.post('/tenants', data)
-        return response.data
+        return response.data?.tenant || response.data?.data || response.data
     },
 
     updateTenant: async (tenantId, data) => {
-        // Prefer PATCH for partial updates; try PATCH, then PUT. If server returns allowed methods header, honor it.
+        const sendRequest = async (method) => {
+            const result = await axios.request({
+                method,
+                url: `/tenants/${tenantId}`,
+                data
+            })
+            return result.data?.tenant || result.data?.data || result.data
+        }
+
         try {
-            const respPatch = await axios.patch(`/tenants/${tenantId}`, data)
-            return respPatch.data
+            return await sendRequest('put')
         } catch (err) {
             const status = err?.response?.status
-            const allowHeader = err?.response?.headers?.allow || err?.response?.headers?.Allow || ''
-            const allowed = String(allowHeader || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
-
-            // If server explicitly allows PUT, try it
-            if (allowed.includes('PUT')) {
-                const respPut = await axios.put(`/tenants/${tenantId}`, data)
-                return respPut.data
+            if (status === 405 || status === 404) {
+                console.warn(`[tenantsApi.updateTenant] /tenants/${tenantId} PUT failed with ${status}, retrying with PATCH`)
+                return await sendRequest('patch')
             }
-
-            // If initial PATCH failed but server didn't specify allowed methods, try PUT as a fallback
-            if (status === 405 || status === 404 || status === 400 || allowed.length === 0) {
-                try {
-                    const respPut = await axios.put(`/tenants/${tenantId}`, data)
-                    return respPut.data
-                } catch (err2) {
-                    const allow2 = err2?.response?.headers?.allow || err2?.response?.headers?.Allow || ''
-                    const allowed2 = String(allow2 || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
-                    if (allowed2.length === 0) {
-                        // No allowed update methods found — surface helpful error to user
-                        const message = err2?.response?.data?.message || `Server does not support update on /tenants/${tenantId}. Allowed methods: ${allow2 || 'none'}`
-                        const error = new Error(message)
-                        error.original = err2
-                        error.allowedMethods = allowed2
-                        throw error
-                    }
-                    throw err2
-                }
-            }
-
-            // If PATCH failed and server explicitly disallows PUT/PATCH, give informative error
-            const message = err?.response?.data?.message || `Server does not support PATCH/PUT on /tenants/${tenantId}. Allowed methods: ${allowHeader || 'none'}`
-            const error = new Error(message)
-            error.original = err
-            error.allowedMethods = allowed
-            throw error
+            throw err
         }
     },
 
-    setActiveTenant: async (tenantId) => {
-        const response = await axios.put('/tenants/active', { tenant_id: tenantId })
-        return response.data
-    },
-
     deleteTenant: async (tenantId) => {
-        const response = await axios.delete(`/tenants/${tenantId}`)
-        return response.data
+        const sendRequest = async (method) => {
+            const result = await axios.request({
+                method,
+                url: `/tenants/${tenantId}`
+            })
+            return result.data
+        }
+
+        try {
+            return await sendRequest('delete')
+        } catch (err) {
+            const status = err?.response?.status
+            if (status === 405 || status === 404) {
+                console.warn(`[tenantsApi.deleteTenant] /tenants/${tenantId} DELETE failed with ${status}, trying POST /destroy fallback`)
+                const result = await axios.post(`/tenants/${tenantId}`, { _method: 'delete' })
+                return result.data
+            }
+            throw err
+        }
     }
 }
+
+export default tenantsApi

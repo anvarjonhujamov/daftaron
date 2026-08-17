@@ -18,32 +18,54 @@ export default function LocationSelector({
     const [streetsError, setStreetsError] = useState('')
 
     const isNumericId = (v) => typeof v === 'number' || (typeof v === 'string' && String(parseInt(v, 10)) === String(v))
+    const numOrNull = (v) => {
+        if (v === null || v === undefined || v === '') return null
+        const n = parseInt(v, 10)
+        return Number.isFinite(n) ? n : null
+    }
+    const strOrEmpty = (v) => (v === null || v === undefined || v === '' ? '' : String(v))
 
-    const getRegionName = (idOrName) => {
-        const found = regions.find((region) => String(region.id) === String(idOrName))
-        if (found) return found.name
-        // if no numeric match and a string was passed, return it (it's likely the name)
-        if (idOrName && !isNumericId(idOrName)) return String(idOrName)
-        return ''
+    const findRegion = (idOrName) => regions.find((r) => strOrEmpty(r.id) === strOrEmpty(idOrName))
+    const findDistrict = (idOrName) => districts.find((d) => strOrEmpty(d.id) === strOrEmpty(idOrName))
+    const findStreet = (idOrName) => streets.find((s) => strOrEmpty(s.id) === strOrEmpty(idOrName))
+
+    const suppliedRegionName = value?.region_name || value?.regionName || ''
+    const suppliedDistrictName = value?.district_name || value?.districtName || ''
+    const suppliedStreetName = value?.street_name || value?.streetName || ''
+
+    const getRegionLabel = (v) => {
+        if (v === null || v === undefined || v === '') return ''
+        const match = findRegion(v)
+        if (match) return match.name
+        if (suppliedRegionName) return suppliedRegionName
+        if (loadingRegions) return 'Yuklanmoqda...'
+        if (!isNumericId(v)) return String(v)
+        return 'Tanlangan viloyat'
     }
-    const getDistrictName = (idOrName) => {
-        const found = districts.find((district) => String(district.id) === String(idOrName))
-        if (found) return found.name
-        if (idOrName && !isNumericId(idOrName)) return String(idOrName)
-        return ''
+    const getDistrictLabel = (v) => {
+        if (v === null || v === undefined || v === '') return ''
+        const match = findDistrict(v)
+        if (match) return match.name
+        if (suppliedDistrictName) return suppliedDistrictName
+        if (loadingDistricts) return 'Yuklanmoqda...'
+        if (!isNumericId(v)) return String(v)
+        return 'Tanlangan tuman'
     }
-    const getStreetName = (idOrName) => {
-        const found = streets.find((street) => String(street.id) === String(idOrName))
-        if (found) return found.name
-        if (idOrName && !isNumericId(idOrName)) return String(idOrName)
-        return ''
+    const getStreetLabel = (v) => {
+        if (v === null || v === undefined || v === '') return ''
+        const match = findStreet(v)
+        if (match) return match.name
+        if (suppliedStreetName) return suppliedStreetName
+        if (loadingStreets) return 'Yuklanmoqda...'
+        if (!isNumericId(v)) return String(v)
+        return 'Tanlangan ko\'cha'
     }
 
     const buildLocationLabel = (regionId, districtId, streetId) => {
         const parts = []
-        const regionName = getRegionName(regionId)
-        const districtName = getDistrictName(districtId)
-        const streetName = getStreetName(streetId)
+        const regionName = getRegionLabel(regionId)
+        const districtName = getDistrictLabel(districtId)
+        const streetName = getStreetLabel(streetId)
         if (regionName) parts.push(regionName)
         if (districtName) parts.push(districtName)
         if (streetName) parts.push(streetName)
@@ -55,25 +77,21 @@ export default function LocationSelector({
     }, [])
 
     useEffect(() => {
-        // Only attempt to load districts by region id when a numeric id is provided
-        if (value.region_id && isNumericId(value.region_id)) {
-            loadDistricts(value.region_id)
-        } else if (!value.region_id) {
+        const numeric = numOrNull(value.region_id)
+        if (numeric) {
+            loadDistricts(numeric)
+        } else {
             setDistricts([])
             setStreets([])
-        } else {
-            // non-numeric region provided (likely a name) — keep districts/street arrays as-is so the synthetic options can show
-            // do not call API with non-numeric id
         }
     }, [value.region_id])
 
     useEffect(() => {
-        if (value.district_id && isNumericId(value.district_id)) {
-            loadStreets(value.district_id)
-        } else if (!value.district_id) {
-            setStreets([])
+        const numeric = numOrNull(value.district_id)
+        if (numeric) {
+            loadStreets(numeric)
         } else {
-            // non-numeric district provided — skip API call
+            setStreets([])
         }
     }, [value.district_id])
 
@@ -123,33 +141,50 @@ export default function LocationSelector({
     }
 
     const handleRegionChange = (e) => {
-        const regionId = e.target.value ? parseInt(e.target.value) : null
+        const regionId = numOrNull(e.target.value)
+        const regionNameMatch = regionId ? findRegion(regionId)?.name || suppliedRegionName : ''
         onChange({
             region_id: regionId,
+            region_name: regionNameMatch,
             district_id: null,
-            street_id: null
+            district_name: '',
+            street_id: null,
+            street_name: ''
         })
         onAddressChange?.(buildLocationLabel(regionId, null, null))
     }
 
     const handleDistrictChange = (e) => {
-        const districtId = e.target.value ? parseInt(e.target.value) : null
+        const districtId = numOrNull(e.target.value)
+        const districtNameMatch = districtId ? findDistrict(districtId)?.name || suppliedDistrictName : ''
         onChange({
             ...value,
             district_id: districtId,
-            street_id: null
+            district_name: districtNameMatch,
+            street_id: null,
+            street_name: ''
         })
         onAddressChange?.(buildLocationLabel(value.region_id, districtId, null))
     }
 
     const handleStreetChange = (e) => {
-        const streetId = e.target.value ? parseInt(e.target.value) : null
+        const streetId = numOrNull(e.target.value)
+        const streetNameMatch = streetId ? findStreet(streetId)?.name || suppliedStreetName : ''
         onChange({
             ...value,
-            street_id: streetId
+            street_id: streetId,
+            street_name: streetNameMatch
         })
         onAddressChange?.(buildLocationLabel(value.region_id, value.district_id, streetId))
     }
+
+    const regionHasValue = value.region_id != null && value.region_id !== ''
+    const districtHasValue = value.district_id != null && value.district_id !== ''
+    const streetHasValue = value.street_id != null && value.street_id !== ''
+
+    const regionLabel = getRegionLabel(value.region_id)
+    const districtLabel = getDistrictLabel(value.district_id)
+    const streetLabel = getStreetLabel(value.street_id)
 
     return (
         <div className="space-y-3">
@@ -157,17 +192,24 @@ export default function LocationSelector({
                 <label className="label">Viloyat</label>
                 <select
                     className="input"
-                    value={value.region_id || ''}
+                    value={strOrEmpty(value.region_id)}
                     onChange={handleRegionChange}
                     required={required}
                 >
-                    <option value="">{loadingRegions ? 'Yuklanmoqda...' : regions.length ? 'Tanlang...' : regionsError || 'Viloyatlar mavjud emas'}</option>
-                    {/* If value.region_id is a non-numeric name, show it as a synthetic option so the select displays it */}
-                    {value.region_id && !isNumericId(value.region_id) && (
-                        <option value={value.region_id} key="initial-region">{String(value.region_id)}</option>
+                    <option value="">
+                        {loadingRegions
+                            ? 'Yuklanmoqda...'
+                            : regions.length
+                            ? 'Tanlang...'
+                            : regionsError || 'Viloyatlar mavjud emas'}
+                    </option>
+                    {regionHasValue && regionLabel && (
+                        <option value={strOrEmpty(value.region_id)} key="always-region">
+                            {regionLabel}
+                        </option>
                     )}
                     {regions.map(region => (
-                        <option key={region.id} value={region.id}>{region.name}</option>
+                        <option key={region.id} value={strOrEmpty(region.id)}>{region.name}</option>
                     ))}
                 </select>
             </div>
@@ -176,18 +218,27 @@ export default function LocationSelector({
                 <label className="label">Tuman</label>
                 <select
                     className="input"
-                    value={value.district_id || ''}
+                    value={strOrEmpty(value.district_id)}
                     onChange={handleDistrictChange}
-                    disabled={!value.region_id || loadingDistricts}
+                    disabled={!regionHasValue || loadingDistricts}
                     required={required}
                 >
-                    <option value="">{loadingDistricts ? 'Yuklanmoqda...' : value.region_id ? districts.length ? 'Tanlang...' : districtsError || 'Tumanlar mavjud emas' : 'Avval viloyatni tanlang'}</option>
-                    {/* Show synthetic district option if a non-numeric district name was provided */}
-                    {value.district_id && !isNumericId(value.district_id) && (
-                        <option value={value.district_id} key="initial-district">{String(value.district_id)}</option>
+                    <option value="">
+                        {loadingDistricts
+                            ? 'Yuklanmoqda...'
+                            : regionHasValue
+                            ? districts.length
+                            ? 'Tanlang...'
+                            : districtsError || 'Tumanlar mavjud emas'
+                            : 'Avval viloyatni tanlang'}
+                    </option>
+                    {districtHasValue && districtLabel && (
+                        <option value={strOrEmpty(value.district_id)} key="always-district">
+                            {districtLabel}
+                        </option>
                     )}
                     {districts.map(district => (
-                        <option key={district.id} value={district.id}>{district.name}</option>
+                        <option key={district.id} value={strOrEmpty(district.id)}>{district.name}</option>
                     ))}
                 </select>
             </div>
@@ -196,18 +247,27 @@ export default function LocationSelector({
                 <label className="label">Ko'cha/MFY</label>
                 <select
                     className="input"
-                    value={value.street_id || ''}
+                    value={strOrEmpty(value.street_id)}
                     onChange={handleStreetChange}
-                    disabled={!value.district_id || loadingStreets}
+                    disabled={!districtHasValue || loadingStreets}
                     required={required}
                 >
-                    <option value="">{loadingStreets ? 'Yuklanmoqda...' : value.district_id ? streets.length ? 'Tanlang...' : streetsError || 'Koʻchalar mavjud emas' : 'Avval tumanni tanlang'}</option>
-                    {/* Show synthetic street option if a non-numeric street name was provided */}
-                    {value.street_id && !isNumericId(value.street_id) && (
-                        <option value={value.street_id} key="initial-street">{String(value.street_id)}</option>
+                    <option value="">
+                        {loadingStreets
+                            ? 'Yuklanmoqda...'
+                            : districtHasValue
+                            ? streets.length
+                            ? 'Tanlang...'
+                            : streetsError || 'Koʻchalar mavjud emas'
+                            : 'Avval tumanni tanlang'}
+                    </option>
+                    {streetHasValue && streetLabel && (
+                        <option value={strOrEmpty(value.street_id)} key="always-street">
+                            {streetLabel}
+                        </option>
                     )}
                     {streets.map(street => (
-                        <option key={street.id} value={street.id}>{street.name}</option>
+                        <option key={street.id} value={strOrEmpty(street.id)}>{street.name}</option>
                     ))}
                 </select>
             </div>

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Drawer } from 'vaul'
 import { customersApi } from '../api/customers.api'
 import { debtsApi } from '../api/debts.api'
-import { Search, Plus, ChevronRight, Users, User, Phone, X, Loader2, Clock, MessageSquare } from 'lucide-react'
+import { Search, Plus, ChevronRight, Users, User, Phone, X, Loader2, Clock, MessageSquare, Edit2 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { CustomersSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
@@ -376,21 +376,31 @@ export default function CustomersPage() {
                                         </div>
                                     )}
                                     {(item.phone || item.customer_phone) && (
-                                                <button
-                                                    disabled={sendingSms === (item.id || item.customer_id)}
-                                                    onClick={(e) => {
-                                                        e.preventDefault()
-                                                        handleSendSms(item)
-                                                    }}
-                                                    className="flex items-center justify-center gap-2 mt-3 py-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-[#1e293b] dark:text-blue-400 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium w-full disabled:opacity-50"
-                                                >
-                                                    {sendingSms === (item.id || item.customer_id) ? (
-                                                        <Loader2 size={16} className="animate-spin" />
-                                                    ) : (
-                                                        <MessageSquare size={16} />
-                                                    )}
-                                                    SMS yuborish
-                                                </button>
+                                                <div className="flex gap-2 mt-3">
+                                                    <Link
+                                                        to={`/customers/${item.customer_id || item.id}/edit`}
+                                                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-[#1e293b] dark:text-gray-200 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium"
+                                                        title="Mijozni tahrirlash"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                        Tahrirlash
+                                                    </Link>
+                                                    <button
+                                                        disabled={sendingSms === (item.id || item.customer_id)}
+                                                        onClick={(e) => {
+                                                            e.preventDefault()
+                                                            handleSendSms(item)
+                                                        }}
+                                                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-[#1e293b] dark:text-blue-400 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium disabled:opacity-50"
+                                                    >
+                                                        {sendingSms === (item.id || item.customer_id) ? (
+                                                            <Loader2 size={16} className="animate-spin" />
+                                                        ) : (
+                                                            <MessageSquare size={16} />
+                                                        )}
+                                                        SMS yuborish
+                                                    </button>
+                                                </div>
                                     )}
                                 </div>
                             ))}
@@ -472,6 +482,14 @@ export default function CustomersPage() {
                                             );
                                         })()}
                                     </div>
+                                    <Link
+                                        to={`/customers/${customer.id}/edit`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="w-9 h-9 rounded-xl flex items-center justify-center bg-gray-100/70 dark:bg-gray-800/70 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors shrink-0"
+                                        title="Mijozni tahrirlash"
+                                    >
+                                        <Edit2 size={15} />
+                                    </Link>
                                     <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
                                 </Link>
                             ))}
