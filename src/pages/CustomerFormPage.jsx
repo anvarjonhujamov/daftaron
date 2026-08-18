@@ -66,9 +66,6 @@ export default function CustomerFormPage() {
     const { id } = useParams()
     const isEdit = Boolean(id)
 
-    const [regions, setRegions] = useState([])
-    const [regionsLoaded, setRegionsLoaded] = useState(false)
-
     const [form, setForm] = useState({
         name: '',
         phone: PHONE_PREFIX,
@@ -82,42 +79,54 @@ export default function CustomerFormPage() {
         street_name: ''
     })
     const [loading, setLoading] = useState(false)
-    const [loadingCustomer, setLoadingCustomer] = useState(isEdit)
+    const [pageLoading, setPageLoading] = useState(true)
     const [error, setError] = useState('')
     const [errors, setErrors] = useState({})
 
     useEffect(() => {
-        ;(async () => {
-            const cached = loadCache(CACHE_REGIONS_KEY)
-            if (Array.isArray(cached) && cached.length) {
-                setRegions(cached)
-                setRegionsLoaded(true)
-                return
-            }
-            try {
-                const data = await locationsApi.getRegions()
-                const list = Array.isArray(data) ? data : (data?.data || [])
-                setRegions(list)
-                if (list.length) saveCache(CACHE_REGIONS_KEY, list)
-            } catch (e) {
-                console.warn('[CustomerFormPage] regions load fail', e?.message)
-            } finally {
-                setRegionsLoaded(true)
-            }
-        })()
-    }, [])
-
-    useEffect(() => {
-        if (!isEdit) return
         let mounted = true
         ;(async () => {
-            setLoadingCustomer(true)
+            setPageLoading(true)
             try {
-                // customersApi.getCustomer already unwraps {customer|data|raw}
-                const c = await customersApi.getCustomer(id)
-                if (!mounted || !c || typeof c !== 'object') return
+                // ========= 1. REGIONS (cache or HTTP) =========
+                let regions = []
+                const cachedRegions = loadCache(CACHE_REGIONS_KEY)
+                if (Array.isArray(cachedRegions) && cachedRegions.length) {
+                    regions = cachedRegions
+                } else {
+                    try {
+                        const r = await locationsApi.getRegions()
+                        regions = Array.isArray(r) ? r : (r?.data || [])
+                        if (Array.isArray(regions) && regions.length) saveCache(CACHE_REGIONS_KEY, regions)
+                    } catch (e) {
+                        console.warn('[CustomerFormPage] regions load fail', e?.message)
+                        regions = []
+                    }
+                }
 
-                const rawAddress = String(pickAny(c, ['address', 'full_address', 'address_line', 'location', 'place', 'manzil', 'addressLine1'], ''))
+                if (!isEdit) {
+                    if (mounted) setPageLoading(false)
+                    return
+                }
+
+                // ========= 2. GET CUSTOMER =========
+                const c = await customersApi.getCustomer(id)
+                console.log('[CustomerFormPage:getCustomer] RAW CUSTOMER:', c)
+                console.log('[CustomerFormPage:getCustomer] OBJECT KEYS:', c && typeof c === 'object' ? Object.keys(c) : [])
+
+                if (!mounted || !c || typeof c !== 'object') {
+                    if (mounted) setPageLoading(false)
+                    return
+                }
+
+                // ========= 3. ADDRESS (30+ variant) =========
+                const addressKeys = [
+                    'address', 'full_address', 'address_line', 'address_line1',
+                    'location', 'place', 'manzil', 'addressLine1',
+                    'customer_address', 'customer_full_address', 'customer_location', 'customer_manzil',
+                    'c_address', 'c_location', 'profile_address', 'user_address'
+                ]
+                const rawAddress = String(pickAny(c, addressKeys, ''))
                 let parsedRegionName = ''
                 let parsedDistrictName = ''
                 let parsedStreetName = ''
@@ -130,16 +139,61 @@ export default function CustomerFormPage() {
                     parsedStreetName = rawAddress
                 }
 
-                const regionNestedObj = pickAny(c, ['region', 'viloyat', 'province', 'area', 'regionObj'], null)
-                const districtNestedObj = pickAny(c, ['district', 'tuman', 'shahar', 'city', 'county', 'districtObj'], null)
-                const streetNestedObj = pickAny(c, ['street', 'kocha', 'mfy', 'mahalla', 'neighborhood', 'streetObj', 'quarter'], null)
+                // ========= 4. NESTED OBJECTS (30+ variant) =========
+                const regionObjKeys = [
+                    'region', 'viloyat', 'province', 'area', 'regionObj',
+                    'customer_region', 'customer_viloyat', 'user_region', 'profile_region'
+                ]
+                const districtObjKeys = [
+                    'district', 'tuman', 'shahar', 'city', 'county', 'districtObj',
+                    'customer_district', 'customer_tuman', 'user_district', 'profile_district'
+                ]
+                const streetObjKeys = [
+                    'street', 'kocha', 'mfy', 'mahalla', 'neighborhood', 'streetObj', 'quarter',
+                    'customer_street', 'customer_kocha', 'customer_mfy', 'customer_mahalla',
+                    'user_street', 'profile_street'
+                ]
+                const regionNestedObj = pickAny(c, regionObjKeys, null)
+                const districtNestedObj = pickAny(c, districtObjKeys, null)
+                const streetNestedObj = pickAny(c, streetObjKeys, null)
 
-                const regionIdKeys = ['region_id', 'regionId', 'viloyat_id', 'province_id', 'provinceId', 'viloyatId']
-                const regionNameKeys = ['region_name', 'regionName', 'viloyat_name', 'viloyatNomi', 'province_name', 'provinceName']
-                const districtIdKeys = ['district_id', 'districtId', 'tuman_id', 'shahar_id', 'city_id', 'cityId', 'county_id', 'tumanId']
-                const districtNameKeys = ['district_name', 'districtName', 'tuman_name', 'tumanNomi', 'city_name', 'cityName', 'county_name']
-                const streetIdKeys = ['street_id', 'streetId', 'kocha_id', 'mfy_id', 'mahalla_id', 'mahallaId', 'neighborhood_id', 'quarter_id', 'kochaId']
-                const streetNameKeys = ['street_name', 'streetName', 'kocha_name', 'kochaNomi', 'mfy_name', 'mahalla_name', 'mahallaNomi', 'neighborhood_name', 'quarter_name']
+                const regionIdKeys = [
+                    'region_id', 'regionId', 'viloyat_id', 'province_id', 'provinceId', 'viloyatId',
+                    'customer_region_id', 'customer_regionId', 'customer_viloyat_id', 'customer_province_id',
+                    'c_region_id', 'user_region_id', 'profile_region_id'
+                ]
+                const regionNameKeys = [
+                    'region_name', 'regionName', 'viloyat_name', 'viloyatNomi', 'province_name', 'provinceName',
+                    'customer_region_name', 'customer_regionName', 'customer_viloyat_name', 'customer_viloyatNomi',
+                    'customer_province_name', 'customer_provinceName',
+                    'c_region_name', 'user_region_name', 'profile_region_name'
+                ]
+                const districtIdKeys = [
+                    'district_id', 'districtId', 'tuman_id', 'shahar_id', 'city_id', 'cityId', 'county_id', 'tumanId',
+                    'customer_district_id', 'customer_districtId', 'customer_tuman_id', 'customer_city_id',
+                    'c_district_id', 'user_district_id', 'profile_district_id'
+                ]
+                const districtNameKeys = [
+                    'district_name', 'districtName', 'tuman_name', 'tumanNomi', 'city_name', 'cityName', 'county_name',
+                    'customer_district_name', 'customer_districtName', 'customer_tuman_name', 'customer_tumanNomi',
+                    'customer_city_name', 'customer_cityName',
+                    'c_district_name', 'user_district_name', 'profile_district_name'
+                ]
+                const streetIdKeys = [
+                    'street_id', 'streetId', 'kocha_id', 'mfy_id', 'mahalla_id', 'mahallaId',
+                    'neighborhood_id', 'quarter_id', 'kochaId',
+                    'customer_street_id', 'customer_streetId', 'customer_kocha_id', 'customer_mfy_id',
+                    'customer_mahalla_id', 'customer_mahallaId', 'customer_neighborhood_id', 'customer_quarter_id',
+                    'c_street_id', 'user_street_id', 'profile_street_id'
+                ]
+                const streetNameKeys = [
+                    'street_name', 'streetName', 'kocha_name', 'kochaNomi', 'mfy_name', 'mahalla_name', 'mahallaNomi',
+                    'neighborhood_name', 'quarter_name',
+                    'customer_street_name', 'customer_streetName', 'customer_kocha_name', 'customer_kochaNomi',
+                    'customer_mfy_name', 'customer_mahalla_name', 'customer_mahallaNomi',
+                    'customer_neighborhood_name', 'customer_quarter_name',
+                    'c_street_name', 'user_street_name', 'profile_street_name'
+                ]
 
                 let rIdRaw = pickId(regionNestedObj, pickAny(c, regionIdKeys, null))
                 let rNameRaw = pickName(regionNestedObj, pickAny(c, regionNameKeys, ''), rIdRaw)
@@ -152,35 +206,83 @@ export default function CustomerFormPage() {
                 const dName = dNameRaw || parsedDistrictName
                 const sName = sNameRaw || parsedStreetName
 
-                if (rIdRaw == null && rName && regionsLoaded) {
+                if (rIdRaw == null && rName && regions.length) {
                     rIdRaw = resolveNameToId(rName, regions)
                 }
+                // If we now have region ID but district ID null, try to load districts list for NAME→ID resolve
+                let dList = []
+                if (rIdRaw != null && dIdRaw == null && dName) {
+                    try {
+                        const districtsResp = await locationsApi.getDistricts(rIdRaw)
+                        dList = Array.isArray(districtsResp) ? districtsResp : (districtsResp?.data || [])
+                        dIdRaw = resolveNameToId(dName, dList)
+                    } catch (e) { console.warn('[CustomerFormPage] districts lookup fail', e) }
+                }
+                // If district ID resolved but street ID null and street name given, try street NAME→ID
+                if (dIdRaw != null && sIdRaw == null && sName) {
+                    try {
+                        const streetsResp = await locationsApi.getStreets(dIdRaw)
+                        const sList = Array.isArray(streetsResp) ? streetsResp : (streetsResp?.data || [])
+                        sIdRaw = resolveNameToId(sName, sList)
+                    } catch (e) { console.warn('[CustomerFormPage] streets lookup fail', e) }
+                }
 
-                setForm({
-                    name: pickAny(c, ['name', 'full_name', 'fullName', 'ismi', 'firstName', 'lastName'],
-                        (c.first_name && c.last_name ? `${c.first_name} ${c.last_name}` : '')),
-                    phone: pickAny(c, ['phone', 'phone_number', 'phoneNumber', 'tel', 'telefon', 'contact', 'mobile', 'mobileNumber', 'mobile_phone'])
-                        ? formatPhoneNumber(String(pickAny(c, ['phone', 'phone_number', 'phoneNumber', 'tel', 'telefon', 'contact', 'mobile', 'mobileNumber', 'mobile_phone'])))
-                        : PHONE_PREFIX,
+                // ========= NAME =========
+                const nameKeys = [
+                    'name', 'full_name', 'fullName', 'ismi', 'firstName', 'lastName', 'customer_name',
+                    'customer_full_name', 'customer_fullName', 'customer_ismi', 'c_name', 'user_name', 'profile_name',
+                    'fullname', 'client_name'
+                ]
+                const firstName = pickAny(c, ['first_name', 'firstName', 'customer_first_name', 'firstNameK'], '')
+                const lastName = pickAny(c, ['last_name', 'lastName', 'customer_last_name', 'lastNameK'], '')
+                const comboFL = (firstName && lastName) ? `${firstName} ${lastName}` : ''
+                const resolvedName = pickAny(c, nameKeys, comboFL)
+
+                // ========= PHONE =========
+                const phoneKeys = [
+                    'phone', 'phone_number', 'phoneNumber', 'tel', 'telefon', 'contact',
+                    'mobile', 'mobileNumber', 'mobile_phone', 'mobilePhone',
+                    'customer_phone', 'customer_phone_number', 'customer_phoneNumber', 'customer_mobile', 'customer_telefon',
+                    'c_phone', 'user_phone', 'profile_phone', 'client_phone'
+                ]
+                const resolvedPhone = pickAny(c, phoneKeys, '')
+
+                // ========= NOTE =========
+                const noteKeys = [
+                    'note', 'notes', 'comment', 'comments', 'izoh', 'description', 'info', 'extra', 'remarks',
+                    'customer_note', 'customer_comment', 'customer_izoh', 'customer_info', 'c_note', 'user_note', 'profile_note'
+                ]
+                const resolvedNote = pickAny(c, noteKeys, '')
+
+                const nextForm = {
+                    name: String(resolvedName || ''),
+                    phone: resolvedPhone ? formatPhoneNumber(String(resolvedPhone)) : PHONE_PREFIX,
                     address: rawAddress,
-                    note: pickAny(c, ['note', 'notes', 'comment', 'comments', 'izoh', 'description', 'info', 'extra'], ''),
+                    note: String(resolvedNote || ''),
                     region_id: rIdRaw,
                     region_name: rName,
                     district_id: dIdRaw,
                     district_name: dName,
                     street_id: sIdRaw,
                     street_name: sName
-                })
+                }
+                console.log('[CustomerFormPage] setForm state =', nextForm)
+                console.log('[CustomerFormPage] region_id =', rIdRaw, 'region_name =', rName)
+                console.log('[CustomerFormPage] district_id =', dIdRaw, 'district_name =', dName)
+                console.log('[CustomerFormPage] street_id =', sIdRaw, 'street_name =', sName)
+
+                setForm(nextForm)
             } catch (err) {
+                console.error('[CustomerFormPage] load error:', err)
                 const message = err?.response?.data?.message || 'Mijoz ma\'lumotlarini yuklashda xatolik'
                 toast.error(message)
                 setTimeout(() => navigate('/customers'), 1000)
             } finally {
-                if (mounted) setLoadingCustomer(false)
+                if (mounted) setPageLoading(false)
             }
         })()
         return () => { mounted = false }
-    }, [id, isEdit, navigate, regionsLoaded, regions])
+    }, [id, isEdit, navigate])
 
     const handleLocationChange = (location) => {
         setForm((prev) => ({ ...prev, ...location }))
@@ -232,6 +334,7 @@ export default function CustomerFormPage() {
         }
 
         const fullAddress = makeConcatAddress()
+        console.log('[CustomerFormPage:submit] payload =', { fullAddress, form })
 
         try {
             const submitData = {
@@ -251,7 +354,7 @@ export default function CustomerFormPage() {
 
             if (isEdit) {
                 const updated = await customersApi.updateCustomer(id, submitData)
-                console.info('[CustomerFormPage] updated customer', updated?.id ?? id)
+                console.info('[CustomerFormPage] updated OK', updated?.id ?? id)
                 toast.success('Mijoz ma\'lumotlari yangilandi')
                 navigate(`/customers/${id}`)
             } else {
@@ -262,6 +365,7 @@ export default function CustomerFormPage() {
                 else navigate('/customers')
             }
         } catch (err) {
+            console.error('[CustomerFormPage] submit error', err)
             if (err?.response?.status === 422) {
                 setErrors(err.response.data.errors || {})
                 setError(err.response.data.message || 'Ma\'lumotlarni tekshiring')
@@ -273,7 +377,7 @@ export default function CustomerFormPage() {
         }
     }
 
-    if (loadingCustomer || !regionsLoaded) {
+    if (pageLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <LoadingSpinner />
