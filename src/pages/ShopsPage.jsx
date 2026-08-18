@@ -489,31 +489,35 @@ export default function ShopsPage() {
 
     const renderCategorySelect = (value_id, value_name, onChange, errors, mode) => {
         const numericId = numOrNull(value_id)
-        const resolved = useMemo(() => {
-            if (numericId != null) {
-                const m = categories.find((c) => numOrNull(c.id) === numericId)
-                if (m) return { id: numericId, name: m.name || value_name || '', type: 'id' }
+        let resolved
+        if (numericId != null) {
+            const m = categories.find((c) => numOrNull(c.id) === numericId)
+            if (m) {
+                resolved = { id: numericId, name: m.name || value_name || '', type: 'id' }
+            } else {
+                resolved = { id: numericId, name: value_name || 'Tanlangan', type: 'id-synthetic' }
             }
-            if (value_name) {
-                const nameClean = String(value_name).trim().toLowerCase()
-                const byName = categories.find((c) => {
-                    const cn = String(c?.name || '').trim().toLowerCase()
-                    return cn && nameClean && (cn === nameClean || cn.includes(nameClean) || nameClean.includes(cn))
-                })
-                if (byName?.id) {
-                    return { id: numOrNull(byName.id), name: byName.name || value_name, type: 'name-match' }
-                }
-                return { id: null, name: value_name, type: 'synthetic-name' }
+        } else if (value_name) {
+            const nameClean = String(value_name).trim().toLowerCase()
+            const byName = categories.find((c) => {
+                const cn = String(c?.name || '').trim().toLowerCase()
+                return cn && nameClean && (cn === nameClean || cn.includes(nameClean) || nameClean.includes(cn))
+            })
+            if (byName?.id) {
+                resolved = { id: numOrNull(byName.id), name: byName.name || value_name, type: 'name-match' }
+            } else {
+                resolved = { id: null, name: value_name, type: 'synthetic-name' }
             }
-            return { id: null, name: '', type: 'empty' }
-        }, [categories, numericId, value_name])
+        } else {
+            resolved = { id: null, name: '', type: 'empty' }
+        }
 
         const effectiveId = resolved.id
         const effectiveName = resolved.name || value_name || ''
-        const needsSynthetic = (resolved.type === 'synthetic-name') || (effectiveId != null && !categories.some((c) => numOrNull(c.id) === effectiveId))
+        const needsSynthetic = (resolved.type === 'synthetic-name') || (resolved.type === 'id-synthetic') || (effectiveId != null && !categories.some((c) => numOrNull(c.id) === effectiveId))
         const syntheticKey = (resolved.type === 'synthetic-name')
             ? `s-cat-${mode}-name-${btoa(effectiveName).slice(0, 8)}`
-            : `s-cat-${mode}-${effectiveId}-${btoa(effectiveName).slice(0, 6)}`
+            : `s-cat-${mode}-${String(effectiveId)}-${btoa(effectiveName).slice(0, 6)}`
         const syntheticValue = (resolved.type === 'synthetic-name')
             ? `__name:${encodeURIComponent(effectiveName)}`
             : String(effectiveId)
