@@ -281,36 +281,63 @@ export default function ShopsPage() {
             console.warn('[openEditModal] getTenant fallback list data', err?.response?.status)
         }
 
-        const catId = pickId(merged?.category, merged?.category_id)
-        const catNameFromApi = pickName(merged?.category, merged?.category_name, catId)
-        const catNameFromArr = catId != null ? (categories.find((c) => numOrNull(c.id) === catId)?.name || '') : ''
-        const catName = catNameFromApi || catNameFromArr
+        // Parse comma-separated location string if ID+NAME fields are missing
+        const rawLocation = String(merged?.location || merged?.address || '')
+        let parsedRegionName = ''
+        let parsedDistrictName = ''
+        let parsedStreetName = ''
+        if (rawLocation && rawLocation.includes(',')) {
+            const parts = rawLocation.split(',').map(s => s.trim()).filter(Boolean)
+            parsedRegionName = parts[0] || ''
+            parsedDistrictName = parts[1] || ''
+            parsedStreetName = parts.slice(2).join(', ') || ''
+        }
 
-        const rId = pickId(merged?.region, merged?.region_id)
-        const rName = pickName(merged?.region, merged?.region_name, rId)
-        const dId = pickId(merged?.district, merged?.district_id)
-        const dName = pickName(merged?.district, merged?.district_name, dId)
-        const sId = pickId(merged?.street, merged?.street_id)
-        const sName = pickName(merged?.street, merged?.street_name, sId)
+        const rIdRaw = pickId(merged?.region, merged?.region_id)
+        const rNameRaw = pickName(merged?.region, merged?.region_name, rIdRaw)
+        const dIdRaw = pickId(merged?.district, merged?.district_id)
+        const dNameRaw = pickName(merged?.district, merged?.district_name, dIdRaw)
+        const sIdRaw = pickId(merged?.street, merged?.street_id)
+        const sNameRaw = pickName(merged?.street, merged?.street_name, sIdRaw)
 
-        const finalCategoryId = catId ?? numOrNull(categories?.[0]?.id) ?? null
-        const finalCategoryName = (finalCategoryId === catId ? catName : '') || (finalCategoryId != null
-            ? (categories.find((c) => numOrNull(c.id) === finalCategoryId)?.name || '') : '') || ''
+        const rName = rNameRaw || parsedRegionName
+        const dName = dNameRaw || parsedDistrictName
+        const sName = sNameRaw || parsedStreetName
+
+        const catIdRaw = pickId(merged?.category, merged?.category_id)
+        const catNameRaw = pickName(merged?.category, merged?.category_name, catIdRaw)
+        // If ID missing but NAME present → try to find by NAME in categories array
+        let catId = catIdRaw
+        let catName = catNameRaw
+        if (catId == null && catName) {
+            const byName = categories.find((c) => {
+                const cn = String(c?.name || '').trim().toLowerCase()
+                const tn = String(catName).trim().toLowerCase()
+                return cn && tn && (cn === tn || cn.includes(tn) || tn.includes(cn))
+            })
+            if (byName?.id) {
+                catId = numOrNull(byName.id)
+            }
+        }
+        // Name fallback from array if we have catId but no catName
+        if (!catName && catId != null) {
+            catName = categories.find((c) => numOrNull(c.id) === catId)?.name || ''
+        }
 
         setEditShopForm({
             name: String(merged?.name || merged?.shop_name || ''),
-            category_id: finalCategoryId,
-            category_name: finalCategoryName,
-            region_id: rId,
+            category_id: catId ?? null,
+            category_name: catName || '',
+            region_id: rIdRaw,
             region_name: rName,
-            district_id: dId,
+            district_id: dIdRaw,
             district_name: dName,
-            street_id: sId,
+            street_id: sIdRaw,
             street_name: sName,
-            location: String(merged?.location || merged?.address || getShopLocationLabel({
+            location: rawLocation || getShopLocationLabel({
                 ...merged,
                 region_name: rName, district_name: dName, street_name: sName
-            }) || '')
+            }) || ''
         })
 
         setLoadingEdit(false)
@@ -461,26 +488,61 @@ export default function ShopsPage() {
     }, [purgeCountdown])
 
     const renderCategorySelect = (value_id, value_name, onChange, errors, mode) => {
-        const match = categories.find((c) => numOrNull(c.id) === numOrNull(value_id))
-        const needsSynthetic = value_id != null && !match
-        const syntheticLabel = value_name || 'Tanlangan kategoriya'
+        const numericId = numOrNull(value_id)
+        const resolved = useMemo(() => {
+            if (numericId != null) {
+                const m = categories.find((c) => numOrNull(c.id) === numericId)
+                if (m) return { id: numericId, name: m.name || value_name || '', type: 'id' }
+            }
+            if (value_name) {
+                const nameClean = String(value_name).trim().toLowerCase()
+                const byName = categories.find((c) => {
+                    const cn = String(c?.name || '').trim().toLowerCase()
+                    return cn && nameClean && (cn === nameClean || cn.includes(nameClean) || nameClean.includes(cn))
+                })
+                if (byName?.id) {
+                    return { id: numOrNull(byName.id), name: byName.name || value_name, type: 'name-match' }
+                }
+                return { id: null, name: value_name, type: 'synthetic-name' }
+            }
+            return { id: null, name: '', type: 'empty' }
+        }, [categories, numericId, value_name])
+
+        const effectiveId = resolved.id
+        const effectiveName = resolved.name || value_name || ''
+        const needsSynthetic = (resolved.type === 'synthetic-name') || (effectiveId != null && !categories.some((c) => numOrNull(c.id) === effectiveId))
+        const syntheticKey = (resolved.type === 'synthetic-name')
+            ? `s-cat-${mode}-name-${btoa(effectiveName).slice(0, 8)}`
+            : `s-cat-${mode}-${effectiveId}-${btoa(effectiveName).slice(0, 6)}`
+        const syntheticValue = (resolved.type === 'synthetic-name')
+            ? `__name:${encodeURIComponent(effectiveName)}`
+            : String(effectiveId)
+        const selectValue = effectiveId != null ? String(effectiveId) : (needsSynthetic ? syntheticValue : '')
+
         return (
             <div>
                 <label className="label">Faoliyat turi (kategoriya)</label>
                 <select
                     className="input"
-                    value={value_id != null ? String(value_id) : ''}
+                    value={selectValue}
                     onChange={(e) => {
-                        const id = e.target.value ? parseInt(e.target.value, 10) : null
-                        const name = id ? (categories.find((c) => numOrNull(c.id) === id)?.name || value_name || '') : ''
-                        onChange(id, name)
+                        const v = e.target.value
+                        if (!v) { onChange(null, ''); return }
+                        if (v.startsWith('__name:')) {
+                            const decoded = decodeURIComponent(v.slice(7))
+                            onChange(null, decoded)
+                            return
+                        }
+                        const id = parseInt(v, 10)
+                        const name = categories.find((c) => numOrNull(c.id) === id)?.name || value_name || ''
+                        onChange(Number.isFinite(id) ? id : null, name)
                     }}
                     required
                 >
                     <option value="">Tanlang...</option>
                     {needsSynthetic && (
-                        <option key={`s-cat-${mode}-${value_id}-${btoa(syntheticLabel).slice(0, 6)}`} value={String(value_id)}>
-                            {syntheticLabel}
+                        <option key={syntheticKey} value={syntheticValue}>
+                            {effectiveName || 'Tanlangan kategoriya'}
                         </option>
                     )}
                     {categories.map((cat) => (

@@ -33,6 +33,80 @@ const saveCache = (key, data) => {
     } catch {}
 }
 
+const fuzzyNameMatch = (a, b) => {
+    if (!a || !b) return false
+    const x = String(a).trim().toLowerCase()
+    const y = String(b).trim().toLowerCase()
+    return x && y && (x === y || x.includes(y) || y.includes(x))
+}
+
+const resolveIdAndName = (suppliedId, suppliedName, list, makeNameOption) => {
+    const sid = numOrNull(suppliedId)
+    const sname = strOrEmpty(suppliedName)
+    if (sid != null) {
+        const byId = list.find((item) => numOrNull(item.id) === sid)
+        if (byId) {
+            return {
+                id: sid,
+                name: byId.name || sname || '',
+                type: 'id',
+                selectValue: strOrEmpty(sid),
+                effectiveName: byId.name || sname || '',
+                needsSynthetic: false,
+                syntheticValue: null,
+                syntheticKey: null,
+                itemDisabled: false
+            }
+        }
+        return {
+            id: sid,
+            name: sname || 'Tanlangan',
+            type: 'id-synthetic',
+            selectValue: strOrEmpty(sid),
+            effectiveName: sname || 'Tanlangan',
+            needsSynthetic: true,
+            syntheticValue: strOrEmpty(sid),
+            syntheticKey: makeNameOption ? null : `s-id-${sid}-${btoa(sname).slice(0, 6)}`,
+            itemDisabled: false
+        }
+    }
+    if (sname) {
+        const byName = list.find((item) => fuzzyNameMatch(item.name, sname))
+        if (byName?.id) {
+            const nid = numOrNull(byName.id)
+            return {
+                id: nid,
+                name: byName.name || sname,
+                type: 'name-match',
+                selectValue: strOrEmpty(nid),
+                effectiveName: byName.name || sname,
+                needsSynthetic: false,
+                syntheticValue: null,
+                syntheticKey: null,
+                itemDisabled: false
+            }
+        }
+        const syntheticValue = `__name:${encodeURIComponent(sname)}`
+        return {
+            id: null,
+            name: sname,
+            type: 'synthetic-name',
+            selectValue: syntheticValue,
+            effectiveName: sname,
+            needsSynthetic: true,
+            syntheticValue,
+            syntheticKey: `s-name-${btoa(sname).slice(0, 8)}`,
+            itemDisabled: true
+        }
+    }
+    return {
+        id: null, name: '', type: 'empty',
+        selectValue: '', effectiveName: '',
+        needsSynthetic: false, syntheticValue: null, syntheticKey: null,
+        itemDisabled: false
+    }
+}
+
 export default function LocationSelector({
     value = { region_id: null, region_name: '', district_id: null, district_name: '', street_id: null, street_name: '' },
     onChange,
@@ -49,10 +123,6 @@ export default function LocationSelector({
     const [districtsError, setDistrictsError] = useState('')
     const [streetsError, setStreetsError] = useState('')
 
-    const regionId = numOrNull(value.region_id)
-    const districtId = numOrNull(value.district_id)
-    const streetId = numOrNull(value.street_id)
-
     const pickName = (objName, flatName, fallbackId) => {
         if (typeof objName === 'object' && objName?.name) return String(objName.name)
         if (typeof objName === 'string' && objName) return objName
@@ -61,25 +131,22 @@ export default function LocationSelector({
         return ''
     }
 
-    const suppliedRegionName = pickName(value.region, value.region_name, regionId)
-    const suppliedDistrictName = pickName(value.district, value.district_name, districtId)
-    const suppliedStreetName = pickName(value.street, value.street_name, streetId)
+    const suppliedRegionName = pickName(value.region, value.region_name, value.region_id)
+    const suppliedDistrictName = pickName(value.district, value.district_name, value.district_id)
+    const suppliedStreetName = pickName(value.street, value.street_name, value.street_id)
 
-    const regionMatch = useMemo(() => regions.find((r) => numOrNull(r.id) === regionId), [regions, regionId])
-    const districtMatch = useMemo(() => districts.find((d) => numOrNull(d.id) === districtId), [districts, districtId])
-    const streetMatch = useMemo(() => streets.find((s) => numOrNull(s.id) === streetId), [streets, streetId])
-
-    const regionLabel = regionMatch?.name || suppliedRegionName || (regionId != null ? 'Tanlangan viloyat' : '')
-    const districtLabel = districtMatch?.name || suppliedDistrictName || (districtId != null ? 'Tanlangan tuman' : '')
-    const streetLabel = streetMatch?.name || suppliedStreetName || (streetId != null ? 'Tanlangan ko\'cha' : '')
-
-    const regionSelectValue = strOrEmpty(regionId)
-    const districtSelectValue = strOrEmpty(districtId)
-    const streetSelectValue = strOrEmpty(streetId)
-
-    const needsRegionSynthetic = regionId != null && !regionMatch
-    const needsDistrictSynthetic = districtId != null && !districtMatch
-    const needsStreetSynthetic = streetId != null && !streetMatch
+    const region = useMemo(
+        () => resolveIdAndName(value.region_id, suppliedRegionName, regions),
+        [value.region_id, suppliedRegionName, regions]
+    )
+    const district = useMemo(
+        () => resolveIdAndName(value.district_id, suppliedDistrictName, districts),
+        [value.district_id, suppliedDistrictName, districts]
+    )
+    const street = useMemo(
+        () => resolveIdAndName(value.street_id, suppliedStreetName, streets),
+        [value.street_id, suppliedStreetName, streets]
+    )
 
     useEffect(() => {
         ;(async () => {
@@ -106,14 +173,14 @@ export default function LocationSelector({
     }, [])
 
     useEffect(() => {
-        if (!regionId) {
+        if (!region.id) {
             setDistricts([])
             setStreets([])
             return
         }
         let mounted = true
         ;(async () => {
-            const cacheKey = `${CACHE_DISTRICTS_PREFIX}${regionId}`
+            const cacheKey = `${CACHE_DISTRICTS_PREFIX}${region.id}`
             const cached = loadCache(cacheKey)
             if (Array.isArray(cached) && mounted) {
                 setDistricts(cached)
@@ -122,7 +189,7 @@ export default function LocationSelector({
                 setDistrictsError('')
             }
             try {
-                const data = await locationsApi.getDistricts(regionId)
+                const data = await locationsApi.getDistricts(region.id)
                 const list = Array.isArray(data) ? data : data?.data || []
                 if (mounted) {
                     setDistricts(list)
@@ -141,16 +208,16 @@ export default function LocationSelector({
             }
         })()
         return () => { mounted = false }
-    }, [regionId])
+    }, [region.id])
 
     useEffect(() => {
-        if (!districtId) {
+        if (!district.id) {
             setStreets([])
             return
         }
         let mounted = true
         ;(async () => {
-            const cacheKey = `${CACHE_STREETS_PREFIX}${districtId}`
+            const cacheKey = `${CACHE_STREETS_PREFIX}${district.id}`
             const cached = loadCache(cacheKey)
             if (Array.isArray(cached) && mounted) {
                 setStreets(cached)
@@ -159,7 +226,7 @@ export default function LocationSelector({
                 setStreetsError('')
             }
             try {
-                const data = await locationsApi.getStreets(districtId)
+                const data = await locationsApi.getStreets(district.id)
                 const list = Array.isArray(data) ? data : data?.data || []
                 if (mounted) {
                     setStreets(list)
@@ -178,46 +245,42 @@ export default function LocationSelector({
             }
         })()
         return () => { mounted = false }
-    }, [districtId])
+    }, [district.id])
 
-    const handleRegionChange = (e) => {
-        const next = numOrNull(e.target.value)
-        const nextName = next ? (regions.find((r) => numOrNull(r.id) === next)?.name || regionLabel || '') : ''
-        onChange({
-            region_id: next,
-            region_name: nextName,
-            district_id: null,
-            district_name: '',
-            street_id: null,
-            street_name: ''
-        })
-        onAddressChange?.('')
-    }
-
-    const handleDistrictChange = (e) => {
-        const next = numOrNull(e.target.value)
-        const nextName = next ? (districts.find((d) => numOrNull(d.id) === next)?.name || districtLabel || '') : ''
-        onChange({
-            region_id: regionId,
-            region_name: regionLabel,
-            district_id: next,
-            district_name: nextName,
-            street_id: null,
-            street_name: ''
-        })
-    }
-
-    const handleStreetChange = (e) => {
-        const next = numOrNull(e.target.value)
-        const nextName = next ? (streets.find((s) => numOrNull(s.id) === next)?.name || streetLabel || '') : ''
-        onChange({
-            region_id: regionId,
-            region_name: regionLabel,
-            district_id: districtId,
-            district_name: districtLabel,
-            street_id: next,
-            street_name: nextName
-        })
+    const handleChange = (rawValue, list, level) => {
+        if (!rawValue) {
+            if (level === 'region') {
+                onChange({ region_id: null, region_name: '', district_id: null, district_name: '', street_id: null, street_name: '' })
+                onAddressChange?.('')
+            } else if (level === 'district') {
+                onChange({ region_id: region.id, region_name: region.effectiveName, district_id: null, district_name: '', street_id: null, street_name: '' })
+            } else {
+                onChange({ region_id: region.id, region_name: region.effectiveName, district_id: district.id, district_name: district.effectiveName, street_id: null, street_name: '' })
+            }
+            return
+        }
+        if (rawValue.startsWith('__name:')) {
+            const name = decodeURIComponent(rawValue.slice(7))
+            if (level === 'region') {
+                onChange({ region_id: null, region_name: name, district_id: null, district_name: '', street_id: null, street_name: '' })
+            } else if (level === 'district') {
+                onChange({ region_id: region.id, region_name: region.effectiveName, district_id: null, district_name: name, street_id: null, street_name: '' })
+            } else {
+                onChange({ region_id: region.id, region_name: region.effectiveName, district_id: district.id, district_name: district.effectiveName, street_id: null, street_name: name })
+            }
+            return
+        }
+        const id = numOrNull(rawValue)
+        const match = list.find((item) => numOrNull(item.id) === id)
+        const nm = match?.name || ''
+        if (level === 'region') {
+            onChange({ region_id: id, region_name: nm, district_id: null, district_name: '', street_id: null, street_name: '' })
+            onAddressChange?.('')
+        } else if (level === 'district') {
+            onChange({ region_id: region.id, region_name: region.effectiveName, district_id: id, district_name: nm, street_id: null, street_name: '' })
+        } else {
+            onChange({ region_id: region.id, region_name: region.effectiveName, district_id: district.id, district_name: district.effectiveName, street_id: id, street_name: nm })
+        }
     }
 
     const defaultPlaceholder = (list, loading, errMsg, emptyMsg) => {
@@ -227,8 +290,8 @@ export default function LocationSelector({
         return emptyMsg
     }
 
-    const disableDistrict = !regionId || loadingDistricts
-    const disableStreet = !districtId || loadingStreets
+    const disableDistrict = !region.id || loadingDistricts
+    const disableStreet = !district.id || loadingStreets
 
     return (
         <div className="space-y-3">
@@ -236,21 +299,21 @@ export default function LocationSelector({
                 <label className="label">Viloyat</label>
                 <select
                     className="input"
-                    value={regionSelectValue}
-                    onChange={handleRegionChange}
+                    value={region.selectValue}
+                    onChange={(e) => handleChange(e.target.value, regions, 'region')}
                     required={required}
                 >
                     <option value="">{defaultPlaceholder(regions, loadingRegions, regionsError, 'Viloyatlar mavjud emas')}</option>
-                    {needsRegionSynthetic && (
-                        <option value={regionSelectValue} key={`s-region-${regionSelectValue}-${btoa(regionLabel).slice(0, 8)}`}>
-                            {regionLabel}
+                    {region.needsSynthetic && (
+                        <option value={region.syntheticValue} key={region.syntheticKey}>
+                            {region.effectiveName}
                         </option>
                     )}
-                    {regions.map((region) => {
-                        const id = strOrEmpty(region.id)
+                    {regions.map((r) => {
+                        const id = strOrEmpty(r.id)
                         return (
                             <option key={`r-${id}`} value={id}>
-                                {region.name}
+                                {r.name}
                             </option>
                         )
                     })}
@@ -261,26 +324,26 @@ export default function LocationSelector({
                 <label className="label">Tuman</label>
                 <select
                     className="input"
-                    value={districtSelectValue}
-                    onChange={handleDistrictChange}
-                    disabled={disableDistrict}
+                    value={district.selectValue}
+                    onChange={(e) => handleChange(e.target.value, districts, 'district')}
+                    disabled={disableDistrict && !district.needsSynthetic}
                     required={required}
                 >
                     <option value="">
-                        {disableDistrict && !districtId
+                        {disableDistrict && !district.needsSynthetic
                             ? 'Avval viloyatni tanlang'
                             : defaultPlaceholder(districts, loadingDistricts, districtsError, 'Tumanlar mavjud emas')}
                     </option>
-                    {needsDistrictSynthetic && (
-                        <option value={districtSelectValue} key={`s-district-${districtSelectValue}-${btoa(districtLabel).slice(0, 8)}`}>
-                            {districtLabel}
+                    {district.needsSynthetic && (
+                        <option value={district.syntheticValue} key={district.syntheticKey}>
+                            {district.effectiveName}
                         </option>
                     )}
-                    {districts.map((district) => {
-                        const id = strOrEmpty(district.id)
+                    {districts.map((d) => {
+                        const id = strOrEmpty(d.id)
                         return (
                             <option key={`d-${id}`} value={id}>
-                                {district.name}
+                                {d.name}
                             </option>
                         )
                     })}
@@ -291,26 +354,26 @@ export default function LocationSelector({
                 <label className="label">Ko'cha/MFY</label>
                 <select
                     className="input"
-                    value={streetSelectValue}
-                    onChange={handleStreetChange}
-                    disabled={disableStreet}
+                    value={street.selectValue}
+                    onChange={(e) => handleChange(e.target.value, streets, 'street')}
+                    disabled={disableStreet && !street.needsSynthetic}
                     required={required}
                 >
                     <option value="">
-                        {disableStreet && !streetId
+                        {disableStreet && !street.needsSynthetic
                             ? 'Avval tumanni tanlang'
                             : defaultPlaceholder(streets, loadingStreets, streetsError, 'Koʻchalar mavjud emas')}
                     </option>
-                    {needsStreetSynthetic && (
-                        <option value={streetSelectValue} key={`s-street-${streetSelectValue}-${btoa(streetLabel).slice(0, 8)}`}>
-                            {streetLabel}
+                    {street.needsSynthetic && (
+                        <option value={street.syntheticValue} key={street.syntheticKey}>
+                            {street.effectiveName}
                         </option>
                     )}
-                    {streets.map((street) => {
-                        const id = strOrEmpty(street.id)
+                    {streets.map((s) => {
+                        const id = strOrEmpty(s.id)
                         return (
                             <option key={`s-${id}`} value={id}>
-                                {street.name}
+                                {s.name}
                             </option>
                         )
                     })}
