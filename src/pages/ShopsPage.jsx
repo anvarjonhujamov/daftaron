@@ -1,12 +1,50 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Drawer } from 'vaul'
 import { tenantsApi } from '../api/tenants.api'
 import { categoriesApi } from '../api/categories.api'
-import { Store, Plus, ArrowLeft, MapPin, CheckCircle2, X, Loader2, Trash2, Edit2 } from 'lucide-react'
+import { Store, Plus, ArrowLeft, MapPin, CheckCircle2, X, Loader2, Trash2, Edit2, ShieldAlert, Database, Clock, Send, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import LocationSelector from '../components/LocationSelector'
+
+const CAT_CACHE_KEY = 'loc_categories_v1'
+const CACHE_TTL_MS = 1000 * 60 * 60 * 48
+
+const loadCache = (key) => {
+    try {
+        const raw = localStorage.getItem(key)
+        if (!raw) return null
+        const parsed = JSON.parse(raw)
+        if (!parsed || typeof parsed !== 'object' || !parsed.t) return null
+        if (Date.now() - parsed.t > CACHE_TTL_MS) {
+            localStorage.removeItem(key)
+            return null
+        }
+        return parsed.d
+    } catch { return null }
+}
+const saveCache = (key, data) => {
+    try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), d: data })) } catch {}
+}
+
+const numOrNull = (v) => {
+    if (v === null || v === undefined || v === '') return null
+    const n = parseInt(v, 10)
+    return Number.isFinite(n) ? n : null
+}
+
+const pickId = (nested, flat) => {
+    const fromNested = typeof nested === 'object' && nested && nested.id ? numOrNull(nested.id) : null
+    return fromNested ?? numOrNull(flat) ?? null
+}
+const pickName = (nested, flatName, flatId) => {
+    if (typeof nested === 'object' && nested?.name) return String(nested.name)
+    if (typeof nested === 'string' && nested) return nested
+    if (flatName) return String(flatName)
+    if (flatId != null) return String(flatId)
+    return ''
+}
 
 export default function ShopsPage() {
     const navigate = useNavigate()
@@ -19,10 +57,6 @@ export default function ShopsPage() {
     const [categories, setCategories] = useState([])
     const [savingShop, setSavingShop] = useState(false)
     const [savingEditShop, setSavingEditShop] = useState(false)
-
-    const isNumericId = (v) => typeof v === 'number' || (typeof v === 'string' && String(parseInt(v, 10)) === String(v))
-    const [deletingShopId, setDeletingShopId] = useState(null)
-    const [shopToDelete, setShopToDelete] = useState(null)
 
     const [newShop, setNewShop] = useState({
         name: '',
@@ -50,15 +84,47 @@ export default function ShopsPage() {
         location: ''
     })
 
-    const [loadingSingleShop, setLoadingSingleShop] = useState(false)
-
+    const [loadingEdit, setLoadingEdit] = useState(false)
     const [editingShopId, setEditingShopId] = useState(null)
     const [formErrors, setFormErrors] = useState({})
     const [editFormErrors, setEditFormErrors] = useState({})
 
+    // ========= DELETE / PURGE FLOW (TZ 17.6) =========
+    const [shopToDelete, setShopToDelete] = useState(null) // confirm modal
+    const [purgeTenant, setPurgeTenant] = useState(null) // active tenant during SMS
+    const [purgeSending, setPurgeSending] = useState(false)
+    const [purgeCode, setPurgeCode] = useState('')
+    const [purgeConfirming, setPurgeConfirming] = useState(false)
+    const [purgeCountdown, setPurgeCountdown] = useState(0)
+    const [purgePhone, setPurgePhone] = useState('')
+    const purgeTimerRef = useRef(null)
+
     useEffect(() => {
         loadShops()
+        loadCategoriesCacheFirst()
     }, [])
+
+    useEffect(() => {
+        return () => {
+            if (purgeTimerRef.current) clearInterval(purgeTimerRef.current)
+        }
+    }, [])
+
+    const loadCategoriesCacheFirst = async () => {
+        const cached = loadCache(CAT_CACHE_KEY)
+        if (Array.isArray(cached) && cached.length) {
+            setCategories(cached)
+        }
+        try {
+            const list = await categoriesApi.getCategories()
+            if (Array.isArray(list) && list.length) {
+                setCategories(list)
+                saveCache(CAT_CACHE_KEY, list)
+            }
+        } catch (e) {
+            console.warn('loadCategoriesCacheFirst fetch failed, using cache', e)
+        }
+    }
 
     const loadShops = async () => {
         setLoading(true)
@@ -72,7 +138,6 @@ export default function ShopsPage() {
             }
         } catch (err) {
             toast.error("Do'konlarni yuklashda xatolik yuz berdi")
-            // Dummy for view
             const dummy = [
                 { id: 1, name: 'MTP Market', location: 'Toshkent sh, Yunusobod', is_active: true },
                 { id: 2, name: 'Chilonzor Savdo', location: 'Toshkent sh, Chilonzor', is_active: false }
@@ -87,9 +152,11 @@ export default function ShopsPage() {
     const loadCategories = async () => {
         const list = await categoriesApi.getCategories()
         setCategories(list)
+        if (list.length) saveCache(CAT_CACHE_KEY, list)
         setNewShop(prev => ({
             ...prev,
-            category_id: prev.category_id ?? list?.[0]?.id ?? null
+            category_id: prev.category_id ?? list?.[0]?.id ?? null,
+            category_name: prev.category_name || list?.[0]?.name || ''
         }))
     }
 
@@ -97,7 +164,7 @@ export default function ShopsPage() {
         setIsAddModalOpen(true)
         setFormErrors({})
         if (categories.length === 0) {
-            await loadCategories()
+            try { await loadCategories() } catch {}
         }
     }
 
@@ -153,7 +220,6 @@ export default function ShopsPage() {
         try {
             await tenantsApi.setActiveTenant(id)
             setActiveId(id)
-
             const shop = shops.find((item) => item.id === id)
             const user = JSON.parse(localStorage.getItem('user') || '{}')
             user.tenant_id = id
@@ -163,11 +229,8 @@ export default function ShopsPage() {
                 user.tenant = { ...(user.tenant || {}), name: shop.name }
             }
             localStorage.setItem('user', JSON.stringify(user))
-
             toast.success("Faol do'kon o'zgartirildi", { id: loadingToast })
-            setTimeout(() => {
-                navigate('/')
-            }, 500)
+            setTimeout(() => { navigate('/') }, 500)
         } catch (e) {
             toast.error("Xatolik yuz berdi", { id: loadingToast })
         }
@@ -175,12 +238,13 @@ export default function ShopsPage() {
 
     const getShopLocationLabel = (shop) => {
         const parts = []
-        if (shop.location) {
-            return shop.location
-        }
-        if (shop.region) parts.push(shop.region)
-        if (shop.district) parts.push(shop.district)
-        if (shop.street) parts.push(shop.street)
+        if (shop.location) return shop.location
+        const r = shop.region_name || (typeof shop.region === 'string' ? shop.region : shop.region?.name)
+        const d = shop.district_name || (typeof shop.district === 'string' ? shop.district : shop.district?.name)
+        const s = shop.street_name || (typeof shop.street === 'string' ? shop.street : shop.street?.name)
+        if (r) parts.push(r)
+        if (d) parts.push(d)
+        if (s) parts.push(s)
         return parts.join(', ')
     }
 
@@ -190,61 +254,51 @@ export default function ShopsPage() {
 
     const handleBack = () => {
         const from = location.state?.from
-        if (from) {
-            navigate(from)
-            return
-        }
-
-        if (window.history.length > 1) {
-            navigate(-1)
-            return
-        }
-
+        if (from) { navigate(from); return }
+        if (window.history.length > 1) { navigate(-1); return }
         navigate('/')
     }
 
+    // ========= openEditModal — FULL RESOLVE: list base + GET single merge =========
     const openEditModal = async (shop) => {
         setEditFormErrors({})
         setEditingShopId(shop?.id ?? null)
-
-        const toNum = (v) => {
-            if (v === null || v === undefined || v === '') return null
-            const n = parseInt(v, 10)
-            return Number.isFinite(n) ? n : null
-        }
-
-        const pickId = (nested, flat) => {
-            const fromNested = typeof nested === 'object' && nested ? toNum(nested.id) : null
-            return fromNested ?? toNum(flat) ?? null
-        }
-        const pickName = (nested, flatName, flatId) => {
-            if (typeof nested === 'object' && nested && nested.name) return String(nested.name)
-            if (flatName) return String(flatName)
-            if (typeof flatId === 'number' || typeof flatId === 'string') return String(flatId)
-            return ''
-        }
+        setLoadingEdit(true)
 
         if (categories.length === 0) {
             try { await loadCategories() } catch {}
         }
 
-        const catId = pickId(shop?.category, shop?.category_id)
-        const catName = pickName(shop?.category, shop?.category_name, catId) || (catId != null ? (categories.find((c) => toNum(c.id) === catId)?.name || '') : '')
+        let merged = { ...shop }
+        try {
+            if (shop?.id) {
+                const fetched = await tenantsApi.getTenant(shop.id)
+                if (fetched && typeof fetched === 'object') {
+                    merged = { ...shop, ...fetched }
+                }
+            }
+        } catch (err) {
+            console.warn('[openEditModal] getTenant fallback list data', err?.response?.status)
+        }
 
-        const rId = pickId(shop?.region, shop?.region_id)
-        const rName = pickName(shop?.region, shop?.region_name, rId)
+        const catId = pickId(merged?.category, merged?.category_id)
+        const catNameFromApi = pickName(merged?.category, merged?.category_name, catId)
+        const catNameFromArr = catId != null ? (categories.find((c) => numOrNull(c.id) === catId)?.name || '') : ''
+        const catName = catNameFromApi || catNameFromArr
 
-        const dId = pickId(shop?.district, shop?.district_id)
-        const dName = pickName(shop?.district, shop?.district_name, dId)
+        const rId = pickId(merged?.region, merged?.region_id)
+        const rName = pickName(merged?.region, merged?.region_name, rId)
+        const dId = pickId(merged?.district, merged?.district_id)
+        const dName = pickName(merged?.district, merged?.district_name, dId)
+        const sId = pickId(merged?.street, merged?.street_id)
+        const sName = pickName(merged?.street, merged?.street_name, sId)
 
-        const sId = pickId(shop?.street, shop?.street_id)
-        const sName = pickName(shop?.street, shop?.street_name, sId)
-
-        const finalCategoryId = catId ?? toNum(categories?.[0]?.id) ?? null
-        const finalCategoryName = catName || (finalCategoryId != null ? (categories.find((c) => toNum(c.id) === finalCategoryId)?.name || '') : '') || ''
+        const finalCategoryId = catId ?? numOrNull(categories?.[0]?.id) ?? null
+        const finalCategoryName = (finalCategoryId === catId ? catName : '') || (finalCategoryId != null
+            ? (categories.find((c) => numOrNull(c.id) === finalCategoryId)?.name || '') : '') || ''
 
         setEditShopForm({
-            name: String(shop?.name || shop?.shop_name || ''),
+            name: String(merged?.name || merged?.shop_name || ''),
             category_id: finalCategoryId,
             category_name: finalCategoryName,
             region_id: rId,
@@ -253,13 +307,13 @@ export default function ShopsPage() {
             district_name: dName,
             street_id: sId,
             street_name: sName,
-            location: String(shop?.location || shop?.address || getShopLocationLabel({
-                region_id: rId, region_name: rName,
-                district_id: dId, district_name: dName,
-                street_id: sId, street_name: sName
+            location: String(merged?.location || merged?.address || getShopLocationLabel({
+                ...merged,
+                region_name: rName, district_name: dName, street_name: sName
             }) || '')
         })
 
+        setLoadingEdit(false)
         setIsEditModalOpen(true)
     }
 
@@ -301,46 +355,141 @@ export default function ShopsPage() {
         }
     }
 
+    // ========= DELETE / PURGE =========
     const requestDeleteShop = (shop) => {
         setShopToDelete(shop)
     }
 
-    const confirmDeleteShop = async () => {
-        if (!shopToDelete) return
-        const shop = shopToDelete
-        setDeletingShopId(shop.id)
+    const startPurgeFlow = async () => {
+        if (!shopToDelete?.id) return
+        setPurgeTenant(shopToDelete)
+        setShopToDelete(null)
+        setPurgeCode('')
+        setPurgeConfirming(false)
+        setPurgeSending(true)
         try {
-            const response = await tenantsApi.deleteTenant(shop.id)
-            const updatedTenants = Array.isArray(response?.tenants) ? response.tenants : null
-            const nextActiveTenantId = response?.active_tenant_id ?? null
+            const data = await tenantsApi.purgeRequest(shopToDelete.id)
+            setPurgePhone(data?.phone || '')
+            const ttl = Number(data?.code_ttl_minutes || 10)
+            setPurgeCountdown(ttl * 60)
+            if (purgeTimerRef.current) clearInterval(purgeTimerRef.current)
+            purgeTimerRef.current = setInterval(() => {
+                setPurgeCountdown((prev) => {
+                    if (prev <= 1) {
+                        if (purgeTimerRef.current) clearInterval(purgeTimerRef.current)
+                        return 0
+                    }
+                    return prev - 1
+                })
+            }, 1000)
+            toast.success("Tasdiqlash kodi SMS orqali yuborildi")
+        } catch (err) {
+            toast.error(err?.response?.data?.message || "SMS yuborishda xatolik yuz berdi")
+            setPurgeTenant(null)
+        } finally {
+            setPurgeSending(false)
+        }
+    }
 
-            if (updatedTenants) {
-                setShops(updatedTenants)
-                setActiveId(nextActiveTenantId)
-            } else {
-                setShops((prev) => prev.filter((s) => s.id !== shop.id))
-                if (activeId === shop.id) {
-                    setActiveId(null)
+    const resendPurgeCode = async () => {
+        if (!purgeTenant?.id || purgeCountdown > 0 || purgeSending) return
+        setPurgeSending(true)
+        try {
+            const data = await tenantsApi.purgeRequest(purgeTenant.id)
+            setPurgePhone(data?.phone || purgePhone)
+            const ttl = Number(data?.code_ttl_minutes || 10)
+            setPurgeCountdown(ttl * 60)
+            toast.success("Yangi kod yuborildi")
+        } catch (err) {
+            toast.error(err?.response?.data?.message || "Qayta yuborishda xatolik")
+        } finally {
+            setPurgeSending(false)
+        }
+    }
+
+    const confirmPurgeCode = async () => {
+        if (!purgeTenant?.id) return
+        if (!purgeCode || purgeCode.length !== 4) {
+            toast.error('4 xonali kodni kiriting')
+            return
+        }
+        setPurgeConfirming(true)
+        try {
+            const data = await tenantsApi.purgeConfirm(purgeTenant.id, purgeCode)
+            toast.success(data?.message || "Do'kon ma'lumotlari tozalandi")
+            const s = data?.summary || {}
+            if (typeof s === 'object' && Object.keys(s).length) {
+                const parts = []
+                if (s.deleted_customers_count) parts.push(`Mijozlar: ${s.deleted_customers_count}`)
+                if (s.deleted_debts_count) parts.push(`Nasiyalar: ${s.deleted_debts_count}`)
+                if (s.deleted_payments_count) parts.push(`To'lovlar: ${s.deleted_payments_count}`)
+                if (parts.length) {
+                    setTimeout(() => toast.success(parts.join(', ')), 600)
                 }
             }
-
-            const user = JSON.parse(localStorage.getItem('user') || '{}')
-            user.tenant_id = nextActiveTenantId
-            localStorage.setItem('user', JSON.stringify(user))
-
-            toast.success(response?.message || "Biznes muvaffaqiyatli o'chirildi")
+            await loadShops()
+            closePurgeFlow()
         } catch (err) {
-            if (err.response?.status === 403) {
-                toast.error("Bu biznesni o'chirish huquqi yo'q")
-            } else if (err.response?.status === 404) {
-                toast.error("Biznes topilmadi")
+            const resp = err?.response?.data || {}
+            const msg = resp?.message || "Tasdiqlashda xatolik"
+            if (resp?.errors?.code) {
+                toast.error(resp.errors.code[0] || msg)
             } else {
-                toast.error(err.response?.data?.message || "Biznesni o'chirishda xatolik yuz berdi")
+                toast.error(msg)
+            }
+            if (err?.response?.status === 404) {
+                setPurgeCountdown(0)
             }
         } finally {
-            setDeletingShopId(null)
-            setShopToDelete(null)
+            setPurgeConfirming(false)
         }
+    }
+
+    const closePurgeFlow = () => {
+        if (purgeTimerRef.current) clearInterval(purgeTimerRef.current)
+        setPurgeTenant(null)
+        setPurgeCode('')
+        setPurgePhone('')
+        setPurgeCountdown(0)
+    }
+
+    const purgeCountdownLabel = useMemo(() => {
+        const m = Math.floor(purgeCountdown / 60)
+        const s = purgeCountdown % 60
+        if (purgeCountdown <= 0) return 'Kod muddati tugagan'
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    }, [purgeCountdown])
+
+    const renderCategorySelect = (value_id, value_name, onChange, errors, mode) => {
+        const match = categories.find((c) => numOrNull(c.id) === numOrNull(value_id))
+        const needsSynthetic = value_id != null && !match
+        const syntheticLabel = value_name || 'Tanlangan kategoriya'
+        return (
+            <div>
+                <label className="label">Faoliyat turi (kategoriya)</label>
+                <select
+                    className="input"
+                    value={value_id != null ? String(value_id) : ''}
+                    onChange={(e) => {
+                        const id = e.target.value ? parseInt(e.target.value, 10) : null
+                        const name = id ? (categories.find((c) => numOrNull(c.id) === id)?.name || value_name || '') : ''
+                        onChange(id, name)
+                    }}
+                    required
+                >
+                    <option value="">Tanlang...</option>
+                    {needsSynthetic && (
+                        <option key={`s-cat-${mode}-${value_id}-${btoa(syntheticLabel).slice(0, 6)}`} value={String(value_id)}>
+                            {syntheticLabel}
+                        </option>
+                    )}
+                    {categories.map((cat) => (
+                        <option key={`cat-${mode}-${cat.id}`} value={String(cat.id)}>{cat.name}</option>
+                    ))}
+                </select>
+                {errors?.category_id && <p className="text-red-500 text-xs mt-1">{errors.category_id[0]}</p>}
+            </div>
+        )
     }
 
     if (loading) {
@@ -394,66 +543,67 @@ export default function ShopsPage() {
                         const isActive = shop.id === activeId || shop.is_active
                         const locationLabel = getShopLocationLabel(shop)
                         return (
-                        <div 
-                            key={shop.id} 
-                            onClick={() => !isActive && setAsActive(shop.id)}
-                            className={`p-4 rounded-2xl transition-all duration-300 relative overflow-hidden ${
-                                isActive 
-                                    ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-400 dark:from-emerald-900/20 dark:to-teal-900/20 dark:border-emerald-600 shadow-md shadow-emerald-500/10' 
-                                    : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm active:scale-[0.98]'
-                            }`}
-                        >
-                            {isActive && (
-                                <div className="absolute top-0 right-0 p-3">
-                                    <CheckCircle2 size={24} className="text-emerald-500 drop-shadow-sm" />
+                            <div
+                                key={shop.id}
+                                onClick={() => !isActive && setAsActive(shop.id)}
+                                className={`p-4 rounded-2xl transition-all duration-300 relative overflow-hidden ${
+                                    isActive
+                                        ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-400 dark:from-emerald-900/20 dark:to-teal-900/20 dark:border-emerald-600 shadow-md shadow-emerald-500/10'
+                                        : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm active:scale-[0.98]'
+                                }`}
+                            >
+                                {isActive && (
+                                    <div className="absolute top-0 right-0 p-3">
+                                        <CheckCircle2 size={24} className="text-emerald-500 drop-shadow-sm" />
+                                    </div>
+                                )}
+                                <div className="flex items-start gap-3">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                                        isActive ? 'bg-emerald-100 dark:bg-emerald-800/50 text-emerald-600 dark:text-emerald-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                    }`}>
+                                        <Store size={22} />
+                                    </div>
+                                    <div className="flex-1 mt-1">
+                                        <p className={`text-[17px] font-bold ${isActive ? 'text-emerald-900 dark:text-emerald-100' : 'text-gray-900 dark:text-white'}`}>
+                                            {shop.name}
+                                        </p>
+                                        {locationLabel && (
+                                            <div className="flex items-center gap-1.5 mt-1.5 text-gray-500 dark:text-gray-400">
+                                                <MapPin size={13} />
+                                                <span className="text-[12px]">{locationLabel}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                            <div className="flex items-start gap-3">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                    isActive ? 'bg-emerald-100 dark:bg-emerald-800/50 text-emerald-600 dark:text-emerald-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                                }`}>
-                                    <Store size={22} />
-                                </div>
-                                <div className="flex-1 mt-1">
-                                    <p className={`text-[17px] font-bold ${isActive ? 'text-emerald-900 dark:text-emerald-100' : 'text-gray-900 dark:text-white'}`}>
-                                        {shop.name}
-                                    </p>
-                                    {locationLabel && (
-                        <div className="flex items-center gap-1.5 mt-1.5 text-gray-500 dark:text-gray-400">
-                            <MapPin size={13} />
-                            <span className="text-[12px]">{locationLabel}</span>
-                        </div>
-                    )}
-                                </div>
-                            </div>
-                            <div className="absolute top-3 right-3 flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); openEditModal(shop); }}
-                                    className="w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                                    title="Biznesni tahrirlash"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
+                                <div className="absolute top-3 right-3 flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); openEditModal(shop); }}
+                                        className="w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                                        title="Biznesni tahrirlash"
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        requestDeleteShop(shop)
-                                    }}
-                                    disabled={deletingShopId === shop.id}
-                                    className={`w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors ${isActive ? 'ml-2' : ''}`}
-                                    title="Biznesni o'chirish"
-                                >
-                                    {deletingShopId === shop.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                                </button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            requestDeleteShop(shop)
+                                        }}
+                                        className={`w-9 h-9 rounded-xl bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors ${isActive ? 'ml-2' : ''}`}
+                                        title="Do'kon ma'lumotlarini tozalash (mijozlar, nasiyalar, to'lovlar)"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    )})}
+                        )
+                    })}
                 </div>
             </div>
 
+            {/* ========= ADD SHOP DRAWER ========= */}
             <Drawer.Root open={isAddModalOpen} onOpenChange={(open) => !open && closeAddModal()} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
@@ -490,42 +640,13 @@ export default function ShopsPage() {
                                     {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name[0]}</p>}
                                 </div>
 
-                                <div>
-                                    <label className="label">Faoliyat turi (kategoriya)</label>
-                                    <select
-                                        className="input"
-                                        value={newShop.category_id != null ? String(newShop.category_id) : ''}
-                                        onChange={(e) => {
-                                            const id = e.target.value ? parseInt(e.target.value, 10) : null
-                                            const name = id ? (categories.find(c => Number(c.id) === id || String(c.id) === String(id))?.name || '') : ''
-                                            setNewShop(prev => ({
-                                                ...prev,
-                                                category_id: id,
-                                                category_name: name
-                                            }))
-                                        }}
-                                        required
-                                    >
-                                        <option value="">Tanlang...</option>
-                                        {(() => {
-                                            const targetId = Number(newShop.category_id)
-                                            const found = categories.some(c => Number(c.id) === targetId)
-                                            if (newShop.category_id != null && !found) {
-                                                const label = newShop.category_name || 'Tanlangan kategoriya'
-                                                return (
-                                                    <option value={String(newShop.category_id)} key={`s-cat-new-${newShop.category_id}`}>
-                                                        {label}
-                                                    </option>
-                                                )
-                                            }
-                                            return null
-                                        })()}
-                                        {categories.map((cat) => (
-                                            <option key={`cat-new-${cat.id}`} value={String(cat.id)}>{cat.name}</option>
-                                        ))}
-                                    </select>
-                                    {formErrors.category_id && <p className="text-red-500 text-xs mt-1">{formErrors.category_id[0]}</p>}
-                                </div>
+                                {renderCategorySelect(
+                                    newShop.category_id,
+                                    newShop.category_name,
+                                    (id, name) => setNewShop(prev => ({ ...prev, category_id: id, category_name: name })),
+                                    formErrors,
+                                    'new'
+                                )}
 
                                 <LocationSelector
                                     value={{
@@ -572,7 +693,7 @@ export default function ShopsPage() {
                 </Drawer.Portal>
             </Drawer.Root>
 
-            {/* Edit Shop Drawer */}
+            {/* ========= EDIT SHOP DRAWER ========= */}
             <Drawer.Root open={isEditModalOpen} onOpenChange={(open) => { if (!open) closeEditModal() }} repositionInputs={false}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
@@ -595,128 +716,230 @@ export default function ShopsPage() {
                                 </button>
                             </div>
 
-                            <form onSubmit={handleUpdateShop} className="space-y-4">
-                                <div>
-                                    <label className="label">Biznes nomi</label>
-                                    <input
-                                        type="text"
-                                        className="input"
-                                        value={editShopForm.name}
-                                        onChange={(e) => setEditShopForm(prev => ({ ...prev, name: e.target.value }))}
-                                        placeholder="Masalan: Nurli Zamin"
-                                        required
-                                    />
-                                    {editFormErrors.name && <p className="text-red-500 text-xs mt-1">{editFormErrors.name[0]}</p>}
+                            {loadingEdit && (
+                                <div className="py-8 flex flex-col items-center gap-3 text-gray-500">
+                                    <Loader2 size={28} className="animate-spin" />
+                                    <p className="text-sm">Ma'lumotlar yuklanmoqda...</p>
                                 </div>
+                            )}
 
-                                <div>
-                                    <label className="label">Faoliyat turi (kategoriya)</label>
-                                    <select
-                                        className="input"
-                                        value={editShopForm.category_id != null ? String(editShopForm.category_id) : ''}
-                                        onChange={(e) => {
-                                            const id = e.target.value ? parseInt(e.target.value, 10) : null
-                                            const name = id ? (categories.find(c => Number(c.id) === id || String(c.id) === String(id))?.name || '') : ''
-                                            setEditShopForm(prev => ({
-                                                ...prev,
-                                                category_id: id,
-                                                category_name: name
-                                            }))
-                                        }}
-                                        required
-                                    >
-                                        <option value="">Tanlang...</option>
-                                        {(() => {
-                                            const targetId = Number(editShopForm.category_id)
-                                            const found = categories.some(c => Number(c.id) === targetId)
-                                            if (editShopForm.category_id != null && !found) {
-                                                const label = editShopForm.category_name || 'Tanlangan kategoriya'
-                                                return (
-                                                    <option value={String(editShopForm.category_id)} key={`s-cat-edit-${editShopForm.category_id}`}>
-                                                        {label}
-                                                    </option>
-                                                )
-                                            }
-                                            return null
-                                        })()}
-                                        {categories.map((cat) => (
-                                            <option key={`cat-edit-${cat.id}`} value={String(cat.id)}>{cat.name}</option>
-                                        ))}
-                                    </select>
-                                    {editFormErrors.category_id && <p className="text-red-500 text-xs mt-1">{editFormErrors.category_id[0]}</p>}
-                                </div>
-
-                                <LocationSelector
-                                    value={{
-                                        region_id: editShopForm.region_id,
-                                        region_name: editShopForm.region_name,
-                                        district_id: editShopForm.district_id,
-                                        district_name: editShopForm.district_name,
-                                        street_id: editShopForm.street_id,
-                                        street_name: editShopForm.street_name
-                                    }}
-                                    onChange={(location) => setEditShopForm(prev => ({ ...prev, ...location }))}
-                                    onAddressChange={(addr) => setEditShopForm(prev => ({ ...prev, location: addr }))}
-                                />
-
-                                {editShopForm.location ? (
-                                    <div className="space-y-1">
-                                        <label className="label">Tanlangan manzil</label>
+                            {!loadingEdit && (
+                                <form onSubmit={handleUpdateShop} className="space-y-4">
+                                    <div>
+                                        <label className="label">Biznes nomi</label>
                                         <input
                                             type="text"
-                                            className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
-                                            value={editShopForm.location}
-                                            readOnly
-                                            disabled
+                                            className="input"
+                                            value={editShopForm.name}
+                                            onChange={(e) => setEditShopForm(prev => ({ ...prev, name: e.target.value }))}
+                                            placeholder="Masalan: Nurli Zamin"
+                                            required
                                         />
+                                        {editFormErrors.name && <p className="text-red-500 text-xs mt-1">{editFormErrors.name[0]}</p>}
                                     </div>
-                                ) : null}
 
-                                <button
-                                    type="submit"
-                                    disabled={savingEditShop || !editShopForm.name.trim() || !editShopForm.category_id}
-                                    className={`w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 ${savingEditShop || !editShopForm.name.trim() || !editShopForm.category_id ? 'bg-gray-200 dark:bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
-                                >
-                                    {savingEditShop ? <Loader2 size={18} className="animate-spin" /> : "Saqlash"}
-                                </button>
-                            </form>
+                                    {renderCategorySelect(
+                                        editShopForm.category_id,
+                                        editShopForm.category_name,
+                                        (id, name) => setEditShopForm(prev => ({ ...prev, category_id: id, category_name: name })),
+                                        editFormErrors,
+                                        'edit'
+                                    )}
+
+                                    <LocationSelector
+                                        value={{
+                                            region_id: editShopForm.region_id,
+                                            region_name: editShopForm.region_name,
+                                            district_id: editShopForm.district_id,
+                                            district_name: editShopForm.district_name,
+                                            street_id: editShopForm.street_id,
+                                            street_name: editShopForm.street_name
+                                        }}
+                                        onChange={(loc) => setEditShopForm(prev => ({ ...prev, ...loc }))}
+                                        onAddressChange={(addr) => setEditShopForm(prev => ({ ...prev, location: addr }))}
+                                    />
+                                    {editShopForm.location ? (
+                                        <div className="space-y-1">
+                                            <label className="label">Tanlangan manzil</label>
+                                            <input
+                                                type="text"
+                                                className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                                                value={editShopForm.location}
+                                                readOnly
+                                                disabled
+                                            />
+                                        </div>
+                                    ) : null}
+
+                                    <button
+                                        type="submit"
+                                        disabled={savingEditShop || !editShopForm.name.trim() || !editShopForm.category_id}
+                                        className={`w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 ${savingEditShop || !editShopForm.name.trim() || !editShopForm.category_id ? 'bg-gray-200 dark:bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+                                    >
+                                        {savingEditShop ? <Loader2 size={18} className="animate-spin" /> : "Saqlash"}
+                                    </button>
+                                </form>
+                            )}
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>
             </Drawer.Root>
 
+            {/* ========= DELETE CONFIRM MODAL ========= */}
             {shopToDelete && (
                 <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 shadow-2xl p-5">
-                        <h4 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
-                            Biznesni o'chirish
-                        </h4>
-                        <p className="text-[14px] text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
-                            <span className="font-semibold">"{shopToDelete.name}"</span> biznesini o'chirmoqchimisiz?
-                            Bu amalni ortga qaytarib bo'lmaydi.
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-11 h-11 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+                                <AlertTriangle size={22} className="text-red-500" />
+                            </div>
+                            <div>
+                                <h4 className="text-[17px] font-bold text-gray-900 dark:text-white">
+                                    Do'konni tozalash
+                                </h4>
+                                <p className="text-[12px] text-gray-500 dark:text-gray-400">
+                                    Ortga qaytarib bo'lmaydigan amal
+                                </p>
+                            </div>
+                        </div>
+                        <p className="text-[14px] text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                            <span className="font-semibold">"{shopToDelete.name}"</span> uchun <b>barcha mijozlar, nasiyalar, to'lovlar va SMS loglarini</b> o'chirishni xohlaysizmi?
                         </p>
+                        <div className="space-y-2 mb-5">
+                            <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
+                                <Database size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                                <div className="text-[12px] text-red-700 dark:text-red-400/90">
+                                    <p className="font-semibold mb-1">O'chiriladiganlar:</p>
+                                    <ul className="space-y-0.5 list-disc pl-4">
+                                        <li>Barcha mijozlar</li>
+                                        <li>Nasiyalar (qarzdorliklar)</li>
+                                        <li>To'lovlar tarixi</li>
+                                        <li>SMS jo'natish loglari</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30">
+                                <ShieldAlert size={16} className="text-emerald-600 mt-0.5 flex-shrink-0" />
+                                <div className="text-[12px] text-emerald-700 dark:text-emerald-400/90">
+                                    <p><b>Saqlanadi:</b> Do'konning o'zi, nomi, faoliyati turi, joylashuvi.</p>
+                                </div>
+                            </div>
+                        </div>
                         <div className="flex gap-2">
                             <button
                                 type="button"
                                 onClick={() => setShopToDelete(null)}
-                                disabled={deletingShopId === shopToDelete.id}
-                                className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold"
+                                className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold active:opacity-80"
                             >
                                 Bekor qilish
                             </button>
                             <button
                                 type="button"
-                                onClick={confirmDeleteShop}
-                                disabled={deletingShopId === shopToDelete.id}
-                                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-70"
+                                onClick={startPurgeFlow}
+                                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-70 active:opacity-90"
                             >
-                                {deletingShopId === shopToDelete.id ? <Loader2 size={16} className="animate-spin" /> : null}
                                 O'chirish
                             </button>
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* ========= PURGE SMS VERIFY DRAWER ========= */}
+            <Drawer.Root open={!!purgeTenant} onOpenChange={(open) => { if (!open && !purgeConfirming) closePurgeFlow() }} repositionInputs={false}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
+                    <Drawer.Content className="fixed bg-white dark:bg-gray-900 bottom-0 left-0 right-0 max-h-[90vh] rounded-t-[28px] z-50 flex flex-col focus:outline-none">
+                        <Drawer.Title className="sr-only">Tasdiqlash kodini kiriting</Drawer.Title>
+                        <Drawer.Description className="sr-only">SMS orqali yuborilgan 4 xonali kodni kiriting</Drawer.Description>
+                        <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 my-4" />
+
+                        <div className="w-full max-w-md mx-auto px-5 pb-8">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+                                        <Send size={22} className="text-indigo-500" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-[18px] font-bold text-gray-900 dark:text-white">
+                                            SMS tasdiqlash
+                                        </h3>
+                                        <p className="text-[12px] text-gray-500 dark:text-gray-400">
+                                            {purgeTenant?.name}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={closePurgeFlow}
+                                    disabled={purgeConfirming}
+                                    className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <p className="text-[14px] text-gray-600 dark:text-gray-300 mb-3 leading-relaxed">
+                                <b>{purgePhone || 'Sizning telefon raqamingiz'}</b> ga 4 xonali tasdiqlash kodi yuborildi. Kodni kiriting va tozalashni tasdiqlang.
+                            </p>
+
+                            <div className="mb-4">
+                                <label className="label">Tasdiqlash kodi</label>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    maxLength={4}
+                                    placeholder="4 xonali kod"
+                                    className="input text-center text-2xl tracking-[0.5em] font-bold tracking-widest"
+                                    value={purgeCode}
+                                    onChange={(e) => setPurgeCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') void confirmPurgeCode() }}
+                                    disabled={purgeConfirming}
+                                    autoFocus
+                                />
+                                <div className="flex items-center justify-between mt-2">
+                                    <div className="flex items-center gap-1.5 text-[12px] text-gray-500 dark:text-gray-400">
+                                        <Clock size={13} />
+                                        <span>{purgeCountdownLabel}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={resendPurgeCode}
+                                        disabled={purgeCountdown > 0 || purgeSending}
+                                        className="text-[12px] font-semibold text-blue-500 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                    >
+                                        {purgeSending ? 'Yuborilmoqda...' : 'Qayta yuborish'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={closePurgeFlow}
+                                    disabled={purgeConfirming}
+                                    className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold"
+                                >
+                                    Bekor qilish
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmPurgeCode}
+                                    disabled={purgeConfirming || !purgeCode || purgeCode.length !== 4}
+                                    className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                                >
+                                    {purgeConfirming ? <Loader2 size={18} className="animate-spin" /> : null}
+                                    Tasdiqlash
+                                </button>
+                            </div>
+
+                            <p className="mt-4 text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                                Test/dev muhitida default kod: <b>1234</b>. Maksimal urinish: <b>3 ta</b>.
+                            </p>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
         </div>
     )
 }

@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { locationsApi } from '../api/locations.api'
 
+const CACHE_REGIONS_KEY = 'loc_regions_v1'
+const CACHE_DISTRICTS_PREFIX = 'loc_districts_r'
+const CACHE_STREETS_PREFIX = 'loc_streets_d'
+const CACHE_TTL_MS = 1000 * 60 * 60 * 48
+
 const numOrNull = (v) => {
     if (v === null || v === undefined || v === '') return null
     const n = parseInt(v, 10)
@@ -8,8 +13,28 @@ const numOrNull = (v) => {
 }
 const strOrEmpty = (v) => (v === null || v === undefined || v === '' ? '' : String(v))
 
+const loadCache = (key) => {
+    try {
+        const raw = localStorage.getItem(key)
+        if (!raw) return null
+        const parsed = JSON.parse(raw)
+        if (!parsed || typeof parsed !== 'object' || !parsed.t) return null
+        if (Date.now() - parsed.t > CACHE_TTL_MS) {
+            localStorage.removeItem(key)
+            return null
+        }
+        return parsed.d
+    } catch { return null }
+}
+
+const saveCache = (key, data) => {
+    try {
+        localStorage.setItem(key, JSON.stringify({ t: Date.now(), d: data }))
+    } catch {}
+}
+
 export default function LocationSelector({
-    value = { region_id: null, district_id: null, street_id: null },
+    value = { region_id: null, region_name: '', district_id: null, district_name: '', street_id: null, street_name: '' },
     onChange,
     onAddressChange,
     required = false
@@ -28,9 +53,17 @@ export default function LocationSelector({
     const districtId = numOrNull(value.district_id)
     const streetId = numOrNull(value.street_id)
 
-    const suppliedRegionName = String(value?.region_name || value?.regionName || value?.region || (typeof value?.region === 'object' ? value?.region?.name : '') || '')
-    const suppliedDistrictName = String(value?.district_name || value?.districtName || value?.district || (typeof value?.district === 'object' ? value?.district?.name : '') || '')
-    const suppliedStreetName = String(value?.street_name || value?.streetName || value?.street || (typeof value?.street === 'object' ? value?.street?.name : '') || '')
+    const pickName = (objName, flatName, fallbackId) => {
+        if (typeof objName === 'object' && objName?.name) return String(objName.name)
+        if (typeof objName === 'string' && objName) return objName
+        if (flatName) return String(flatName)
+        if (fallbackId != null) return String(fallbackId)
+        return ''
+    }
+
+    const suppliedRegionName = pickName(value.region, value.region_name, regionId)
+    const suppliedDistrictName = pickName(value.district, value.district_name, districtId)
+    const suppliedStreetName = pickName(value.street, value.street_name, streetId)
 
     const regionMatch = useMemo(() => regions.find((r) => numOrNull(r.id) === regionId), [regions, regionId])
     const districtMatch = useMemo(() => districts.find((d) => numOrNull(d.id) === districtId), [districts, districtId])
@@ -50,11 +83,18 @@ export default function LocationSelector({
 
     useEffect(() => {
         ;(async () => {
+            const cached = loadCache(CACHE_REGIONS_KEY)
+            if (Array.isArray(cached) && cached.length) {
+                setRegions(cached)
+                return
+            }
             setLoadingRegions(true)
             setRegionsError('')
             try {
                 const data = await locationsApi.getRegions()
-                setRegions(Array.isArray(data) ? data : data?.data || [])
+                const list = Array.isArray(data) ? data : data?.data || []
+                setRegions(list)
+                if (list.length) saveCache(CACHE_REGIONS_KEY, list)
             } catch (error) {
                 console.error('Failed to load regions:', error)
                 setRegions([])
@@ -73,16 +113,28 @@ export default function LocationSelector({
         }
         let mounted = true
         ;(async () => {
-            setLoadingDistricts(true)
-            setDistrictsError('')
+            const cacheKey = `${CACHE_DISTRICTS_PREFIX}${regionId}`
+            const cached = loadCache(cacheKey)
+            if (Array.isArray(cached) && mounted) {
+                setDistricts(cached)
+            } else {
+                setLoadingDistricts(true)
+                setDistrictsError('')
+            }
             try {
                 const data = await locationsApi.getDistricts(regionId)
-                if (mounted) setDistricts(Array.isArray(data) ? data : data?.data || [])
+                const list = Array.isArray(data) ? data : data?.data || []
+                if (mounted) {
+                    setDistricts(list)
+                    if (list.length) saveCache(cacheKey, list)
+                }
             } catch (error) {
                 console.error('Failed to load districts:', error)
                 if (mounted) {
-                    setDistricts([])
-                    setDistrictsError('Tumanlar yuklanmadi')
+                    if (!loadCache(cacheKey)) {
+                        setDistricts([])
+                        setDistrictsError('Tumanlar yuklanmadi')
+                    }
                 }
             } finally {
                 if (mounted) setLoadingDistricts(false)
@@ -98,16 +150,28 @@ export default function LocationSelector({
         }
         let mounted = true
         ;(async () => {
-            setLoadingStreets(true)
-            setStreetsError('')
+            const cacheKey = `${CACHE_STREETS_PREFIX}${districtId}`
+            const cached = loadCache(cacheKey)
+            if (Array.isArray(cached) && mounted) {
+                setStreets(cached)
+            } else {
+                setLoadingStreets(true)
+                setStreetsError('')
+            }
             try {
                 const data = await locationsApi.getStreets(districtId)
-                if (mounted) setStreets(Array.isArray(data) ? data : data?.data || [])
+                const list = Array.isArray(data) ? data : data?.data || []
+                if (mounted) {
+                    setStreets(list)
+                    if (list.length) saveCache(cacheKey, list)
+                }
             } catch (error) {
                 console.error('Failed to load streets:', error)
                 if (mounted) {
-                    setStreets([])
-                    setStreetsError('Koʻchalar yuklanmadi')
+                    if (!loadCache(cacheKey)) {
+                        setStreets([])
+                        setStreetsError('Koʻchalar yuklanmadi')
+                    }
                 }
             } finally {
                 if (mounted) setLoadingStreets(false)
@@ -118,7 +182,7 @@ export default function LocationSelector({
 
     const handleRegionChange = (e) => {
         const next = numOrNull(e.target.value)
-        const nextName = next ? (regions.find((r) => numOrNull(r.id) === next)?.name || suppliedRegionName || '') : ''
+        const nextName = next ? (regions.find((r) => numOrNull(r.id) === next)?.name || regionLabel || '') : ''
         onChange({
             region_id: next,
             region_name: nextName,
@@ -132,9 +196,8 @@ export default function LocationSelector({
 
     const handleDistrictChange = (e) => {
         const next = numOrNull(e.target.value)
-        const nextName = next ? (districts.find((d) => numOrNull(d.id) === next)?.name || suppliedDistrictName || '') : ''
+        const nextName = next ? (districts.find((d) => numOrNull(d.id) === next)?.name || districtLabel || '') : ''
         onChange({
-            ...value,
             region_id: regionId,
             region_name: regionLabel,
             district_id: next,
@@ -146,9 +209,8 @@ export default function LocationSelector({
 
     const handleStreetChange = (e) => {
         const next = numOrNull(e.target.value)
-        const nextName = next ? (streets.find((s) => numOrNull(s.id) === next)?.name || suppliedStreetName || '') : ''
+        const nextName = next ? (streets.find((s) => numOrNull(s.id) === next)?.name || streetLabel || '') : ''
         onChange({
-            ...value,
             region_id: regionId,
             region_name: regionLabel,
             district_id: districtId,
@@ -180,7 +242,7 @@ export default function LocationSelector({
                 >
                     <option value="">{defaultPlaceholder(regions, loadingRegions, regionsError, 'Viloyatlar mavjud emas')}</option>
                     {needsRegionSynthetic && (
-                        <option value={regionSelectValue} key={`s-region-${regionSelectValue}`}>
+                        <option value={regionSelectValue} key={`s-region-${regionSelectValue}-${btoa(regionLabel).slice(0, 8)}`}>
                             {regionLabel}
                         </option>
                     )}
@@ -210,7 +272,7 @@ export default function LocationSelector({
                             : defaultPlaceholder(districts, loadingDistricts, districtsError, 'Tumanlar mavjud emas')}
                     </option>
                     {needsDistrictSynthetic && (
-                        <option value={districtSelectValue} key={`s-district-${districtSelectValue}`}>
+                        <option value={districtSelectValue} key={`s-district-${districtSelectValue}-${btoa(districtLabel).slice(0, 8)}`}>
                             {districtLabel}
                         </option>
                     )}
@@ -240,7 +302,7 @@ export default function LocationSelector({
                             : defaultPlaceholder(streets, loadingStreets, streetsError, 'Koʻchalar mavjud emas')}
                     </option>
                     {needsStreetSynthetic && (
-                        <option value={streetSelectValue} key={`s-street-${streetSelectValue}`}>
+                        <option value={streetSelectValue} key={`s-street-${streetSelectValue}-${btoa(streetLabel).slice(0, 8)}`}>
                             {streetLabel}
                         </option>
                     )}

@@ -65,6 +65,16 @@ export const tenantsApi = {
             }
             throw err
         }
+    },
+
+    purgeRequest: async (tenantId) => {
+        const response = await axios.post(`/tenants/${tenantId}/purge-request`)
+        return response.data
+    },
+
+    purgeConfirm: async (tenantId, code) => {
+        const response = await axios.post(`/tenants/${tenantId}/purge-confirm`, { code: String(code) })
+        return response.data
     }
 }
 

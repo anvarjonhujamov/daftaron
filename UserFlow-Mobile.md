@@ -988,17 +988,78 @@ Authorization: Bearer <token>
 
 **Cheklov (Oddiy ta'rifda):**
 
-**Do'konni o'chirish qoidasi:**
-- Faqat do'kon egasi o'z do'konini o'chira oladi.
-- Do'kon o'chirilganda shu do'konga tegishli `workers`, `customers`, `debts`, `payments`, `sms_dispatch_logs` ham birga o'chiriladi.
-- Agar userda boshqa do'konlar bo'lsa active do'kon avtomatik keyingisiga o'tadi.
-
 ```json
 {
   "message": "Basic (Oddiy) ta'rifda faqat bitta do'kon mumkin. Yangi do'kon qo'shish uchun boshqa ta'rifga o'ting.",
   "requires_upgrade": true
 }
 ```
+
+**Do'konni o'chirish qoidasi:**
+- Faqat do'kon egasi o'z do'konini o'chira oladi.
+- Do'kon o'chirilganda shu do'konga tegishli `workers`, `customers`, `debts`, `payments`, `sms_dispatch_logs` ham birga o'chiriladi.
+- Agar userda boshqa do'konlar bo'lsa active do'kon avtomatik keyingisiga o'tadi.
+
+### 13.3. Do'kon ma'lumotlarini tozalash (purge) — 2-bosqich
+
+> **Farq:** Do'konni o'chirish (`DELETE /tenants/{tenant}`) — **do'konni o'zini ham** o'chiradi. **Tozalash (purge)** — **do'konni saqlab**, faqat uning barcha biznes-ma'lumotlarini (mijoz/qarz/to'lov/SMS loglarini) o'chiradi.
+
+#### 13.3.1. Flow (Mobil UI tavsiya)
+
+```
+[Do'kon sozlamalari]
+      │
+      ▼
+[⚠️ Barcha ma'lumotlarni tozalash] ← (tugma → red, 2 marta confirm)
+      │
+      │ 1) POST /tenants/{id}/purge-request  →   { phone, max_attempts:3, ttl:10 }
+      │
+      ▼
+[📱 SMS kod kiritish oynasi]
+  ├─ placeholder: "4 xonali kod"
+  ├─ Keyboard: NUMBER
+  └─ "Qayta yuborish" → 60s countdown keyin enabled
+      │
+      │ 2) POST /tenants/{id}/purge-confirm  { code: "1234" }
+      │
+      ├─ ✅ 200:   ← success snackbar: "Barcha ma'lumotlar o'chirildi!"
+      │              └→ summary: { customers, debts, payments, sms_logs } count ko'rsatish ixtiyoriy
+      │
+      ├─ ❌ 422:   ← attempt_left=2,1 → inline error: "Kod noto'g'ri, X ta urinish qoldi"
+      │
+      ├─ ❌ 422 (attempts_left=0): "Urinishlar tugadi → qaytadan SMS so'rash" → Step 1 ga qaytish
+      │
+      └─ ❌ 404:   "Kod muddati tugagan (10 min) → qaytadan so'rash" → Step 1 ga qaytish
+```
+
+#### 13.3.2. API
+
+| # | Metod | Endpoint | Body | Javob 200 |
+|---|-------|----------|------|-----------|
+| 1 | POST | `/tenants/{tenant}/purge-request` | — | `{ message, phone, tenant_id, code_ttl_minutes:10, max_attempts:3 }` |
+| 2 | POST | `/tenants/{tenant}/purge-confirm` | `{ "code": "1234" }` | `{ message, tenant_id, tenant_name, summary: { deleted_*_count: N, total } }` |
+
+**⚠️ Xatolar:**
+- `403`: Ruxsat yo'q (faqat `shop_owner` o'z do'koni uchun)
+- `404`: Avval `purge-request` qilinmagan / TTL tugagan → avval 1-bosqichni chaqiring
+- `422`: `{ message: "Tasdiqlash kodi noto'g'ri.", attempts_left: N }`
+- `422`: `{ message: "Kod noto'g'ri. Urinishlar soni tugagan...", attempts_left: 0 }`
+- `429`: 0 ta attempt qolganidan keyingi so'rovga qaytadan 404
+
+**To'liq o'chiriladigan narsalar:**
+1. ✅ Barcha mijozlar (`customers`)
+2. ✅ Barcha nasiya / qarz yozuvlari (`debts`)
+3. ✅ Barcha to'lovlar (`payments`)
+4. ✅ Barcha SMS jo'natish loglari (`sms_dispatch_logs`)
+5. ❌ **Tenant (do'kon) o'zi SAQLANADI** (sahifa to'liq reset emas, faqat biznes ma'lumotlari tozalanadi)
+
+**Cache:** `api_tenant_purge:{tenantId}` → 10 daqiqa, 3 ta urinish, test/dev default kod → `1234`.
+
+**UX tavsiya:**
+- Tugma oldidan **Modal**: "Rostdan ham barcha mijoz, qarz va to'lovlarni o'chirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi!" → 2 ta variant: [Bekor qilish] / [Tasdiqlash (o'chirish)]
+- Modal confirm → avval purge-request → keyin SMS-code input navigation
+- SMS inputda "Qayta yuborish" → yana purge-request (60s debounce)
+- Javob 200 keyin → Dashboard/`/customers` sahifasiga nav (bo'sh ro'yxat ko'rsatilsin) + "Yangi mijoz qo'shish" CTA
 
 ---
 
@@ -1280,6 +1341,8 @@ Har bir API javobda:
 | Active do'konni almashtirish | PUT | `/tenants/active` |
 | Do'konni tahrirlash | PUT/PATCH | `/tenants/{tenant}` |
 | Do'konni o'chirish | DELETE | `/tenants/{tenant}` |
+| Tozalash 1: SMS kod so'rash | POST | `/tenants/{tenant}/purge-request` |
+| Tozalash 2: Tasdiq va o'chirish | POST | `/tenants/{tenant}/purge-confirm` |
 | AI support — xabar | POST | `/support/chat` |
 | AI support — tarix | GET | `/support/history` |
 | AI support — tozalash | DELETE | `/support/history` |

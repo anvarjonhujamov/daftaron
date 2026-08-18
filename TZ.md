@@ -1237,7 +1237,105 @@ Body: `name`, `category_id`, `region_id`, `district_id`, `street_id`
 - Agar owner’da boshqa do'kon bo'lsa, `users.tenant_id` keyingi do'konga o'tkaziladi; qolmasa `null` bo'ladi.
 - Admin paneldagi `/admin/tenants/{tenant}` delete ham shu servis logikasidan foydalanadi.
 
-### 17.6. Joylashuv ma'lumotlari (authsiz API)
+### 17.6. Do'kon ma'lumotlarini tozalash (2-bosqichli, SMS tasdiq bilan)
+
+> Bu funksiya **do'konni (Tenant) o'zini saqlab qoladi**, faqat **do'konga tegishli barcha mijoz, qarzi, to'lov va SMS loglarini** tozalaydi. Test rejimida tozalashdan avval 2 bosqichli SMS tasdiq talab qilinadi.
+
+#### 17.6.1. Ruxsatlar
+
+| Rollar | Huquq | Cheklov |
+|--------|-------|---------|
+| `shop_owner` | ✅ Ruxsat etilgan | Faqat **o'ziga tegishli** do'kon uchun |
+| `shop_worker` | ❌ | 403 |
+| `manager` / `admin` | ❌ | 403 (API orqali emas) |
+
+#### 17.6.2. Umumiy ketma-ketlik
+
+```
+1. POST /tenants/{tenant}/purge-request      → 4 xonali SMS kod yuborish
+2. POST /tenants/{tenant}/purge-confirm      → { code } → kod to'g'ri → tozalash
+```
+
+- Cache kalit: `api_tenant_purge:{tenant_id}` (TTL: 10 daqiqa)
+- Maksimal kiritish urinishi: **3 ta** (3 xato → cache tozalanadi → qaytadan 1-bosqich)
+- Test/dev muhit (SMS disabled): default kod → **`1234`**
+
+#### 17.6.3. 1-bosqich: Tasdiqlash kodini so'rash
+
+| Parametr | Qiymat |
+|----------|--------|
+| **Metod** | `POST` |
+| **Endpoint** | `/api/v1/tenants/{tenant}/purge-request` |
+| **Auth** | `Bearer <token>` |
+| **Body** | (bo'sh) |
+
+**Javob (200):**
+```json
+{
+  "message": "Ma'lumotlarni tozalash uchun tasdiqlash kodi SMS orqali yuborildi.",
+  "phone": "+998901234567",
+  "tenant_id": 5,
+  "code_ttl_minutes": 10,
+  "max_attempts": 3
+}
+```
+
+**Xatolar:**
+- **403:** `Bu do'kon ma'lumotlarini tozalash huquqingiz yo'q.`
+- **422:** User phone mavjud emas
+- **500:** SMS yuborishda server xatoligi (eskiz javobi)
+
+#### 17.6.4. 2-bosqich: Tasdiqlash va tozalash
+
+| Parametr | Qiymat |
+|----------|--------|
+| **Metod** | `POST` |
+| **Endpoint** | `/api/v1/tenants/{tenant}/purge-confirm` |
+| **Auth** | `Bearer <token>` |
+| **Body** | `{ "code": "1234" }` (4 xonali string) |
+
+**Javob (200 — to'liq o'chirilgandan keyin):**
+```json
+{
+  "message": "Do'konga tegishli barcha ma'lumotlar muvaffaqiyatli o'chirildi.",
+  "tenant_id": 5,
+  "tenant_name": "Mening do'konim",
+  "summary": {
+    "deleted_customers_count": 120,
+    "deleted_debts_count": 250,
+    "deleted_payments_count": 480,
+    "deleted_sms_logs_count": 612,
+    "deleted_total_count": 1462
+  }
+}
+```
+
+**O'chiriladigan jadvallar (to'liq):**
+1. `payments` — shu tenantga tegishli barcha `debts` lar orqali bog'liq barcha to'lovlar
+2. `debts` — barcha nasiya/qarz yozuvlari (payments cascade delete)
+3. `customers` — barcha mijozlar (debts cascade)
+4. `sms_dispatch_logs` — bu tenant uchun barcha SMS jo'natish loglari
+
+**✅ Tenant o'zi (`tenants` jadvalidan) → saqlanadi!** Faqat bog'liq biznes-ma'lumotlar o'chiriladi.
+
+**Xatolar:**
+- **403:** Ruxsat yo'q
+- **404:** Purge request muddati tugagan / umuman qilinmagan → `Avval tasdiqlash kodini so'rang.`
+- **422:** Kod noto'g'ri: `Tasdiqlash kodi noto'g'ri.` (`attempts_left` soni qaytariladi, har bir xato urinish kamayadi)
+- **422 (0 ta urinish qolganida):** `Kod noto'g'ri. Urinishlar soni tugagan, yangi tasdiqlash kodini so'rang.` (cache tozalanadi)
+- **429:** Keyingi so'rovda qaytadan 404 → qaytadan purge-request talab qilinadi
+
+#### 17.6.5. Xavfsizlik parametrlari
+
+| Talab | Qiymat |
+|-------|--------|
+| SMS kod | 4 xonali, tasodifiy son (test: `1234`) |
+| Cache TTL | 10 daqiqa |
+| Max urinish | 3 ta |
+| Ma'lumot o'chirish turi | Hard delete |
+| DB qavati | Transaction ichida (DB::transaction) — to'liq rollback imkoniyati |
+
+### 17.7. Joylashuv ma'lumotlari (authsiz API)
 
 | Endpoint | Tavsif |
 |----------|--------|
@@ -1385,6 +1483,8 @@ users ──────────┐
 | PUT | `/tenants/{tenant}` | Do'konni tahrirlash (faqat owner o'z do'konini) |
 | PATCH | `/tenants/{tenant}` | Do'konni qisman yangilash (PUT bilan bir xil) |
 | DELETE | `/tenants/{tenant}` | Owner o'z do'konini va unga tegishli ma'lumotlarni o'chiradi |
+| POST | `/tenants/{tenant}/purge-request` | Do'kon ma'lumotlarini tozalash 1-bosqich: SMS tasdiq kodini so'rash (10 min TTL, 3 ta urinish) |
+| POST | `/tenants/{tenant}/purge-confirm` | Do'kon ma'lumotlarini tozalash 2-bosqich: SMS kodni tasdiqlash va barcha mijoz/qarz/to'lov/SMS loglarini o'chirish (tenant saqlanadi) |
 | POST | `/support/chat` | AI support bot — xabar yuborish |
 | GET | `/support/history` | AI support bot — chat tarixi |
 | DELETE | `/support/history` | AI support bot — tarixni tozalash |

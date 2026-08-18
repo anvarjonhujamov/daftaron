@@ -4,13 +4,13 @@ info:
   version: 1.0.0
   description: |
     **Daftaron** — Do'konlar uchun nasiya (qarz) boshqaruv tizimi REST API.
-    
+
     **Base URL:** `/api/v1`
-    
+
     **Tillar:** O'zbek tili, **Valyuta:** UZS (so'm), **Vaqt zonasi:** Asia/Tashkent
-    
+
     ## Multi-tenant arxitekturasi
-    
+
     - **Model:** Shared DB + Shared Schema + `tenant_id` isolation
     - Barcha tenantga bog'liq so'rovlar `tenant_id` selector orqali:
       - Query param: `?tenant_id=5`
@@ -19,18 +19,18 @@ info:
     - Active tenant: `GET /tenants`, `PUT /tenants/active`, `DELETE /tenants/{tenant}`
     - Shop owner faqat o'z tenantini tanlay oladi
     - Unauthorized tenant: 403 Forbidden
-    
+
     ## Autentifikatsiya
-    
+
     - **Bearer Token** (Laravel Sanctum)
     - Login: `POST /auth/login` (telefon + parol)
     - Register: `POST /auth/register` → `POST /auth/verify` → `POST /auth/register/password` → `POST /auth/register/complete`
     - Telegram: `POST /auth/telegram-login`
     - Parol tiklash: 3 bosqich (`/auth/password/forgot`, `/auth/password/verify`, `/auth/password/reset`)
     - Token format: `Authorization: Bearer <token>`
-    
+
     ## Obuna va balans tizimi
-    
+
     - **Trial:** Ro'yxatdan o'tganda 15 kun (sozlanadi)
     - **Ta'riflar:** Oddiy (29,000 so'm/oy), Pro, Premium
     - **Limit:** Nasiya, SMS, do'kon, xodim
@@ -38,9 +38,9 @@ info:
     - **Promocodlar:** Manager tomonidan berilib, obuna sotib olishda chegirma
     - **Balans:** Foydalanuvchida saqlanadi, ta'rif va SMS uchun yechiladi
     - **Subscription status endpoint** — trial tugaganda ham ishlaydi (read-only)
-    
+
     ## To'lov tizimlari
-    
+
     - **Click:** Merchant API callback (Prepare → Complete)
       - Redirect: `https://my.click.uz/services/pay?service_id=...&amount=...&transaction_param=...`
       - Callback (authsiz): `POST /payment/click/prepare`, `POST /payment/click/complete`
@@ -48,9 +48,9 @@ info:
       - Endpoint: `POST /api/payme/merchant`
       - Metodlar: CheckPerformTransaction, CreateTransaction, PerformTransaction, CancelTransaction, CheckTransaction, GetStatement
       - Account field: `user_id` (pending order create)
-    
+
     ## Qo'shimcha linqlar
-    
+
     - **Texnik topshiriq:** [/TZ.md](/TZ.md)
     - **Userflow (Mobil):** [/UserFlow-Mobile.md](/UserFlow-Mobile.md)
     - **OpenAPI spec:** [/public/docs/openapi.yaml](/public/docs/openapi.yaml)
@@ -976,6 +976,141 @@ paths:
           description: Bu do'konni o'chirish huquqi yo'q
         "404":
           description: Tenant topilmadi
+
+  /tenants/{tenant}/purge-request:
+    post:
+      tags: [Tenants]
+      summary: Do'kon ma'lumotlarini tozalash uchun 1-bosqich: SMS tasdiqlash kodini so'rash
+      description: |
+        Faqat `shop_owner` va faqat o'ziga tegishli do'kon uchun.
+        Foydalanuvchi telefoniga 4 xonali kod yuboriladi va cache 10 min uchun saqlanadi (max 3 ta kiritish urinishi).
+        Test rejimida (sms_verification_enabled=false) default kod: `1234`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Do'kon (tenant) ID
+      responses:
+        "200":
+          description: SMS yuborildi (yoki test rejimida kod ko'rsatildi)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Ma'lumotlarni tozalash uchun tasdiqlash kodi SMS orqali yuborildi."
+                  phone:
+                    type: string
+                    example: "+998901234567"
+                  tenant_id:
+                    type: integer
+                    example: 5
+                  code_ttl_minutes:
+                    type: integer
+                    example: 10
+                  max_attempts:
+                    type: integer
+                    example: 3
+        "403":
+          description: Ruxsat yo'q (shop_owner emas yoki boshqa do'kon)
+        "422":
+          description: Foydalanuvchi telefon raqami topilmadi
+        "500":
+          description: SMS yuborishda xatolik
+
+  /tenants/{tenant}/purge-confirm:
+    post:
+      tags: [Tenants]
+      summary: Do'kon ma'lumotlarini tozalash uchun 2-bosqich: SMS kodni tasdiqlash va barcha ma'lumotlarni o'chirish
+      description: |
+        Faqat `shop_owner` va faqat o'ziga tegishli do'kon uchun.
+        To'g'ri kiritilgandan keyin quyidagilar butunlay o'chiriladi, do'kon (Tenant) o'zi saqlanadi:
+        - Barcha mijozlar (customers)
+        - Barcha nasiya/qarz yozuvlari (debts)
+        - Barcha to'lovlar (payments - debt_id cascade orqali ham o'chadi)
+        - Barcha SMS jo'natish loglari (sms_dispatch_logs)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  minLength: 4
+                  maxLength: 4
+                  description: "4 xonali SMS tasdiqlash kodi"
+                  example: "1234"
+      responses:
+        "200":
+          description: Barcha ma'lumotlar muvaffaqiyatli o'chirildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Do'konga tegishli barcha ma'lumotlar muvaffaqiyatli o'chirildi."
+                  tenant_id:
+                    type: integer
+                    example: 5
+                  tenant_name:
+                    type: string
+                    example: "Mening do'konim"
+                  summary:
+                    type: object
+                    properties:
+                      deleted_customers_count:
+                        type: integer
+                        example: 120
+                      deleted_debts_count:
+                        type: integer
+                        example: 250
+                      deleted_payments_count:
+                        type: integer
+                        example: 480
+                      deleted_sms_logs_count:
+                        type: integer
+                        example: 612
+                      deleted_total_count:
+                        type: integer
+                        example: 1462
+        "403":
+          description: Ruxsat yo'q
+        "404":
+          description: So'rov muddati tugagan / topilmadi / avval purge-request qilingan emas
+        "422":
+          description: Kod noto'g'ri (attempts_left qaytariladi) yoki max 3 ta xato urinish tugagan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Tasdiqlash kodi noto'g'ri."
+                  attempts_left:
+                    type: integer
+                    example: 2
+        "429":
+          description: 3+ urinishda kod kiritish tugagach, yangi so'rov uchun qaytadan purge-request qilish kerak
 
   /customers:
     get:
