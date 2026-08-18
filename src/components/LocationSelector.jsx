@@ -111,7 +111,9 @@ export default function LocationSelector({
     value = { region_id: null, region_name: '', district_id: null, district_name: '', street_id: null, street_name: '' },
     onChange,
     onAddressChange,
-    required = false
+    required = false,
+    idPrefix = 'loc',
+    className = ''
 }) {
     const [regions, setRegions] = useState([])
     const [districts, setDistricts] = useState([])
@@ -294,10 +296,12 @@ export default function LocationSelector({
     const disableStreet = !district.id || loadingStreets
 
     return (
-        <div className="space-y-3">
+        <div className={`space-y-3 ${className}`}>
             <div>
-                <label className="label">Viloyat</label>
+                <label htmlFor={`${idPrefix}-region-select`} className="label">Viloyat</label>
                 <select
+                    id={`${idPrefix}-region-select`}
+                    data-testid={`${idPrefix}-region-select`}
                     className="input"
                     value={region.selectValue}
                     onChange={(e) => handleChange(e.target.value, regions, 'region')}
@@ -321,8 +325,10 @@ export default function LocationSelector({
             </div>
 
             <div>
-                <label className="label">Tuman</label>
+                <label htmlFor={`${idPrefix}-district-select`} className="label">Tuman</label>
                 <select
+                    id={`${idPrefix}-district-select`}
+                    data-testid={`${idPrefix}-district-select`}
                     className="input"
                     value={district.selectValue}
                     onChange={(e) => handleChange(e.target.value, districts, 'district')}
@@ -351,8 +357,10 @@ export default function LocationSelector({
             </div>
 
             <div>
-                <label className="label">Ko'cha/MFY</label>
+                <label htmlFor={`${idPrefix}-street-select`} className="label">Ko'cha/MFY</label>
                 <select
+                    id={`${idPrefix}-street-select`}
+                    data-testid={`${idPrefix}-street-select`}
                     className="input"
                     value={street.selectValue}
                     onChange={(e) => handleChange(e.target.value, streets, 'street')}
