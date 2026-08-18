@@ -54,10 +54,26 @@ export default function CustomerFormPage() {
             setLoadingCustomer(true)
             try {
                 const data = await customersApi.getCustomer(id)
-                const c = data?.customer ?? data
-                if (!mounted || !c) return
+                // Customer endpoint returns wrapper: {data: customer} OR {customer: data} OR bare object
+                const c = (data && typeof data === 'object' && (data.data || data.customer || data))
+                    ? (data.data || data.customer || data)
+                    : data
+                if (!mounted || !c || typeof c !== 'object') return
 
-                const rawAddress = String(c.address || '')
+                const numOrNull = (v) => {
+                    if (v === null || v === undefined || v === '') return null
+                    const n = parseInt(v, 10)
+                    return Number.isFinite(n) ? n : null
+                }
+                const pickAny = (obj, keys, fallback = '') => {
+                    for (const k of keys) {
+                        const v = obj?.[k]
+                        if (v !== null && v !== undefined && v !== '') return v
+                    }
+                    return fallback
+                }
+
+                const rawAddress = String(pickAny(c, ['address', 'full_address', 'address_line', 'location', 'place', 'manzil'], ''))
                 let parsedRegionName = ''
                 let parsedDistrictName = ''
                 let parsedStreetName = ''
@@ -66,20 +82,36 @@ export default function CustomerFormPage() {
                     parsedRegionName = parts[0] || ''
                     parsedDistrictName = parts[1] || ''
                     parsedStreetName = parts.slice(2).join(', ') || ''
+                } else if (rawAddress && !rawAddress.includes(',')) {
+                    // single address may contain just region fallback
+                    parsedStreetName = rawAddress
                 }
 
-                const rIdRaw = pickId(c?.region, c?.region_id)
-                const rNameRaw = pickName(c?.region, c?.region_name, rIdRaw)
-                const dIdRaw = pickId(c?.district, c?.district_id)
-                const dNameRaw = pickName(c?.district, c?.district_name, dIdRaw)
-                const sIdRaw = pickId(c?.street, c?.street_id)
-                const sNameRaw = pickName(c?.street, c?.street_name, sIdRaw)
+                const regionNestedObj = pickAny(c, ['region', 'viloyat', 'province', 'area', 'regionObj'], null)
+                const districtNestedObj = pickAny(c, ['district', 'tuman', 'shahar', 'city', 'county', 'districtObj'], null)
+                const streetNestedObj = pickAny(c, ['street', 'kocha', 'mfy', 'mahalla', 'neighborhood', 'streetObj'], null)
+
+                const regionIdKeys = ['region_id', 'regionId', 'viloyat_id', 'province_id']
+                const regionNameKeys = ['region_name', 'regionName', 'viloyat_name', 'province_name', 'provinceName', 'viloyatNomi']
+                const districtIdKeys = ['district_id', 'districtId', 'tuman_id', 'shahar_id', 'city_id', 'county_id']
+                const districtNameKeys = ['district_name', 'districtName', 'tuman_name', 'tumanNomi', 'city_name', 'county_name']
+                const streetIdKeys = ['street_id', 'streetId', 'kocha_id', 'mfy_id', 'mahalla_id', 'neighborhood_id']
+                const streetNameKeys = ['street_name', 'streetName', 'kocha_name', 'kochaNomi', 'mfy_name', 'mahalla_name', 'neighborhood_name']
+
+                const rIdRaw = pickId(regionNestedObj, pickAny(c, regionIdKeys, null))
+                const rNameRaw = pickName(regionNestedObj, pickAny(c, regionNameKeys, ''), rIdRaw)
+                const dIdRaw = pickId(districtNestedObj, pickAny(c, districtIdKeys, null))
+                const dNameRaw = pickName(districtNestedObj, pickAny(c, districtNameKeys, ''), dIdRaw)
+                const sIdRaw = pickId(streetNestedObj, pickAny(c, streetIdKeys, null))
+                const sNameRaw = pickName(streetNestedObj, pickAny(c, streetNameKeys, ''), sIdRaw)
 
                 setForm({
-                    name: c.name || '',
-                    phone: c.phone ? formatPhoneNumber(String(c.phone)) : PHONE_PREFIX,
+                    name: pickAny(c, ['name', 'full_name', 'fullName', 'ismi'], ''),
+                    phone: pickAny(c, ['phone', 'phone_number', 'tel', 'telefon', 'contact'])
+                        ? formatPhoneNumber(String(pickAny(c, ['phone', 'phone_number', 'tel', 'telefon', 'contact'])))
+                        : PHONE_PREFIX,
                     address: rawAddress,
-                    note: c.note || '',
+                    note: pickAny(c, ['note', 'notes', 'comment', 'izoh', 'description', 'info'], ''),
                     region_id: rIdRaw,
                     region_name: rNameRaw || parsedRegionName,
                     district_id: dIdRaw,
@@ -88,12 +120,12 @@ export default function CustomerFormPage() {
                     street_name: sNameRaw || parsedStreetName
                 })
             } catch (err) {
-                    const message = err?.response?.data?.message || 'Mijoz ma\'lumotlarini yuklashda xatolik'
-                    toast.error(message)
-                    setTimeout(() => navigate('/customers'), 1000)
-                } finally {
-                    if (mounted) setLoadingCustomer(false)
-                }
+                const message = err?.response?.data?.message || 'Mijoz ma\'lumotlarini yuklashda xatolik'
+                toast.error(message)
+                setTimeout(() => navigate('/customers'), 1000)
+            } finally {
+                if (mounted) setLoadingCustomer(false)
+            }
         })()
 
         return () => {
