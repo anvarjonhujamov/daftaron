@@ -35,6 +35,8 @@ export default function CustomerDetailPage() {
     const navigate = useNavigate()
     const [customer, setCustomer] = useState(null)
     const [debts, setDebts] = useState([])
+    const [customerPayments, setCustomerPayments] = useState([])
+    const [historyTab, setHistoryTab] = useState('debts') // 'debts' | 'payments'
     const [staffMembers, setStaffMembers] = useState([])
     const [loading, setLoading] = useState(true)
     const { status: subStatus, remaining, sms_remaining, total } = useSubscription()
@@ -121,9 +123,10 @@ export default function CustomerDetailPage() {
     const loadData = async () => {
         try {
             const customerId = parseInt(id)
-            const [customerData, debtsData] = await Promise.all([
+            const [customerData, debtsData, paymentsData] = await Promise.all([
                 customersApi.getCustomer(id),
-                debtsApi.getDebts({ per_page: 100 })
+                debtsApi.getDebts({ per_page: 100 }),
+                paymentsApi.getPayments({ customer_id: customerId, per_page: 100 })
             ])
             setCustomer(customerData.data || customerData)
             // Filter debts to only show this customer's debts
@@ -133,6 +136,19 @@ export default function CustomerDetailPage() {
                 d.customer?.id === customerId
             )
             setDebts(customerDebts)
+
+            // Filter payments (customer filter server tomonidan bo'lsa ham qo'shimcha filter)
+            const allPayments = Array.isArray(paymentsData) ? paymentsData : (paymentsData.data || [])
+            const custPayments = allPayments.filter(p => {
+                const pid = p.customer_id ?? p.customerId ?? p.customer?.id ?? null
+                return String(pid) === String(customerId)
+            })
+            const sortedPayments = custPayments.sort((a, b) => {
+                const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+                const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+                return tb - ta
+            })
+            setCustomerPayments(sortedPayments)
         } catch (err) {
             console.error('Failed to load customer:', err)
             if (err.response?.status === 404) navigate('/customers')
@@ -452,6 +468,16 @@ export default function CustomerDetailPage() {
 
     const sumRemaining = debts.reduce((sum, d) => sum + (parseFloat(d.remaining_amount) || 0), 0)
     const hasOutstandingDebt = debts.some((d) => (parseFloat(d.remaining_amount) || 0) > 0)
+    const sumPaid = customerPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
+
+    const formatDateShort = (dateString) => {
+        if (!dateString) return ''
+        const date = new Date(dateString)
+        const mm = String(date.getMonth() + 1).padStart(2, '0')
+        const dd = String(date.getDate()).padStart(2, '0')
+        const yyyy = date.getFullYear()
+        return `${mm}/${dd}/${yyyy}`
+    }
 
     const totalDebt = debts.length > 0
         ? sumRemaining
@@ -567,85 +593,211 @@ export default function CustomerDetailPage() {
                 </div>
             </div>
 
-            {/* Timeline */}
+            {/* Timeline (Tarix) */}
             <div className="px-4 mt-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3">
                     <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">Tarix</h2>
-                    <span className="text-[13px] text-gray-400">{debts.length} ta yozuv</span>
+                    <span className="text-[13px] text-gray-400">
+                        {historyTab === 'debts' ? `${debts.length} ta nasiya` : `${customerPayments.length} ta to'lov`}
+                    </span>
                 </div>
-                {debts.length === 0 ? (
-                    <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-3xl text-gray-400">Hali nasiya yo'q</div>
-                ) : (
-                    <div className="space-y-4">
-                        {debts.map(debt => (
-                            <div key={debt.id} className="card !p-4 border-0 shadow-sm bg-white dark:bg-gray-800">
-                                <div className="flex items-center justify-between mb-4">
-                                    <span className={`badge px-2 py-0.5 rounded-lg text-[11px] ${debt.status === 'closed' ? 'badge-paid' : 'badge-debtor'}`}>
-                                        {debt.status === 'closed' ? 'Yopilgan' : 'Faol'}
-                                    </span>
-                                    <div className="text-right">
-                                        <div className="text-[11px] text-gray-400">{formatDate(debt.created_at)}</div>
-                                        {getCreatorName(debt) && (
-                                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                                {getCreatorName(debt)}
+
+                {/* Tabs */}
+                <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-5">
+                    <button
+                        type="button"
+                        onClick={() => setHistoryTab('debts')}
+                        className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
+                            historyTab === 'debts'
+                                ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                    >
+                        <FileText size={13} className="inline mr-1 -mt-0.5" />
+                        Nasiyalar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setHistoryTab('payments')}
+                        className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
+                            historyTab === 'payments'
+                                ? 'bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                    >
+                        <CreditCard size={13} className="inline mr-1 -mt-0.5" />
+                        To'lovlar
+                        {sumPaid > 0 && (
+                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                {formatCurrency(sumPaid)}
+                            </span>
+                        )}
+                    </button>
+                </div>
+
+                {/* Nasiyalar tab */}
+                {historyTab === 'debts' && (
+                    <>
+                        {debts.length === 0 ? (
+                            <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
+                                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center">
+                                    <FileText size={20} className="text-gray-400" />
+                                </div>
+                                <div className="text-gray-400">Hali nasiya yo'q</div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {debts.map(debt => (
+                                    <div key={debt.id} className="card !p-4 border-0 shadow-sm bg-white dark:bg-gray-800">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <span className={`badge px-2 py-0.5 rounded-lg text-[11px] ${debt.status === 'closed' ? 'badge-paid' : 'badge-debtor'}`}>
+                                                {debt.status === 'closed' ? 'Yopilgan' : 'Faol'}
+                                            </span>
+                                            <div className="text-right">
+                                                <div className="text-[11px] text-gray-400">{formatDate(debt.created_at)}</div>
+                                                {getCreatorName(debt) && (
+                                                    <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                                        {getCreatorName(debt)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Berildi</p>
+                                                <p className="text-[16px] font-bold text-gray-900 dark:text-white">
+                                                    {formatCurrency(debt.total_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Qoldi</p>
+                                                <p className={`text-[16px] font-bold ${debt.remaining_amount > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                    {formatCurrency(debt.remaining_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {debt.description && (
+                                            <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl mb-4">
+                                                <FileText size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                                                <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-tight">
+                                                    {debt.description}
+                                                </p>
                                             </div>
                                         )}
-                                    </div>
-                                </div>
 
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Berildi</p>
-                                        <p className="text-[16px] font-bold text-gray-900 dark:text-white">
-                                            {formatCurrency(debt.total_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Qoldi</p>
-                                        <p className={`text-[16px] font-bold ${debt.remaining_amount > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                            {formatCurrency(debt.remaining_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
-                                        </p>
-                                    </div>
-                                </div>
+                                        {debt.status !== 'closed' && (
+                                            <button
+                                                onClick={() => {
+                                                    const rem = parseFloat(debt.remaining_amount) || 0
+                                                    setDebtPaymentForm({
+                                                        debt_id: debt.id,
+                                                        amount: rem > 0 ? formatCurrency(String(Math.round(rem))) : '',
+                                                        paid_at: '',
+                                                        send_sms: false
+                                                    })
+                                                    setDebtPaymentErrors({})
+                                                    setShowDebtPaymentDrawer(true)
+                                                }}
+                                                className="btn btn-primary w-full py-2.5 text-[14px] bg-blue-500 hover:bg-blue-600 text-white border-0"
+                                            >
+                                                <CreditCard size={16} />
+                                                To'lov qilish
+                                            </button>
+                                        )}
 
-                                {debt.description && (
-                                    <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl mb-4">
-                                        <FileText size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                                        <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-tight">
-                                            {debt.description}
-                                        </p>
+                                        <Link
+                                            to={`/debts/${debt.id}`}
+                                            className="block text-center mt-3 text-[13px] text-blue-500 font-semibold"
+                                        >
+                                            Batafsil ko'rish
+                                        </Link>
                                     </div>
-                                )}
-
-                                {debt.status !== 'closed' && (
-                                    <button
-                                        onClick={() => {
-                                            const rem = parseFloat(debt.remaining_amount) || 0
-                                            setDebtPaymentForm({
-                                                debt_id: debt.id,
-                                                amount: rem > 0 ? formatCurrency(String(Math.round(rem))) : '',
-                                                paid_at: '',
-                                                send_sms: false
-                                            })
-                                            setDebtPaymentErrors({})
-                                            setShowDebtPaymentDrawer(true)
-                                        }}
-                                        className="btn btn-primary w-full py-2.5 text-[14px] bg-blue-500 hover:bg-blue-600 text-white border-0"
-                                    >
-                                        <CreditCard size={16} />
-                                        To'lov qilish
-                                    </button>
-                                )}
-
-                                <Link
-                                    to={`/debts/${debt.id}`}
-                                    className="block text-center mt-3 text-[13px] text-blue-500 font-semibold"
-                                >
-                                    Batafsil ko'rish
-                                </Link>
+                                ))}
                             </div>
-                        ))}
-                    </div>
+                        )}
+                    </>
+                )}
+
+                {/* To'lovlar tab */}
+                {historyTab === 'payments' && (
+                    <>
+                        {customerPayments.length === 0 ? (
+                            <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
+                                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center">
+                                    <CreditCard size={20} className="text-gray-400" />
+                                </div>
+                                <div className="text-gray-400">Hali to'lov yo'q</div>
+                            </div>
+                        ) : (
+                            <div className="space-y-2.5">
+                                {customerPayments.map(pay => {
+                                    const pType = String(pay.payment_type || '').toLowerCase()
+                                    const dId = pay.debt_id ?? pay.debtId ?? pay.debt?.id
+                                    const isBalance = pType.includes('balance') || pType.includes('customer') || pType.includes('deposit') || pType.includes('umumiy')
+                                        || (dId === null || dId === undefined || String(dId) === '0' || String(dId) === 'null')
+                                    const amt = parseFloat(pay.amount) || 0
+                                    return (
+                                        <Link
+                                            key={pay.id}
+                                            to={isBalance || !dId ? null : `/debts/${dId}`}
+                                            onClick={(e) => { if (!dId || isBalance) e.preventDefault() }}
+                                            className={`card !p-3.5 border-0 shadow-sm bg-white dark:bg-gray-800 flex items-center gap-3 active:scale-[0.99] transition-transform ${(!dId || isBalance) ? 'cursor-default' : 'cursor-pointer'}`}
+                                        >
+                                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                                                isBalance
+                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                                                    : 'bg-green-50 dark:bg-green-900/20'
+                                            }`}>
+                                                {isBalance
+                                                    ? <Wallet size={19} className="text-emerald-500" />
+                                                    : <CheckCircle2 size={19} className="text-green-500" />
+                                                }
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                                        isBalance
+                                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
+                                                            : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100/60 dark:border-green-900/30'
+                                                    }`}>
+                                                        {isBalance ? 'Balansga' : (dId ? `Qarz #${dId}` : 'To\'lov')}
+                                                    </span>
+                                                    {!isBalance && dId && (
+                                                        <span className="text-[10px] text-gray-400">
+                                                            • {formatDateShort(pay.created_at || pay.paid_at)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {pay.description && (
+                                                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">
+                                                        {pay.description}
+                                                    </p>
+                                                )}
+                                                {getCreatorName(pay) && (
+                                                    <p className="text-[11px] text-gray-400 line-clamp-1">
+                                                        Qabul qilgan: <span className="font-semibold text-gray-500 dark:text-gray-300">{getCreatorName(pay)}</span>
+                                                    </p>
+                                                )}
+                                                {!getCreatorName(pay) && !pay.description && (
+                                                    <p className="text-[11px] text-gray-400">
+                                                        {formatDate(pay.paid_at || pay.created_at)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="text-right flex-shrink-0 pl-2">
+                                                <p className="text-[15px] font-extrabold text-green-600 dark:text-green-400 leading-none mb-0.5">
+                                                    +{formatCurrency(amt)}
+                                                </p>
+                                                <p className="text-[11px] text-gray-400 font-normal">so'm</p>
+                                            </div>
+                                        </Link>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 

@@ -222,7 +222,7 @@ export default function DashboardPage() {
     const offset = todayRaw.getTimezoneOffset() * 60000;
     const todayStr = new Date(todayRaw - offset).toISOString().split('T')[0];
 
-    // Bugun nasiya (Today's Debts)
+    // Bugun nasiya (Today's Debts — SUMMA TOTAL_AMOUNT (BERILGAN), remaining emas. Yopilgan (closed) larni ham hisoblaymiz.)
     const todayDebts = (() => {
         const val = stats?.today_debts ?? stats?.today_given ?? stats?.today_debt_amount ?? stats?.today_amount ?? stats?.today_nasiya;
         if (!isStaff && val !== undefined && val !== null) {
@@ -240,7 +240,8 @@ export default function DashboardPage() {
                     return localStr === todayStr;
                 } catch (e) { return false; }
             })
-            .reduce((sum, d) => sum + parseFloat(d.remaining_amount ?? d.remaining_debts ?? d.amount ?? d.total_amount ?? d.debt_amount ?? d.price ?? 0), 0)
+            // BUGUN YARATILGAN BARCHA nasiyalarni (FAOL + YOPILGAN) UMUMIY BERILGAN SUMMASI (total_amount)
+            .reduce((sum, d) => sum + parseFloat(d.total_amount ?? d.amount ?? d.price ?? d.debt_amount ?? d.remaining_amount ?? 0), 0)
     })()
 
     // Bugun to'lov (Today's Payments)
