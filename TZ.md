@@ -550,15 +550,32 @@ POST /subscription/choose/3
 
 Har bir mijoz bitta `tenant_id` ga bog'langan.
 
+### 7.1. Yangi maydonlar (Virtual accessorlar)
+
+Mijozning UI da ko'rinishi kerak bo'lgan yangi virtual maydonlar (model accessor orqali hisoblanadi):
+
+| Maydon | Tur | Tavsif |
+|--------|-----|--------|
+| `balance` | decimal | **Mijozning shaxsiy balansi (UI uchun faqat).** Formula: `(UMUMIY TO'LOVLAR (payments.debt_id IS NULL yig'indisi)) − (UMUMIY OCHIQ QARZLAR (remaining_amountlar yig'indisi))`. Agar musbat bo'lsa — mijozning qarzsiz (oldindan to'langan) mablag'i bor. Manfiy bo'lsa, UI da `0` sifatida chiqariladi (`max(0, value)`). |
+| `total_remaining_debt` | decimal | Mijozning barcha ochiq qarzdorliklar yig'indisi (status = open bo'lgan barcha debts.remaining_amount summa). |
+
+### 7.2. Misollar
+
+| Holat | Mijozning umumiy to'lovlari (debt_id = null) | Umumiy ochiq qarzlar yig'indisi | balance (UI da) | total_remaining_debt |
+|-------|-----|-----|-----|-----|
+| Qarzi yo'q, 25000 to'ladi | 25000 | 0 | **25000** | 0 |
+| Bir nechta qarzi, to'lov qilish bilan hammasini to'lab, 15000 qoldi | 95000 | 80000 (3 ta qarzdan 80k = 30k+50k yopildi, keyin 15k qoldi) | **15000** | 0 |
+| Balans 40000, 90000 yangi qarz | 40000 | 50000 (balans 40k qarzga ketdi) | **0** | 50000 |
+
 **Web:** `/customers` — to'liq CRUD (index, create, store, show, edit, update, destroy).
 
 **API:**
 
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
-| GET | `/customers` | — | Mijozlar ro'yxati (tenant bo'yicha) |
+| GET | `/customers` | — | Mijozlar ro'yxati (tenant bo'yicha, har bittasi `balance`, `total_remaining_debt` bilan) |
 | POST | `/customers` | `name`, `phone`, `address`, `description` | 201: yaratilgan mijoz |
-| GET | `/customers/{id}` | — | Bitta mijoz |
+| GET | `/customers/{id}` | — | Bitta mijoz (balance + total_remaining_debt bilan) |
 | PUT | `/customers/{id}` | `name`, `phone`, ... | Yangilangan mijoz |
 | DELETE | `/customers/{id}` | — | O'chirildi |
 
@@ -573,12 +590,15 @@ Har bir mijoz bitta `tenant_id` ga bog'langan.
 | Maydon | Tur | Tavsif |
 |--------|-----|--------|
 | `customer_id` | FK | Mijoz |
-| `total_amount` | decimal | Umumiy qarz summasi |
-| `remaining_amount` | decimal | Qolgan summa (to'lovlar bilan kamayadi) |
+| `total_amount` | decimal | Umumiy qarz summasi (asl) |
+| `remaining_amount` | decimal | Qolgan summa (to'lovlar bilan kamayadi; yangi debt yaratilganda BALANS DAN avtomatik kamaytiriladi) |
+| `total_paid_amount` (virtual, accessor) | decimal | **Shu nasiya uchun TOLIQ TO'LANGAN SUMMA UI uchun**. To'g'ridan-to'g'ri bog'langan (debt_id = debt.id) barcha to'lovlarning yig'indisi. Bu yerga to'g'ridan specific paymentlar ham, customer general paymentlardan avtomatik allokatsiya qilingan to'lovlar ham kiradi. |
+| `paid_from_direct_payments` (virtual) | decimal | total_amount − remaining_amount |
 | `debt_date` | date | Nasiya sanasi (YYYY-MM-DD) |
 | `status` | enum | `open` / `closed` |
 | `description` | text | Izoh |
 | `sms_sent` | boolean | SMS yuborilganmi |
+| `payments` (relation) | array | Barcha bog'liq to'lovlar — to'g'ridan to'g'ri + balansdan allokatsiya qilingan (ularning barchasida debt_id = shu debt.id) |
 
 ### 8.2. Sana qoidalari
 
@@ -588,7 +608,50 @@ Har bir mijoz bitta `tenant_id` ga bog'langan.
 | Oraliq | Oxirgi 1 oy (bugundan 1 oy oldin — bugun) |
 | Validatsiya | `nullable|date|after_or_equal:<1 oy oldin>|before_or_equal:today` |
 
-### 8.3. Endpointlar
+### 8.3. Yangi biznes qoidasi: BALANS → YANGI QARZNI AVTOMATIK TO'LASH
+
+**Agar mijozda avvaldan BALANS bo'lsa (customer.balance > 0):**
+
+YANGI nasiya yaratilgandan so'ng (DB da saqlanganidan keyin), `PaymentAllocationService::applyBalanceToNewDebt(Debt)` chaqiriladi:
+
+1. O'sha mijozga tegishli, `debt_id = null` bo'lgan to'lovlarni `paid_at` ASC bo'yicha topiladi.
+2. Ularning miqdorini (amount) yangi debt.remaining_amount dan ayirib boradi (payment.debt_id → yangi debt.id ga yangilanadi → bu to'lov endi nasiya ichida ko'rinadi).
+3. **Natija:**
+   - Balans kamayadi (0 gacha bo'lsa ham)
+   - Nasiyaning remaining_amounti kamayadi
+   - Agar balans nasiya summasidan katta bo'lsa: nasiya yopiladi, qolgan mablag' balansda qoladi.
+
+**Misol 1 (Mijoz balansi 40 000 so'm; yangi qarz 90 000):**
+```
+balance_before = 40 000
+new_debt.total_amount = 90 000
+new_debt.remaining_amount (allokatsiyadan so'ng) = 50 000
+balance_after = 0
+customer.total_remaining_debt = 50 000
+```
+
+**Misol 2 (Balans 40 000; yangi qarz 30 000):**
+```
+balance_before = 40 000
+new_debt.remaining = 0 (yopildi)
+balance_after = 10 000
+```
+
+**Javobga qo'shimcha `balance_applied` maydoni:**
+```json
+{
+  "balance_applied": {
+    "before_balance": 40000,
+    "after_balance": 0,
+    "debt_remaining": 50000,
+    "allocations": [
+      {"payment_id": 12, "amount": 40000}
+    ]
+  }
+}
+```
+
+### 8.4. Endpointlar
 
 **Web:** `/debts` — to'liq CRUD + `PATCH /debts/{debt}/close`
 
@@ -596,14 +659,14 @@ Har bir mijoz bitta `tenant_id` ga bog'langan.
 
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
-| GET | `/debts` | `customer_id` (ixtiyoriy filter) | Nasiyalar ro'yxati |
-| POST | `/debts` | `customer_id`, `total_amount`, `debt_date`, `description`, `send_sms` | 201: `success`, `message`, `debt`, `remaining_limit`, `sms_sent`, `sms_info`, `sms_error`; 403: `error`, `message`, `remaining_limit` |
-| GET | `/debts/{id}` | — | Bitta nasiya |
+| GET | `/debts` | `customer_id` (ixtiyoriy filter) | Nasiyalar ro'yxati (har biri `total_paid_amount`, `payments` relation bilan) |
+| POST | `/debts` | `customer_id`, `total_amount`, `debt_date`, `description`, `send_sms` | 201: `success`, `message`, `debt`, `remaining_limit`, `sms_sent`, `balance_applied`; 403: limit tugadi |
+| GET | `/debts/{id}` | — | Bitta nasiya (ichida to'liq to'lovlar statistikasi) |
 | PUT | `/debts/{id}` | `customer_id`, `total_amount`, `debt_date`, `description` | Yangilangan nasiya |
-| DELETE | `/debts/{id}` | — | O'chirildi (bog'liq to'lovlar ham) |
-| PATCH | `/debts/{id}/close` | — | Yopildi (qolgan summa to'lov sifatida yoziladi) |
+| DELETE | `/debts/{id}` | — | O'chirildi (bog'liq to'lovlar ham; nullOnDelete → debt_id = null qilib, paymentlar customer balansiga qaytadi) |
+| PATCH | `/debts/{id}/close` | — | Yopildi (qolgan summa to'lov sifatida yoziladi; yangi paymentga `customer_id` avtomatik set qiladi) |
 
-### 8.4. Limit tekshiruvi
+### 8.5. Limit tekshiruvi
 
 Nasiya yaratishda `DebtService::checkDebtLimit()` ishlaydi:
 1. Obuna holati tekshiriladi — expired bo'lsa 403 (`remaining_limit` bilan)
@@ -619,13 +682,76 @@ Nasiya yaratishda `DebtService::checkDebtLimit()` ishlaydi:
 
 ## 9. To'lovlar (Payments)
 
-Nasiya bo'yicha to'lovlar — `payments` jadvalida.
+### 9.1. 2 XIL TO'LOV TURI (rasmiylashtirilgan)
+
+To'lovlar `payments` jadvalida saqlanadi. **HAR DOIM** `customer_id` mavjud. `debt_id` esa ixtiyoriy (nullable) — undan 2 turdagi to'lov ajratiladi:
+
+| To'lov turi | `debt_id` qiymati | Qachon qo'llaniladi | Mantiq |
+|-------------|-----|-----|-----|
+| **A) DEBT_SPECIFIC (to'g'ridan nasiya uchun)** | Son (not null) | Do'kondagi nasiyani ichida (nasiya bo'limidan) to'lov amalga oshirilganda | `payment.debt_id = tanlangan nasiyaning ID`. Qarzdorlik to'g'ridan shu nasiyadan ayiriladi. |
+| **B) CUSTOMER_GENERAL (UMUMIY MIJOZ TO'LOVI)** | **NULL** | Mijozning shaxsiy profilingizdan to'lov amalga oshirilganda (nasiya ichida emas, umumiy mijoz to'lovlarida turadi) | payment.customer_id bilan saqlanadi → so'ngra **AVTOMATIK ALLOKATSIYA** → qarzdorlikni (eng YANGI qarzdan boshlab) yopiladi. Qoldiq esa `balance` sifatida UI da ko'rsatiladi. |
+
+### 9.2. Maydonlar
 
 | Maydon | Tur | Tavsif |
 |--------|-----|--------|
-| `debt_id` | FK | Qaysi nasiyaga |
+| `customer_id` (YANGI, FK nullable = NO) | FK | **HAR DOIM** mavjud. To'lovni amalga oshirgan mijoz. |
+| `debt_id` (nullable edi, hozir aniq nullable) | FK, nullable | **NULL** = umumiy mijoz to'lovi; NOT NULL = to'g'ridan shu nasiya uchun. |
 | `amount` | decimal | To'lov summasi |
 | `paid_at` | datetime | To'lov sanasi |
+| `created_by_user_id` | FK | Kim tomonidan kiritilgan |
+
+**Oldingi paymentlar uchun migration:** backfill (chunking orqali, debt → customer.id orqali customer_id avtomatik to'ldirildi).
+
+### 9.3. CUSTOMER_GENERAL uchun AVTOMATIK ALLOKATSIYA QOIDALARI
+
+Mijozdan umumiy to'lov qabul qilinganda (POST /payments, `customer_id` berilgan, `debt_id` null):
+
+1. Payment `customer_id = id` bilan saqlanadi, `debt_id = null`.
+2. **Allokatsiya:** mijozning barcha `status = open` qarzlari **ENG YANGI (eng oxirgi yaratilgan) qarzdan boshlab** (`id` DESC bo'yicha) olinib boriladi:
+   - Har bir debt uchun `to_pay = min(remaining_amount, qoldi_mi)` deb hisoblanadi → payment ichidan yechiladi.
+   - Yangi payment **ikkinchi payment record** sifatida `debt_id = debt.id` bilan yaratiladi (yoki bitta payment bo'lib turganida, uni debt_id ga biriktiradi → so'ng qoldiqni null bilan saqlanadi — bizda asosiysi: total_amount ni bo'lib, ularni ikki xil payment sifatida saqlaymiz).
+   - debt.remaining_amount − to_pay.
+   - Agar remaining_amount == 0 → debt status = closed.
+3. **Qoldiq summa:** agar umumiy qarzdorliklardan keyin ham mablag' qolsa → payment lar oxirida qolgan qismi `debt_id = null` qoladi → mijoz balansiga tushadi.
+
+**Misol 1 (Mijozda 3 ta qarz, 95000 umumiy to'lov):**
+```
+Qarz 1 (id=10) – eski: total 30k, remaining 30k → status=open
+Qarz 2 (id=20) – oldingi: total 40k, remaining 40k → status=open
+Qarz 3 (id=30) – ENG YANGI: total 50k, remaining 50k → status=open
+
+95000 umumiy to'lov amalga oshirildi. Allokatsiya (id DESC):
+  * Debt 30 → 50k to'ladi (remaining = 0 → closed)
+  * Debt 20 → 40k to'ladi (remaining = 0 → closed)
+  * Debt 10 → 5k (95 - 90 = 5k qolgan, qoldi 5k → to'landi: 10k qoldi 30 - 5 = 25k)
+
+XOLAT:
+  95k dan 95 (50+40+5)=95 → Debt 10 ni 5k dan to'ladi, qoldiq yo'q.
+```
+
+**Holat 2 (Mijozda 2 ta qarz, 95 000 umumiy to'lov):**
+```
+Qarz 1 (id=1, eski): 30k (remaining 30k)
+Qarz 2 (id=2, yangi): 50k (remaining 50k)
+
+95k to'lov → (50k → Debt 2, 30k → Debt 1) = 80k → qoldi 15k = balance.
+Customer.balance = 15k, total_remaining_debt = 0 ✅
+```
+
+### 9.4. UI da nasiya ichida statistika (80k / 50k + 30k misol):
+
+Misol uchun: 80 000 so'm nasiya yaratildi.
+- To'g'ridan shu nasiya ichidan: **50 000 so'm (debt_specific payment, debt_id = nasiya id)**
+- Umumiy mijoz to'lovlaridan (customer_general) avtomatik allokatsiya: **30 000 so'm (debt_id = nasiya id ga biriktiriladi, customer_general paymentdan ayirilgan qism)**
+
+**Natija (nasiya ichida UI da):**
+- `total_amount`: 80000
+- `remaining_amount`: 0 (yopildi)
+- `total_paid_amount`: **80000** ✅ (debt_id = nasiya id bo'lgan barcha paymentlar yig'indisi)
+- `payments[]`: ikkita payment ko'rsatiladi (50k specific + 30k balance allokatsiyalangan)
+
+### 9.5. Web / API Endpointlar
 
 **Web:** `/payments` — to'liq CRUD.
 
@@ -633,13 +759,38 @@ Nasiya bo'yicha to'lovlar — `payments` jadvalida.
 
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
-| GET | `/payments` | `debt_id` (ixtiyoriy) | To'lovlar ro'yxati |
-| POST | `/payments` | `debt_id` (ixtiyoriy), `customer_id` (ixtiyoriy), `amount`, `paid_at`, `send_sms` | 201: yaratilgan to'lov — debt_id bo'lmasa, customer_id talab qilinadi va tizim mijoz uchun avtomatik nasiya yozuvi yaratadi (to'lov mijoz balansini ijobiy qiladi). |
+| GET | `/payments` | Query: `?type=general\|debt_specific`, `customer_id=`, `debt_id=` | To'lovlar ro'yxati: `type=general` (debt_id = null); `type=debt_specific` (debt_id != null) |
+| POST | `/payments` | `{tenant_id, customer_id? , debt_id? , amount, paid_at?, send_sms?}` | 201: yaratilgan payment + allocation + customer_balance + customer_total_remaining_debt |
 
-**Qoidalar:**
-- To'lov yozilganda `debt.remaining_amount` kamayadi
-- `remaining_amount = 0` bo'lganda nasiya avtomatik `closed` holatga o'tishi mumkin
-- `send_sms: true` — mijozga SMS yuboriladi (11-bo'limga qarang)
+**POST /payments talablari:**
+- To'liq bittasidan birini (`customer_id` yoki `debt_id`) tanlanishi kerak:
+  - **`debt_id`** berilsa → DEBT_SPECIFIC (payment.debt_id = debt.id, customer_id avtomatik debt dan olinadi)
+  - **`customer_id`** berilsa → CUSTOMER_GENERAL (payment.debt_id = null avtomatik, customer_id = berilgan; auto allocate)
+  - `amount` > 0.
+
+**Javob POST /payments: (general customer 95 000 to'lov):**
+```json
+{
+  "message": "To'lov muvaffaqiyatli qo'shildi.",
+  "payment": {"id": 101, "debt_id": null, "customer_id": 5, "amount": 95000, "...": "..."},
+  "allocation": {
+    "total_allocated_to_debts": 80000,
+    "remaining_balance": 15000,
+    "allocations": [
+      {"debt_id": 2, "amount": 50000, "from_payment_id": 102},
+      {"debt_id": 1, "amount": 30000, "from_payment_id": 103}
+    ]
+  },
+  "customer_balance": 15000,
+  "customer_total_remaining_debt": 0
+}
+```
+
+### 9.6. Qoidalar (umumiy):
+- To'lov yozilganda debt_specific bo'lsa — `debt.remaining_amount` kamayadi; customer_general bo'lsa avtomatik allocate bo'lgandan so'ng ham debt lar kamayadi.
+- `remaining_amount = 0` bo'lganda nasiya status = closed bo'ladi.
+- `send_sms: true` — mijozga SMS yuboriladi.
+- Mijozda ochiq qarzdorlik yo'q bo'lsa, to'lov `debt_id = null` saqlanib, balance ko'rsatiladi (UI da).
 
 ---
 

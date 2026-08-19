@@ -4,7 +4,8 @@ import { debtsApi } from '../api/debts.api'
 import { staffApi } from '../api/staff.api'
 import {
     Clock, CheckCircle2, Trash2, ArrowLeft,
-    FileText, Calendar, ChevronRight, CreditCard
+    FileText, Calendar, ChevronRight, CreditCard,
+    Wallet, Tag
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { CustomerDetailSkeleton } from '../components/Skeleton'
@@ -320,34 +321,95 @@ export default function DebtDetailPage() {
                         </span>
                     </div>
 
-                    <div className="space-y-3">
-                        {payments.map(payment => (
-                            <div
-                                key={payment.id}
-                                className="card dark:bg-gray-800 flex items-center justify-between p-4 active:scale-98 transition-transform"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
-                                        <CheckCircle2 size={20} className="text-green-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[16px] font-bold text-gray-900 dark:text-white">
-                                            {formatCurrency(payment.amount)} <span className="text-[12px] font-normal text-gray-400">so'm</span>
-                                        </p>
-                                        <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
-                                            <Calendar size={12} />
-                                            {formatDateTime(payment.paid_at || payment.created_at)}
+                    {(() => {
+                        let totalDirect = 0, totalBalance = 0
+                        for (const p of payments) {
+                            const amt = parseFloat(p.amount) || 0
+                            const pType = String(p.payment_type || '').toLowerCase()
+                            const dId = p.debt_id ?? p.debtId ?? p.debt?.id
+                            const isBalance = pType.includes('balance') || pType.includes('customer') || pType.includes('deposit') || pType.includes('umumiy')
+                                || (dId === null || dId === undefined || String(dId) === '0' || String(dId) === 'null')
+                            if (isBalance) totalBalance += amt; else totalDirect += amt
+                        }
+                        return (totalDirect > 0 || totalBalance > 0) && (
+                            <div className="grid grid-cols-2 gap-2 mb-4">
+                                {totalDirect > 0 && (
+                                    <div className="p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-900/15 border border-blue-100/60 dark:border-blue-900/40">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                                                <Tag size={13} className="text-blue-600 dark:text-blue-400" />
+                                            </div>
+                                            <p className="text-[11px] text-blue-600/80 dark:text-blue-400/80 font-bold uppercase tracking-wider">To'g'ridan to'lov</p>
                                         </div>
-                                        {getCreatorName(payment) && (
-                                            <p className="text-[12px] text-gray-400 mt-1">
-                                                <span className="font-semibold">Qabul qilgan:</span> {getCreatorName(payment)}
-                                            </p>
-                                        )}
+                                        <p className="text-[14px] font-bold text-blue-700 dark:text-blue-300">{formatCurrency(totalDirect)} so'm</p>
                                     </div>
-                                </div>
-                                <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
+                                )}
+                                {totalBalance > 0 && (
+                                    <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-900/15 border border-emerald-100/60 dark:border-emerald-900/40">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                                                <Wallet size={13} className="text-emerald-600 dark:text-emerald-400" />
+                                            </div>
+                                            <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase tracking-wider">Balansdan ayirilgan</p>
+                                        </div>
+                                        <p className="text-[14px] font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(totalBalance)} so'm</p>
+                                    </div>
+                                )}
                             </div>
-                        ))}
+                        )
+                    })()}
+
+                    <div className="space-y-3">
+                        {payments.map(payment => {
+                            const pType = String(payment.payment_type || '').toLowerCase()
+                            const dId = payment.debt_id ?? payment.debtId ?? payment.debt?.id
+                            const isBalance = pType.includes('balance') || pType.includes('customer') || pType.includes('deposit') || pType.includes('umumiy')
+                                || (dId === null || dId === undefined || String(dId) === '0' || String(dId) === 'null')
+                            return (
+                                <div
+                                    key={payment.id}
+                                    className="card dark:bg-gray-800 flex items-center justify-between p-4 active:scale-98 transition-transform"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                            isBalance
+                                                ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                                                : 'bg-green-50 dark:bg-green-900/20'
+                                        }`}>
+                                            {isBalance
+                                                ? <Wallet size={20} className="text-emerald-500" />
+                                                : <CheckCircle2 size={20} className="text-green-500" />
+                                            }
+                                        </div>
+                                        <div>
+                                            <p className="text-[16px] font-bold text-gray-900 dark:text-white">
+                                                {formatCurrency(payment.amount)} <span className="text-[12px] font-normal text-gray-400">so'm</span>
+                                            </p>
+                                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                                    isBalance
+                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
+                                                        : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100/60 dark:border-green-900/30'
+                                                }`}>
+                                                    {isBalance ? <Wallet size={10} /> : <Tag size={10} />}
+                                                    {isBalance ? 'Balansdan' : 'Qarz uchun'}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
+                                                    <Calendar size={12} />
+                                                    {formatDateTime(payment.paid_at || payment.created_at)}
+                                                </span>
+                                            </div>
+                                            {getCreatorName(payment) && (
+                                                <p className="text-[12px] text-gray-400 mt-1">
+                                                    <span className="font-semibold">Qabul qilgan:</span> {getCreatorName(payment)}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
             )}

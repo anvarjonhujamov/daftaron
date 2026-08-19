@@ -296,10 +296,21 @@ components:
           nullable: true
         total_debt:
           type: number
+        balance:
+          type: number
+          description: |
+            Mijozning shaxsiy balansi (UI uchun).
+            Balance = Umumiy (debt_id=null bo'lgan) to'lovlar yig'indisi − (mijozning barcha ochiq qarzlari yig'indisi).
+            Agar balans > 0 bo'lsa — mijozda avvaldan to'langan (qarzsiz) mablag' bor.
+          example: 15000
+        total_remaining_debt:
+          type: number
+          description: Mijozning barcha ochiq qarzlari yig'indisi.
+          example: 30000
 
     Debt:
       type: object
-      description: Nasiya
+      description: Nasiya (qarz)
       properties:
         id:
           type: integer
@@ -309,8 +320,19 @@ components:
           type: string
         total_amount:
           type: number
+          description: Nasiya summasi (asl)
         remaining_amount:
           type: number
+          description: To'lanmagan qoldiq summa
+        total_paid_amount:
+          type: number
+          description: |
+            Shu nasiya uchun to'liq to'langan summa.
+            To'g'ridan-to'g'ri bog'langan to'lovlar + umumiy balansdan avtomatik ajratilgan to'lovlar hisoblanadi.
+          example: 50000
+        paid_from_direct_payments:
+          type: number
+          description: total_amount − remaining_amount (nasiyani asosiy qismi to'lganligi)
         debt_date:
           type: string
           format: date
@@ -322,15 +344,33 @@ components:
           nullable: true
         sms_sent:
           type: boolean
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+          description: |
+            Shu nasiyaga to'liq bog'langan barcha to'lovlar:
+            - `debt_id = debt.id` bo'lgan to'lovlar (direct payment + balance auto-applied paymentlar)
 
     Payment:
       type: object
-      description: To'lov
+      description: To'lov (2 turi bor: debt_specific va general/umumiy customer to'lovi)
       properties:
         id:
           type: integer
         debt_id:
           type: integer
+          nullable: true
+          description: |
+            Agar `null` bo'lsa — bu UMUMIY MIJOZ TO'LOVI (balansni shakllantiradi / qarzlar bo'sa balansga yig'iladi / keyin qarzdan ayiriladi).
+            Agar son bo'lsa — to'g'ridan-to'g'ri shu nasiya uchun to'lov (debt_specific).
+        customer_id:
+          type: integer
+          description: To'lovni amalga oshirgan mijoz ID (har doim mavjud).
+        customer:
+          allOf:
+            - $ref: "#/components/schemas/Customer"
+          nullable: true
         customer_name:
           type: string
         amount:
@@ -338,6 +378,10 @@ components:
         paid_at:
           type: string
           format: date-time
+        created_by:
+          allOf:
+            - $ref: "#/components/schemas/User"
+          nullable: true
 
     Worker:
       type: object
@@ -1233,11 +1277,13 @@ paths:
             type: string
       responses:
         "200":
-          description: Nasiyalar ro'yxati
+          description: Nasiyalar ro'yxati (balance, total_paid_amount bilan)
 
     post:
       tags: [Debts]
-      summary: Nasiya yaratish (limit tekshiruvi bilan)
+      summary: |
+        Nasiya yaratish (limit tekshiruvi + BALANS dan avtomatik to'lash).
+        Agar mijozda avvaldan BALANS mavjud bo'lsa (debt_id=null umumiy to'lovlar → umumiy ochiq qarzlardan katta), avtomatik ravishda bu balans yangi qarzdan ayiriladi.
       security:
         - bearerAuth: []
       requestBody:
@@ -1254,6 +1300,7 @@ paths:
                   type: integer
                 total_amount:
                   type: number
+                  description: Nasiya asl summasi (balansdan ayirilgandan keyingi qarzdorlik = max(0, total_amount − balance_before))
                 debt_date:
                   type: string
                   format: date
@@ -1263,7 +1310,43 @@ paths:
                   type: boolean
       responses:
         "201":
-          description: Nasiya yaratildi (remaining_limit ko'rsatiladi)
+          description: |
+            Nasiya yaratildi. Javobda quyidagilar mavjud:
+            - `remaining_limit`
+            - `balance_applied.before_balance` — qoldiq avval balansi
+            - `balance_applied.after_balance` — balansdan qancha ayirilgandan keyingi
+            - `balance_applied.debt_remaining` — yangi qarzdorlik
+            - `balance_applied.allocations` — qaysi paymentlardan qancha ayirilib, debt ga biriktirilganligi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  debt:
+                    $ref: "#/components/schemas/Debt"
+                  remaining_limit:
+                    type: number
+                  balance_applied:
+                    type: object
+                    nullable: true
+                    properties:
+                      before_balance:
+                        type: number
+                      after_balance:
+                        type: number
+                      debt_remaining:
+                        type: number
+                      allocations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            payment_id:
+                              type: integer
+                            amount:
+                              type: number
         "403":
           description: "Nasiya limiti tugadi, remaining_limit: 0"
         "422":
@@ -1374,18 +1457,50 @@ paths:
   /payments:
     get:
       tags: [Payments]
-      summary: To'lovlar ro'yxati
+      summary: To'lovlar ro'yxati (filterlarga ega)
       security:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/TenantId"
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [general, debt_specific]
+          description: |
+            To'lov turini filterlash:
+            - `general` — debt_id = null (umumiy mijoz to'lovlari, balansni shakllantirgan / qarzlar uchraydigan)
+            - `debt_specific` — debt_id != null (to'g'ridan-to'g'ri bir nasiya uchun)
+        - name: customer_id
+          in: query
+          schema:
+            type: integer
+          description: Belgilangan mijozning to'lovlari
+        - name: debt_id
+          in: query
+          schema:
+            type: integer
+          description: Belgilangan nasiya uchun to'lovlar
       responses:
         "200":
           description: To'lovlar ro'yxati
 
     post:
       tags: [Payments]
-      summary: To'lov qo'shish
+      summary: |
+        To'lov qo'shish (2 turdagi to'lovlarni qo'llab-quvvatlaydi):
+
+        A) DEBT_SPECIFIC (to'g'ridan-to'g'ri nasiya uchun):
+          required body: `{debt_id, amount}`
+          ⇒ payment.debt_id = berilgan nasiya ID
+          ⇒ payment.customer_id = nasiyaning customer_id (auto)
+          ⇒ debt.remaining_amount dan ayirib boriladi.
+
+        B) CUSTOMER_GENERAL (umumiy mijoz to'lovi):
+          required body: `{customer_id, amount}`
+          ⇒ payment.debt_id = null saqlanadi
+          ⇒ payment.customer_id = berilgan customer_id
+          ⇒ AVTOMATIK ALLOKATSIYA: summa eng YANGI (eng oxirgi yaratilgan) qarzdan boshlab (id DESC bo'yicha) ochiq qarzdorlikni yopiladi, qoldi esa customer balansiga tushadi.
       security:
         - bearerAuth: []
       requestBody:
@@ -1394,12 +1509,17 @@ paths:
           application/json:
             schema:
               type: object
-              required: [tenant_id, debt_id, amount]
+              required: [tenant_id, amount]
               properties:
                 tenant_id:
                   type: integer
+                customer_id:
+                  type: integer
+                  description: IXTIYORIY (agar debt_id berilgan bo'lsa, undan auto olinadi)
                 debt_id:
                   type: integer
+                  nullable: true
+                  description: "DEBT_SPECIFIC tur uchun (agar berilgan bo'lsa to'g'ridan shu nasiyaga bog'lanadi, umumiy mijoz to'lovi uchun ushbu maydon berilmasligi kerak (null))"
                 amount:
                   type: number
                 paid_at:
@@ -1409,7 +1529,43 @@ paths:
                   type: boolean
       responses:
         "201":
-          description: To'lov qo'shildi
+          description: To'lov qo'shildi (allocation details bilan)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  payment:
+                    $ref: "#/components/schemas/Payment"
+                  allocation:
+                    type: object
+                    nullable: true
+                    properties:
+                      total_allocated_to_debts:
+                        type: number
+                      remaining_balance:
+                        type: number
+                      allocations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            debt_id:
+                              type: integer
+                            amount:
+                              type: number
+                            from_payment_id:
+                              type: integer
+                  customer_balance:
+                    type: number
+                    description: To'lovdan keyingi mijoz balansi
+                  customer_total_remaining_debt:
+                    type: number
+                    description: Mijozning umumiy qoldiq qarzdorligi
+        "422":
+          description: Validatsiya xatosi
 
   /workers:
     get:
