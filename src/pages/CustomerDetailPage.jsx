@@ -39,7 +39,8 @@ export default function CustomerDetailPage() {
     const [loading, setLoading] = useState(true)
     const { status: subStatus, remaining, sms_remaining, total } = useSubscription()
     const [showDebtDrawer, setShowDebtDrawer] = useState(false)
-    const [showPaymentDrawer, setShowPaymentDrawer] = useState(false)
+    const [showGenericPaymentDrawer, setShowGenericPaymentDrawer] = useState(false) // yashil "To'lov"
+    const [showDebtPaymentDrawer, setShowDebtPaymentDrawer] = useState(false) // kartadagi "To'lov qilish"
     const [showOptionsDrawer, setShowOptionsDrawer] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [submitting, setSubmitting] = useState(false)
@@ -50,9 +51,13 @@ export default function CustomerDetailPage() {
         send_sms: false
     })
     const [debtErrors, setDebtErrors] = useState({})
-    const [paymentForm, setPaymentForm] = useState({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
-    const [paymentErrors, setPaymentErrors] = useState({})
-    const [paymentMode, setPaymentMode] = useState('debt') // 'debt' | 'balance'
+    // Umumiy to'lov (tegirmaki yashil tugma)
+    const [genericPaymentForm, setGenericPaymentForm] = useState({ amount: '', description: '', paid_at: '', send_sms: false })
+    const [genericPaymentErrors, setGenericPaymentErrors] = useState({})
+    const [genericPaymentMode, setGenericPaymentMode] = useState('debt') // 'debt' | 'balance'
+    // Faqat bitta nasiya uchun to'lov (kartadagi ko'k tugma)
+    const [debtPaymentForm, setDebtPaymentForm] = useState({ debt_id: null, amount: '', paid_at: '', send_sms: false })
+    const [debtPaymentErrors, setDebtPaymentErrors] = useState({})
     const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
     const [blockedType, setBlockedType] = useState(null) // 'limit' | 'expired'
     const [limitMeta, setLimitMeta] = useState({
@@ -198,10 +203,10 @@ export default function CustomerDetailPage() {
             })
     }, [debts])
 
-    const paymentAllocationPreview = useMemo(() => {
-        const amt = parseCurrency(paymentForm.amount)
+    const genericPaymentAllocationPreview = useMemo(() => {
+        const amt = parseCurrency(genericPaymentForm.amount)
         if (!amt || amt <= 0) return null
-        if (paymentMode === 'balance') {
+        if (genericPaymentMode === 'balance') {
             return {
                 lines: [{ label: 'Balansga to\'ldirish', amount: amt, type: 'balance' }],
                 toBalance: amt,
@@ -212,23 +217,14 @@ export default function CustomerDetailPage() {
         let toPay = amt
         const lines = []
         let totalDebtPaid = 0
-        let specificDebt = null
-        if (paymentForm.debt_id) {
-            specificDebt = openDebtsNewestFirst.find(d => Number(d.id) === Number(paymentForm.debt_id))
-            || debts.find(d => Number(d.id) === Number(paymentForm.debt_id))
-        }
-        const ordered = specificDebt
-            ? [specificDebt, ...openDebtsNewestFirst.filter(d => Number(d.id) !== Number(specificDebt.id))]
-            : openDebtsNewestFirst
+        const ordered = openDebtsNewestFirst
         for (const d of ordered) {
             if (toPay <= 0) break
             const rem = Number(d.remaining_amount) || 0
             if (rem <= 0) continue
             const pay = Math.min(toPay, rem)
             lines.push({
-                label: specificDebt && Number(d.id) === Number(specificDebt.id)
-                    ? `Qarz #${d.id} (tanlangan)`
-                    : `Qarz #${d.id} (avtomatik)`,
+                label: `Qarz #${d.id} (avtomatik)`,
                 amount: pay,
                 type: 'debt',
                 debtId: d.id
@@ -241,31 +237,31 @@ export default function CustomerDetailPage() {
             lines.push({ label: 'Qolgan summa balansga', amount: toBalance, type: 'balance' })
         }
         return { lines, toBalance, toDebtTotal: totalDebtPaid }
-    }, [paymentForm.amount, paymentForm.debt_id, paymentMode, openDebtsNewestFirst, debts])
+    }, [genericPaymentForm.amount, genericPaymentMode, openDebtsNewestFirst])
 
-    const handleAddPayment = async (e) => {
+    const selectedDebtForPayment = useMemo(() => {
+        if (!debtPaymentForm.debt_id) return null
+        return debts.find(d => Number(d.id) === Number(debtPaymentForm.debt_id)) || null
+    }, [debts, debtPaymentForm.debt_id])
+
+    const selectedDebtRemaining = useMemo(() => {
+        if (!selectedDebtForPayment) return 0
+        return parseFloat(selectedDebtForPayment.remaining_amount) || 0
+    }, [selectedDebtForPayment])
+
+    // 🔵 YASHIL TEPADAGI UMUMIY TO'LOV
+    const handleAddGenericPayment = async (e) => {
         e.preventDefault()
-        const totalPayment = parseCurrency(paymentForm.amount)
+        const totalPayment = parseCurrency(genericPaymentForm.amount)
         if (!totalPayment || totalPayment <= 0) return
         let remainingPayment = totalPayment
         const cid = parseInt(id)
-
-        // Build ordered debts list
         let ordered = [...openDebtsNewestFirst]
-        let specificDebt = null
-        if (paymentMode === 'debt' && paymentForm.debt_id) {
-            specificDebt = ordered.find(d => Number(d.id) === Number(paymentForm.debt_id))
-                || debts.find(d => Number(d.id) === Number(paymentForm.debt_id))
-            if (specificDebt) {
-                ordered = [specificDebt, ...ordered.filter(d => Number(d.id) !== Number(specificDebt.id))]
-            }
-        }
 
         setSubmitting(true)
-        setPaymentErrors({})
+        setGenericPaymentErrors({})
         try {
-            // If user chose BALANCE mode, skip debt allocation entirely
-            if (paymentMode === 'debt') {
+            if (genericPaymentMode === 'debt') {
                 for (const debt of ordered) {
                     if (remainingPayment <= 0) break
                     const debtBalance = parseFloat(debt.remaining_amount) || 0
@@ -276,33 +272,30 @@ export default function CustomerDetailPage() {
                             customer_id: cid,
                             debt_id: debt.id,
                             amount: paymentForThisDebt,
-                            paid_at: paymentForm.paid_at || null,
-                            send_sms: paymentForm.send_sms,
-                            description: paymentForm.description || null,
+                            paid_at: genericPaymentForm.paid_at || null,
+                            send_sms: genericPaymentForm.send_sms,
+                            description: genericPaymentForm.description || null,
                             payment_type: 'debt_payment'
                         })
                         remainingPayment -= paymentForThisDebt
                     }
                 }
             }
-
-            // Anything remaining (or balance mode the whole amount) becomes customer balance top-up
             if (remainingPayment > 0) {
                 await paymentsApi.createPayment({
                     customer_id: cid,
                     debt_id: null,
                     amount: remainingPayment,
-                    paid_at: paymentForm.paid_at || null,
-                    send_sms: paymentForm.send_sms,
-                    description: paymentForm.description || null,
+                    paid_at: genericPaymentForm.paid_at || null,
+                    send_sms: genericPaymentForm.send_sms,
+                    description: genericPaymentForm.description || null,
                     payment_type: 'customer_balance'
                 })
             }
-
-            setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
-            setPaymentMode('debt')
-            setPaymentErrors({})
-            setShowPaymentDrawer(false)
+            setGenericPaymentForm({ amount: '', description: '', paid_at: '', send_sms: false })
+            setGenericPaymentMode('debt')
+            setGenericPaymentErrors({})
+            setShowGenericPaymentDrawer(false)
             const totalToDebt = totalPayment - remainingPayment
             const totalToBal = remainingPayment
             toast.success(
@@ -318,7 +311,61 @@ export default function CustomerDetailPage() {
             loadData()
         } catch (err) {
             if (err.response?.status === 422 && err.response?.data?.errors) {
-                setPaymentErrors(err.response.data.errors)
+                setGenericPaymentErrors(err.response.data.errors)
+            } else {
+                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            }
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    // 🔵 KARTADAGI NASIYA UCHUN TO'LOV (faqat 1 ta debt_id, cheklov)
+    const handleAddDebtSpecificPayment = async (e) => {
+        e.preventDefault()
+        const cid = parseInt(id)
+        const totalPayment = parseCurrency(debtPaymentForm.amount)
+        if (!totalPayment || totalPayment <= 0) return
+        const targetDebt = selectedDebtForPayment
+        if (!targetDebt) {
+            toast.error('Nasiya topilmadi')
+            return
+        }
+        const rem = selectedDebtRemaining
+        // 🔴 Cheklov: kiritilgan summa qoldiqdan oshmasligi kerak
+        if (totalPayment > rem) {
+            const msg = `Kiritilgan summa (${formatCurrency(totalPayment)} so'm) qolgan qarzdan (${formatCurrency(rem)} so'm) ko'p. To'lov summasini kamaytiring.`
+            setDebtPaymentErrors({ amount: [msg] })
+            toast.error(msg, { duration: 5000 })
+            return
+        }
+
+        setSubmitting(true)
+        setDebtPaymentErrors({})
+        try {
+            await paymentsApi.createPayment({
+                customer_id: cid,
+                debt_id: targetDebt.id,
+                amount: totalPayment,
+                paid_at: debtPaymentForm.paid_at || null,
+                send_sms: debtPaymentForm.send_sms,
+                description: null,
+                payment_type: 'debt_payment'
+            })
+            setDebtPaymentForm({ debt_id: null, amount: '', paid_at: '', send_sms: false })
+            setDebtPaymentErrors({})
+            setShowDebtPaymentDrawer(false)
+            toast.success(
+                <div>
+                    <p className="font-bold">To'lov qabul qilindi (nasiya #{targetDebt.id})</p>
+                    <p className="text-sm">{formatCurrency(totalPayment)} so'm • Yangi qoldiq: {formatCurrency(Math.max(0, rem - totalPayment))} so'm</p>
+                </div>,
+                { duration: 4500 }
+            )
+            loadData()
+        } catch (err) {
+            if (err.response?.status === 422 && err.response?.data?.errors) {
+                setDebtPaymentErrors(err.response.data.errors)
             } else {
                 toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
             }
@@ -513,14 +560,8 @@ export default function CustomerDetailPage() {
                     </button>
                     <button
                         onClick={() => {
-                            if (paymentForm.debt_id) {
-                                setPaymentMode('debt')
-                            } else if (hasOutstandingDebt) {
-                                setPaymentMode('debt')
-                            } else {
-                                setPaymentMode('balance')
-                            }
-                            setShowPaymentDrawer(true)
+                            setGenericPaymentMode(hasOutstandingDebt ? 'debt' : 'balance')
+                            setShowGenericPaymentDrawer(true)
                         }}
                         className="btn flex-1 py-3 shadow-lg active:scale-95 transition-all btn-success shadow-green-500/20"
                     >
@@ -582,8 +623,15 @@ export default function CustomerDetailPage() {
                                 {debt.status !== 'closed' && (
                                     <button
                                         onClick={() => {
-                                            setPaymentForm({ ...paymentForm, amount: debt.remaining_amount.toString(), debt_id: debt.id })
-                                            setShowPaymentDrawer(true)
+                                            const rem = parseFloat(debt.remaining_amount) || 0
+                                            setDebtPaymentForm({
+                                                debt_id: debt.id,
+                                                amount: rem > 0 ? formatCurrency(String(Math.round(rem))) : '',
+                                                paid_at: '',
+                                                send_sms: false
+                                            })
+                                            setDebtPaymentErrors({})
+                                            setShowDebtPaymentDrawer(true)
                                         }}
                                         className="btn btn-primary w-full py-2.5 text-[14px] bg-blue-500 hover:bg-blue-600 text-white border-0"
                                     >
@@ -739,14 +787,14 @@ export default function CustomerDetailPage() {
                 </Drawer.Portal>
             </Drawer.Root>
 
-            {/* Add Payment Drawer */}
-            <Drawer.Root open={showPaymentDrawer} onOpenChange={(open) => {
-                setShowPaymentDrawer(open)
+            {/* 🔵 UMUMIY TO'LOV DRAWER (yashil "To'lov" tugmasi) */}
+            <Drawer.Root open={showGenericPaymentDrawer} onOpenChange={(open) => {
+                setShowGenericPaymentDrawer(open)
                 if (!open) {
                     setTimeout(() => {
-                        setPaymentForm({ amount: '', description: '', debt_id: null, paid_at: '', send_sms: false })
-                        setPaymentMode('debt')
-                        setPaymentErrors({})
+                        setGenericPaymentForm({ amount: '', description: '', paid_at: '', send_sms: false })
+                        setGenericPaymentMode('debt')
+                        setGenericPaymentErrors({})
                     }, 300)
                 }
             }} repositionInputs={false}>
@@ -758,18 +806,18 @@ export default function CustomerDetailPage() {
                             <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
-                                        To'lov qo'shish
+                                        To'lov qo'shish (umumiy)
                                     </Drawer.Title>
                                     <Drawer.Description className="text-gray-400 text-[14px]">
-                                        {customer.name} uchun to'lov
+                                        {customer.name} uchun umumiy to'lov
                                     </Drawer.Description>
                                 </div>
-                                <button onClick={() => setShowPaymentDrawer(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                <button onClick={() => setShowGenericPaymentDrawer(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                                     <X size={18} className="text-gray-500" />
                                 </button>
                             </div>
                             <div className="overflow-y-auto max-h-[calc(85vh-80px)] pb-8">
-                                <form onSubmit={handleAddPayment} className="space-y-4">
+                                <form onSubmit={handleAddGenericPayment} className="space-y-4">
                                     {customerBalance > 0 && (
                                         <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-900/15 border border-emerald-100/60 dark:border-emerald-900/40">
                                             <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
@@ -785,21 +833,21 @@ export default function CustomerDetailPage() {
                                     <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-gray-100 dark:bg-gray-700/40">
                                         <button
                                             type="button"
-                                            onClick={() => setPaymentMode('debt')}
+                                            onClick={() => setGenericPaymentMode('debt')}
                                             className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
-                                                paymentMode === 'debt'
+                                                genericPaymentMode === 'debt'
                                                     ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
                                                     : 'text-gray-500 dark:text-gray-400'
                                             }`}
                                         >
                                             <Tag size={13} className="inline mr-1 -mt-0.5" />
-                                            Qarz uchun
+                                            Qarzlar uchun
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setPaymentMode('balance')}
+                                            onClick={() => setGenericPaymentMode('balance')}
                                             className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
-                                                paymentMode === 'balance'
+                                                genericPaymentMode === 'balance'
                                                     ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                                                     : 'text-gray-500 dark:text-gray-400'
                                             }`}
@@ -809,38 +857,15 @@ export default function CustomerDetailPage() {
                                         </button>
                                     </div>
 
-                                    {paymentMode === 'debt' && openDebtsNewestFirst.length > 0 && (
-                                        <div>
-                                            <label className="label">Qarzni tanlang (ixtiyoriy)</label>
-                                            <select
-                                                className="input"
-                                                value={paymentForm.debt_id || ''}
-                                                onChange={(e) => {
-                                                    const v = e.target.value ? Number(e.target.value) : null
-                                                    let nextAmount = paymentForm.amount
-                                                    if (v) {
-                                                        const sel = openDebtsNewestFirst.find(d => Number(d.id) === Number(v))
-                                                        const rem = sel ? (parseFloat(sel.remaining_amount) || 0) : 0
-                                                        if (rem > 0 && !parseCurrency(paymentForm.amount)) {
-                                                            nextAmount = formatCurrency(String(Math.round(rem)))
-                                                        }
-                                                    }
-                                                    setPaymentForm({
-                                                        ...paymentForm,
-                                                        debt_id: v,
-                                                        amount: nextAmount
-                                                    })
-                                                }}
-                                            >
-                                                <option value="">— Avtomatik tarzda taqsimlash (yangi qarzdan) —</option>
-                                                {openDebtsNewestFirst.map(d => (
-                                                    <option key={d.id} value={d.id}>
-                                                        #{d.id} • {formatCurrency(d.remaining_amount)} so'm • {formatDate(d.created_at)}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <p className="text-[12px] text-gray-400 mt-1">
-                                                Tanlanmasa, to'lov <b className="text-gray-600 dark:text-gray-300">eng yangi (oxirgi) qarzdan</b> boshlab avtomatik ayiriladi.
+                                    {genericPaymentMode === 'debt' && openDebtsNewestFirst.length > 0 && (
+                                        <p className="text-[12px] text-gray-500 dark:text-gray-400 px-1">
+                                            To'lov <b className="text-gray-800 dark:text-gray-200">eng yangi (oxirgi) qarzdan</b> boshlab avtomatik tarzda taqsimlanadi, ortiqcha summa balansga qo'shiladi.
+                                        </p>
+                                    )}
+                                    {genericPaymentMode === 'debt' && openDebtsNewestFirst.length === 0 && (
+                                        <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-900/15 border border-amber-100/60 dark:border-amber-900/40">
+                                            <p className="text-[12px] text-amber-700 dark:text-amber-400">
+                                                Faol qarz yo'q. "Balansga" rejimiga o'ting yoki nasiyani oldin qo'shing.
                                             </p>
                                         </div>
                                     )}
@@ -848,33 +873,33 @@ export default function CustomerDetailPage() {
                                     <div>
                                         <label className="label">Summa</label>
                                         <div className="relative">
-                                            <CreditCard size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${paymentErrors.amount ? 'text-red-400' : 'text-gray-400'}`} />
+                                            <CreditCard size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${genericPaymentErrors.amount ? 'text-red-400' : 'text-gray-400'}`} />
                                             <input
                                                 type="text"
                                                 inputMode="numeric"
-                                                className={`input pl-11 pr-16 ${paymentErrors.amount ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                                                className={`input pl-11 pr-16 ${genericPaymentErrors.amount ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                                 placeholder="0"
-                                                value={paymentForm.amount}
+                                                value={genericPaymentForm.amount}
                                                 onChange={(e) => {
                                                     const digits = e.target.value.replace(/\D/g, '')
-                                                    setPaymentForm({
-                                                        ...paymentForm,
+                                                    setGenericPaymentForm({
+                                                        ...genericPaymentForm,
                                                         amount: digits ? formatCurrency(digits) : ''
                                                     })
-                                                    if (paymentErrors.amount) setPaymentErrors({ ...paymentErrors, amount: null })
+                                                    if (genericPaymentErrors.amount) setGenericPaymentErrors({ ...genericPaymentErrors, amount: null })
                                                 }}
                                                 required
                                             />
                                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
                                         </div>
-                                        {paymentErrors.amount && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{paymentErrors.amount[0]}</p>}
+                                        {genericPaymentErrors.amount && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{genericPaymentErrors.amount[0]}</p>}
                                     </div>
 
                                     {/* Allocation Preview */}
-                                    {paymentAllocationPreview && (
+                                    {genericPaymentAllocationPreview && (
                                         <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/40 p-3 space-y-2">
                                             <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Taqqoslash (avtomatik)</p>
-                                            {paymentAllocationPreview.lines.map((ln, idx) => (
+                                            {genericPaymentAllocationPreview.lines.map((ln, idx) => (
                                                 <div key={idx} className="flex items-center justify-between text-[13px]">
                                                     <div className="flex items-center gap-2">
                                                         {ln.type === 'debt' ? (
@@ -897,12 +922,12 @@ export default function CustomerDetailPage() {
                                             ))}
                                             <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-1 flex items-center justify-between">
                                                 <span className="text-[12px] font-bold text-gray-500 uppercase tracking-wider">
-                                                    {paymentMode === 'debt' ? 'Jami taqsimlash' : 'Jami balansga'}
+                                                    {genericPaymentMode === 'debt' ? 'Jami taqsimlash' : 'Jami balansga'}
                                                 </span>
                                                 <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
-                                                    {formatCurrency(paymentMode === 'debt'
-                                                        ? paymentAllocationPreview.toDebtTotal + paymentAllocationPreview.toBalance
-                                                        : paymentAllocationPreview.toBalance
+                                                    {formatCurrency(genericPaymentMode === 'debt'
+                                                        ? genericPaymentAllocationPreview.toDebtTotal + genericPaymentAllocationPreview.toBalance
+                                                        : genericPaymentAllocationPreview.toBalance
                                                     )} so'm
                                                 </span>
                                             </div>
@@ -913,19 +938,19 @@ export default function CustomerDetailPage() {
                                         <label className="label">To'lov sanasi (ixtiyoriy)</label>
                                         <input
                                             type="date"
-                                            className={`input ${paymentErrors.paid_at ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
-                                            value={paymentForm.paid_at}
+                                            className={`input ${genericPaymentErrors.paid_at ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                                            value={genericPaymentForm.paid_at}
                                             max={new Date().toISOString().split('T')[0]}
                                             onChange={(e) => {
-                                                setPaymentForm({ ...paymentForm, paid_at: e.target.value })
-                                                if (paymentErrors.paid_at) setPaymentErrors({ ...paymentErrors, paid_at: null })
+                                                setGenericPaymentForm({ ...genericPaymentForm, paid_at: e.target.value })
+                                                if (genericPaymentErrors.paid_at) setGenericPaymentErrors({ ...genericPaymentErrors, paid_at: null })
                                             }}
                                         />
-                                        {paymentErrors.paid_at && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{paymentErrors.paid_at[0]}</p>}
+                                        {genericPaymentErrors.paid_at && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{genericPaymentErrors.paid_at[0]}</p>}
                                     </div>
                                     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
                                         <div className="flex-1">
-                                            <label htmlFor="payment_send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
+                                            <label htmlFor="generic_payment_send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
                                                 Mijozga SMS yuborish
                                             </label>
                                             <p className="text-[11px] text-gray-400 opacity-80">
@@ -933,19 +958,174 @@ export default function CustomerDetailPage() {
                                             </p>
                                         </div>
                                         <button
-                                            id="payment_send_sms"
+                                            id="generic_payment_send_sms"
                                             type="button"
                                             role="switch"
-                                            aria-checked={paymentForm.send_sms}
+                                            aria-checked={genericPaymentForm.send_sms}
                                             className="ios-switch"
-                                            data-state={paymentForm.send_sms ? 'checked' : 'unchecked'}
-                                            onClick={() => setPaymentForm({ ...paymentForm, send_sms: !paymentForm.send_sms })}
+                                            data-state={genericPaymentForm.send_sms ? 'checked' : 'unchecked'}
+                                            onClick={() => setGenericPaymentForm({ ...genericPaymentForm, send_sms: !genericPaymentForm.send_sms })}
                                         >
                                             <span className="ios-switch-thumb" />
                                         </button>
                                     </div>
                                     <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={submitting}>
                                         {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
+
+            {/* 🔴 NASIYA UCHUN ALOHIDA TO'LOV DRAWER (kartadagi "To'lov qilish") */}
+            <Drawer.Root open={showDebtPaymentDrawer} onOpenChange={(open) => {
+                setShowDebtPaymentDrawer(open)
+                if (!open) {
+                    setTimeout(() => {
+                        setDebtPaymentForm({ debt_id: null, amount: '', paid_at: '', send_sms: false })
+                        setDebtPaymentErrors({})
+                    }, 300)
+                }
+            }} repositionInputs={false}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
+                                        {selectedDebtForPayment ? `Nasiya #${selectedDebtForPayment.id} uchun to'lov` : 'Nasiya uchun to\'lov'}
+                                    </Drawer.Title>
+                                    <Drawer.Description className="text-gray-400 text-[14px]">
+                                        {customer.name} • Faqat tanlangan nasiya
+                                    </Drawer.Description>
+                                </div>
+                                <button onClick={() => setShowDebtPaymentDrawer(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                    <X size={18} className="text-gray-500" />
+                                </button>
+                            </div>
+                            <div className="overflow-y-auto max-h-[calc(85vh-80px)] pb-8">
+                                <form onSubmit={handleAddDebtSpecificPayment} className="space-y-4">
+                                    {selectedDebtForPayment && (
+                                        <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-900/15 border border-blue-100/60 dark:border-blue-900/40 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                                                        <Tag size={15} className="text-blue-600 dark:text-blue-400" />
+                                                    </div>
+                                                    <p className="text-[12px] text-blue-600/80 dark:text-blue-400/80 font-bold uppercase tracking-wider">Tanlangan nasiya</p>
+                                                </div>
+                                                <span className="text-[11px] text-gray-500 dark:text-gray-400">{formatDate(selectedDebtForPayment.created_at)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Berildi</p>
+                                                    <p className="text-[15px] font-bold text-gray-800 dark:text-gray-200">{formatCurrency(selectedDebtForPayment.total_amount)} so'm</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[11px] text-red-500 uppercase font-bold tracking-wider mb-0.5">Qoldi (maksimum)</p>
+                                                    <p className="text-[15px] font-extrabold text-red-600 dark:text-red-400">{formatCurrency(selectedDebtRemaining)} so'm</p>
+                                                </div>
+                                            </div>
+                                            {selectedDebtForPayment.description && (
+                                                <p className="text-[12px] text-gray-500 dark:text-gray-400 border-t border-blue-100/60 dark:border-blue-900/40 pt-2">
+                                                    {selectedDebtForPayment.description}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <label className="label">Summa (qoldiqdan oshmasligi kerak)</label>
+                                        <div className="relative">
+                                            <CreditCard size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${debtPaymentErrors.amount ? 'text-red-400' : 'text-gray-400'}`} />
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                className={`input pl-11 pr-16 ${debtPaymentErrors.amount ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                                                placeholder="0"
+                                                value={debtPaymentForm.amount}
+                                                onChange={(e) => {
+                                                    const digits = e.target.value.replace(/\D/g, '')
+                                                    const numeric = digits ? Number(digits) : 0
+                                                    let nextVal = digits ? formatCurrency(digits) : ''
+                                                    let nextErrors = { ...debtPaymentErrors }
+                                                    if (numeric > selectedDebtRemaining && selectedDebtRemaining > 0) {
+                                                        nextErrors.amount = [
+                                                            `Kiritilgan summa (${formatCurrency(String(numeric))} so'm) qolgan qarzdan (${formatCurrency(selectedDebtRemaining)} so'm) ko'p. Maksimum: ${formatCurrency(selectedDebtRemaining)} so'm.`
+                                                        ]
+                                                    } else if (nextErrors.amount) {
+                                                        nextErrors.amount = null
+                                                    }
+                                                    setDebtPaymentForm({ ...debtPaymentForm, amount: nextVal })
+                                                    setDebtPaymentErrors(nextErrors)
+                                                }}
+                                                max={selectedDebtRemaining > 0 ? String(selectedDebtRemaining) : undefined}
+                                                required
+                                            />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[14px]">so'm</span>
+                                        </div>
+                                        {selectedDebtRemaining > 0 && (
+                                            <div className="flex items-center justify-between mt-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setDebtPaymentForm({
+                                                            ...debtPaymentForm,
+                                                            amount: formatCurrency(String(Math.round(selectedDebtRemaining)))
+                                                        })
+                                                        if (debtPaymentErrors.amount) setDebtPaymentErrors({ ...debtPaymentErrors, amount: null })
+                                                    }}
+                                                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 underline-offset-2 hover:underline"
+                                                >
+                                                    To'liq summani kirit ({formatCurrency(selectedDebtRemaining)})
+                                                </button>
+                                                <span className="text-[11px] text-gray-400">
+                                                    Maks: <b className="text-gray-700 dark:text-gray-300">{formatCurrency(selectedDebtRemaining)} so'm</b>
+                                                </span>
+                                            </div>
+                                        )}
+                                        {debtPaymentErrors.amount && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtPaymentErrors.amount[0]}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="label">To'lov sanasi (ixtiyoriy)</label>
+                                        <input
+                                            type="date"
+                                            className={`input ${debtPaymentErrors.paid_at ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                                            value={debtPaymentForm.paid_at}
+                                            max={new Date().toISOString().split('T')[0]}
+                                            onChange={(e) => {
+                                                setDebtPaymentForm({ ...debtPaymentForm, paid_at: e.target.value })
+                                                if (debtPaymentErrors.paid_at) setDebtPaymentErrors({ ...debtPaymentErrors, paid_at: null })
+                                            }}
+                                        />
+                                        {debtPaymentErrors.paid_at && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtPaymentErrors.paid_at[0]}</p>}
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
+                                        <div className="flex-1">
+                                            <label htmlFor="debt_payment_send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
+                                                Mijozga SMS yuborish
+                                            </label>
+                                            <p className="text-[11px] text-gray-400 opacity-80">
+                                                Limitdan keyin balansdan yechiladi.
+                                            </p>
+                                        </div>
+                                        <button
+                                            id="debt_payment_send_sms"
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={debtPaymentForm.send_sms}
+                                            className="ios-switch"
+                                            data-state={debtPaymentForm.send_sms ? 'checked' : 'unchecked'}
+                                            onClick={() => setDebtPaymentForm({ ...debtPaymentForm, send_sms: !debtPaymentForm.send_sms })}
+                                        >
+                                            <span className="ios-switch-thumb" />
+                                        </button>
+                                    </div>
+                                    <button type="submit" className="btn btn-primary w-full py-4 text-[16px] font-bold bg-blue-500 hover:bg-blue-600 border-0" disabled={submitting || !!debtPaymentErrors.amount}>
+                                        {submitting ? <Loader2 size={20} className="animate-spin" /> : (selectedDebtForPayment ? `Nasiya #${selectedDebtForPayment.id} uchun to'lov` : "Saqlash")}
                                     </button>
                                 </form>
                             </div>
