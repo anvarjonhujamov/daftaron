@@ -1087,7 +1087,7 @@ export default function CustomerDetailPage() {
                                                 Mijozga SMS yuborish
                                             </label>
                                             <p className="text-[11px] text-gray-400 opacity-80">
-                                                Limitdan keyin balansdan yechiladi.
+                                                {sms_remaining != null ? `Qolgan SMS: ${sms_remaining} ta` : 'Limitdan keyin balansdan yechiladi.'}
                                             </p>
                                         </div>
                                         <button
@@ -1101,6 +1101,12 @@ export default function CustomerDetailPage() {
                                         >
                                             <span className="ios-switch-thumb" />
                                         </button>
+                                    </div>
+                                    <div className="p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
+                                        <p className="text-[11px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
+                                        <p className="text-[14px] font-bold text-emerald-600 dark:text-emerald-400">
+                                            {sms_remaining ?? 0} ta qoldi
+                                        </p>
                                     </div>
                                     <button type="submit" className="btn btn-orange w-full py-4 text-[16px] font-bold" disabled={submitting}>
                                         {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Saqlash'}
@@ -1242,7 +1248,7 @@ export default function CustomerDetailPage() {
                                                 Mijozga SMS yuborish
                                             </label>
                                             <p className="text-[11px] text-gray-400 opacity-80">
-                                                Limitdan keyin balansdan yechiladi.
+                                                {sms_remaining != null ? `Qolgan SMS: ${sms_remaining} ta` : 'Limitdan keyin balansdan yechiladi.'}
                                             </p>
                                         </div>
                                         <button
@@ -1256,6 +1262,12 @@ export default function CustomerDetailPage() {
                                         >
                                             <span className="ios-switch-thumb" />
                                         </button>
+                                    </div>
+                                    <div className="p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
+                                        <p className="text-[11px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
+                                        <p className="text-[14px] font-bold text-emerald-600 dark:text-emerald-400">
+                                            {sms_remaining ?? 0} ta qoldi
+                                        </p>
                                     </div>
                                     <button type="submit" className="btn btn-primary w-full py-4 text-[16px] font-bold bg-blue-500 hover:bg-blue-600 border-0" disabled={submitting || !!debtPaymentErrors.amount}>
                                         {submitting ? <Loader2 size={20} className="animate-spin" /> : (selectedDebtForPayment ? `Nasiya #${selectedDebtForPayment.id} uchun to'lov` : "Saqlash")}

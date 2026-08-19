@@ -5,6 +5,7 @@ import { customersApi } from '../api/customers.api'
 import { ArrowLeft } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatCurrency, parseCurrency } from '../utils/format'
+import { useSubscription } from '../contexts/SubscriptionContext'
 
 const getToday = () => {
     const d = new Date()
@@ -33,6 +34,7 @@ export default function DebtFormPage() {
     const [loading, setLoading] = useState(false)
     const [loadingCustomers, setLoadingCustomers] = useState(true)
     const [error, setError] = useState('')
+    const { sms_remaining } = useSubscription()
 
     useEffect(() => {
         loadCustomers()
@@ -170,7 +172,7 @@ export default function DebtFormPage() {
                                 Mijozga SMS yuborish
                             </label>
                             <p className="text-[11px] text-gray-400 opacity-80">
-                                Tarifdagi bepul SMS limitidan keyin har bir SMS uchun balansdan yechiladi.
+                                {sms_remaining != null ? `Qolgan SMS: ${sms_remaining} ta` : 'Tarifdagi bepul SMS limitidan keyin har bir SMS uchun balansdan yechiladi.'}
                             </p>
                         </div>
                         <button
@@ -184,6 +186,12 @@ export default function DebtFormPage() {
                         >
                             <span className="ios-switch-thumb" />
                         </button>
+                    </div>
+                    <div className="p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
+                        <p className="text-[11px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
+                        <p className="text-[14px] font-bold text-emerald-600 dark:text-emerald-400">
+                            {sms_remaining ?? 0} ta qoldi
+                        </p>
                     </div>
 
                     <button
