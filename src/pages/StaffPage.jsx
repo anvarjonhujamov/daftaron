@@ -5,11 +5,13 @@ import { debtsApi } from '../api/debts.api'
 import { paymentsApi } from '../api/payments.api'
 import { 
     Users, UserPlus, ArrowLeft, MoreVertical, 
-    Briefcase, Trash2, Edit2, AlertCircle, Loader2 
+    Briefcase, Trash2, Edit2, AlertCircle, Loader2,
+    Eye, EyeOff, Lock
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import StaffModal from '../components/StaffModal'
+import { isUserStaff } from '../utils/roleHelper'
 
 export default function StaffPage() {
     const navigate = useNavigate()
@@ -19,6 +21,8 @@ export default function StaffPage() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingStaff, setEditingStaff] = useState(null)
     const [deletingId, setDeletingId] = useState(null)
+    const [showPasswordIds, setShowPasswordIds] = useState(new Set())
+    const [isStaffUser, setIsStaffUser] = useState(false)
     
     const getActiveTenantId = () => {
         try {
@@ -31,6 +35,8 @@ export default function StaffPage() {
 
     useEffect(() => {
         loadStaffData()
+        const checkStaff = async () => { try { setIsStaffUser(await isUserStaff(staffApi)) } catch { setIsStaffUser(false) } }
+        checkStaff()
     }, [])
 
     const getRelationIds = (item) => {
@@ -207,6 +213,35 @@ export default function StaffPage() {
         }
     }
 
+    const pickStaffPassword = (s) => {
+        if (!s) return null
+        const keys = [
+            'password', 'raw_password', 'plain_password', 'password_text',
+            'pwd', 'passw', 'pass', 'login_password', 'staff_password',
+            'user_password', 'password_plain', 'visible_password',
+            'parol', 'parol_text'
+        ]
+        for (const k of keys) {
+            const v = s[k]
+            if (typeof v === 'string' && v.length > 0) return v
+        }
+        if (typeof s.user === 'object' && s.user) {
+            for (const k of keys) {
+                const v = s.user[k]
+                if (typeof v === 'string' && v.length > 0) return v
+            }
+        }
+        return null
+    }
+
+    const toggleShowPassword = (id) => {
+        setShowPasswordIds(prev => {
+            const n = new Set(prev)
+            if (n.has(id)) n.delete(id); else n.add(id)
+            return n
+        })
+    }
+
     if (loading && staff.length === 0) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -303,10 +338,33 @@ export default function StaffPage() {
                                         </div>
                                         <div>
                                             <p className="text-[16px] font-bold text-gray-900 dark:text-white leading-tight mb-1">{s.name}</p>
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-[13px] text-gray-400 font-medium">{s.phone}</p>
-                                                <div className="w-1 h-1 rounded-full bg-gray-300" />
-                                                <span className="text-[11px] font-bold text-green-500 uppercase tracking-tight">Active</span>
+                                            <div className="flex flex-col gap-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-[13px] text-gray-400 font-medium">{s.phone}</p>
+                                                    <div className="w-1 h-1 rounded-full bg-gray-300" />
+                                                    <span className="text-[11px] font-bold text-green-500 uppercase tracking-tight">Active</span>
+                                                </div>
+                                                {!isStaffUser && (() => {
+                                                    const rawPwd = pickStaffPassword(s)
+                                                    const show = showPasswordIds.has(s.id)
+                                                    if (!rawPwd) return null
+                                                    return (
+                                                        <div className="flex items-center gap-2">
+                                                            <Lock size={12} className="text-gray-400" />
+                                                            <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 font-mono tracking-wide select-all">
+                                                                {show ? rawPwd : '•'.repeat(Math.max(6, rawPwd.length))}
+                                                            </p>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => toggleShowPassword(s.id)}
+                                                                className="ml-0.5 w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                                                title={show ? 'Yashirish' : 'Ko\'rsatish'}
+                                                            >
+                                                                {show ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
