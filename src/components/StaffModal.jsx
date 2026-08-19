@@ -48,7 +48,7 @@ export default function StaffModal({ isOpen, onClose, onSave, staff }) {
             // Backend +998901234567 formatida kutadi
             const fullPhone = `+998${phone}`
             const payload = { name, phone: fullPhone }
-            if (!staff) payload.password = password
+            if (password && password.length >= 6) payload.password = password
             await onSave(payload)
             onClose()
         } catch (err) {
@@ -142,36 +142,37 @@ export default function StaffModal({ isOpen, onClose, onSave, staff }) {
                                     </p>
                                 </div>
 
-                                {!staff && (
-                                    <div className="space-y-2">
-                                        <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">
-                                            Parol
-                                        </label>
-                                        <div className="relative group">
-                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
-                                                <Lock size={18} />
-                                            </div>
-                                            <input
-                                                type="password"
-                                                className="w-full pl-11 pr-4 py-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all"
-                                                placeholder="Kamida 6 ta belgi"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                            />
+                                <div className="space-y-2">
+                                    <label className="text-[13px] font-semibold text-gray-700 dark:text-gray-300 ml-1">
+                                        {staff ? 'Yangi parol (ixtiyoriy)' : 'Parol'}
+                                    </label>
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                                            <Lock size={18} />
                                         </div>
-                                        <p className="text-[11px] text-gray-400 ml-1">
-                                            Xodim tizimga kirishda shu paroldan foydalanadi.
-                                        </p>
+                                        <input
+                                            type="password"
+                                            className="w-full pl-11 pr-4 py-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all"
+                                            placeholder={staff ? "Parolni saqlamoqchi bo'lsangiz kiriting" : "Kamida 6 ta belgi"}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                        />
                                     </div>
-                                )}
+                                    <p className="text-[11px] text-gray-400 ml-1">
+                                        {staff
+                                            ? "Tahrirlashda parolni kiritmasangiz eski parol saqlanadi. Yangi parol kamida 6 ta belgi."
+                                            : "Xodim tizimga kirishda shu paroldan foydalanadi."
+                                        }
+                                    </p>
+                                </div>
                             </div>
 
                             <div className="pt-4">
                                 <button
                                     type="submit"
-                                    disabled={submitting || !name.trim() || phone.length < 9 || (!staff && password.length < 6)}
+                                    disabled={submitting || !name.trim() || phone.length < 9 || (password.length > 0 && password.length < 6)}
                                     className={`w-full py-4 rounded-2xl flex items-center justify-center font-bold text-[16px] transition-all active:scale-[0.98] shadow-lg shadow-blue-500/20 ${
-                                        submitting || !name.trim() || phone.length < 9 || (!staff && password.length < 6)
+                                        submitting || !name.trim() || phone.length < 9 || (password.length > 0 && password.length < 6)
                                             ? 'bg-gray-200 dark:bg-gray-800 text-gray-500 cursor-not-allowed shadow-none'
                                             : 'bg-blue-600 text-white hover:bg-blue-700'
                                     }`}

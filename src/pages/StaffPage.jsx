@@ -156,14 +156,33 @@ export default function StaffPage() {
     const handleSaveStaff = async (formData) => {
         try {
             if (editingStaff) {
-                await staffApi.updateStaff(editingStaff.id, formData)
+                const payload = { name: formData.name, phone: formData.phone }
+                if (formData.password && typeof formData.password === 'string' && formData.password.length >= 6) {
+                    payload.password = formData.password
+                }
+                await staffApi.updateStaff(editingStaff.id, payload)
+                if (payload.password && formData.phone) {
+                    try {
+                        const saved = JSON.parse(localStorage.getItem('staff_passwords') || '{}')
+                        saved[formData.phone] = payload.password
+                        localStorage.setItem('staff_passwords', JSON.stringify(saved))
+                    } catch { /* ignore */ }
+                }
                 toast.success("Xodim muvaffaqiyatli tahrirlandi")
             } else {
                 const tenantId = getActiveTenantId()
-                await staffApi.createStaff({
+                const newStaffPayload = {
                     ...formData,
                     ...(tenantId ? { tenant_id: tenantId } : {})
-                })
+                }
+                if (newStaffPayload.password && newStaffPayload.phone) {
+                    try {
+                        const saved = JSON.parse(localStorage.getItem('staff_passwords') || '{}')
+                        saved[newStaffPayload.phone] = newStaffPayload.password
+                        localStorage.setItem('staff_passwords', JSON.stringify(saved))
+                    } catch { /* ignore */ }
+                }
+                await staffApi.createStaff(newStaffPayload)
                 toast.success("Yangi xodim muvaffaqiyatli qo'shildi")
             }
             loadStaffData()
@@ -231,6 +250,13 @@ export default function StaffPage() {
                 if (typeof v === 'string' && v.length > 0) return v
             }
         }
+        try {
+            const saved = JSON.parse(localStorage.getItem('staff_passwords') || '{}')
+            const phoneKeys = [s.phone, s.user?.phone, s.worker?.phone, s.login, s.username].filter(Boolean)
+            for (const pk of phoneKeys) {
+                if (saved[pk] && typeof saved[pk] === 'string' && saved[pk].length > 0) return saved[pk]
+            }
+        } catch { /* ignore */ }
         return null
     }
 
@@ -347,21 +373,29 @@ export default function StaffPage() {
                                                 {!isStaffUser && (() => {
                                                     const rawPwd = pickStaffPassword(s)
                                                     const show = showPasswordIds.has(s.id)
-                                                    if (!rawPwd) return null
                                                     return (
                                                         <div className="flex items-center gap-2">
-                                                            <Lock size={12} className="text-gray-400" />
-                                                            <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 font-mono tracking-wide select-all">
-                                                                {show ? rawPwd : '•'.repeat(Math.max(6, rawPwd.length))}
+                                                            <Lock size={12} className={`${rawPwd ? 'text-gray-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                                                            <p className={`text-[12px] font-semibold font-mono tracking-wide select-all ${
+                                                                rawPwd
+                                                                    ? (show ? 'text-gray-700 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400')
+                                                                    : 'text-gray-400/80 dark:text-gray-600 italic'
+                                                            }`}>
+                                                                {rawPwd
+                                                                    ? (show ? rawPwd : '•'.repeat(Math.max(6, rawPwd.length)))
+                                                                    : 'Parol saqlanmagan'
+                                                                }
                                                             </p>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => toggleShowPassword(s.id)}
-                                                                className="ml-0.5 w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
-                                                                title={show ? 'Yashirish' : 'Ko\'rsatish'}
-                                                            >
-                                                                {show ? <EyeOff size={14} /> : <Eye size={14} />}
-                                                            </button>
+                                                            {rawPwd && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleShowPassword(s.id)}
+                                                                    className="ml-0.5 w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                                                    title={show ? 'Yashirish' : 'Ko\'rsatish'}
+                                                                >
+                                                                    {show ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )
                                                 })()}
