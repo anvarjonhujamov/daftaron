@@ -559,10 +559,7 @@ export default function CustomerDetailPage() {
                         <Plus size={18} />Nasiya
                     </button>
                     <button
-                        onClick={() => {
-                            setGenericPaymentMode(hasOutstandingDebt ? 'debt' : 'balance')
-                            setShowGenericPaymentDrawer(true)
-                        }}
+                        onClick={() => setShowGenericPaymentDrawer(true)}
                         className="btn flex-1 py-3 shadow-lg active:scale-95 transition-all btn-success shadow-green-500/20"
                     >
                         <Plus size={18} />To'lov
@@ -829,44 +826,29 @@ export default function CustomerDetailPage() {
                                             </div>
                                         </div>
                                     )}
-                                    {/* Payment Mode Tabs */}
-                                    <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-gray-100 dark:bg-gray-700/40">
-                                        <button
-                                            type="button"
-                                            onClick={() => setGenericPaymentMode('debt')}
-                                            className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
-                                                genericPaymentMode === 'debt'
-                                                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                                                    : 'text-gray-500 dark:text-gray-400'
-                                            }`}
-                                        >
-                                            <Tag size={13} className="inline mr-1 -mt-0.5" />
-                                            Qarzlar uchun
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setGenericPaymentMode('balance')}
-                                            className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
-                                                genericPaymentMode === 'balance'
-                                                    ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                                                    : 'text-gray-500 dark:text-gray-400'
-                                            }`}
-                                        >
-                                            <Wallet size={13} className="inline mr-1 -mt-0.5" />
-                                            Balansga
-                                        </button>
-                                    </div>
 
-                                    {genericPaymentMode === 'debt' && openDebtsNewestFirst.length > 0 && (
-                                        <p className="text-[12px] text-gray-500 dark:text-gray-400 px-1">
-                                            To'lov <b className="text-gray-800 dark:text-gray-200">eng yangi (oxirgi) qarzdan</b> boshlab avtomatik tarzda taqsimlanadi, ortiqcha summa balansga qo'shiladi.
-                                        </p>
-                                    )}
-                                    {genericPaymentMode === 'debt' && openDebtsNewestFirst.length === 0 && (
-                                        <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-900/15 border border-amber-100/60 dark:border-amber-900/40">
-                                            <p className="text-[12px] text-amber-700 dark:text-amber-400">
-                                                Faol qarz yo'q. "Balansga" rejimiga o'ting yoki nasiyani oldin qo'shing.
-                                            </p>
+                                    {openDebtsNewestFirst.length > 0 ? (
+                                        <div className="p-3 rounded-2xl bg-blue-50/60 dark:bg-blue-900/15 border border-blue-100/60 dark:border-blue-900/40">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                                                    <Tag size={13} className="text-blue-600 dark:text-blue-400" />
+                                                </div>
+                                                <p className="text-[12px] text-blue-700/90 dark:text-blue-300/90 leading-snug">
+                                                    To'lov <b className="font-extrabold">eng yangi (oxirgi) qarzdan</b> boshlab avtomatik tarzda taqsimlanadi.
+                                                    Barcha qarzor to'langanidan keyin ortiqcha summa <b className="text-emerald-600 dark:text-emerald-400">balansga</b> qo'shiladi.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-900/15 border border-emerald-100/60 dark:border-emerald-900/40">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+                                                    <Wallet size={13} className="text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                                <p className="text-[12px] text-emerald-700/90 dark:text-emerald-300/90 leading-snug">
+                                                    Faol qarz yo'q. Kiritilgan summa to'liq <b className="font-extrabold">shaxsiy balansga</b> qo'shiladi.
+                                                </p>
+                                            </div>
                                         </div>
                                     )}
 
@@ -922,12 +904,11 @@ export default function CustomerDetailPage() {
                                             ))}
                                             <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-1 flex items-center justify-between">
                                                 <span className="text-[12px] font-bold text-gray-500 uppercase tracking-wider">
-                                                    {genericPaymentMode === 'debt' ? 'Jami taqsimlash' : 'Jami balansga'}
+                                                    Jami taqsimlash
                                                 </span>
                                                 <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
-                                                    {formatCurrency(genericPaymentMode === 'debt'
-                                                        ? genericPaymentAllocationPreview.toDebtTotal + genericPaymentAllocationPreview.toBalance
-                                                        : genericPaymentAllocationPreview.toBalance
+                                                    {formatCurrency(
+                                                        genericPaymentAllocationPreview.toDebtTotal + genericPaymentAllocationPreview.toBalance
                                                     )} so'm
                                                 </span>
                                             </div>
