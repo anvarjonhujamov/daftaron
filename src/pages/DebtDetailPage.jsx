@@ -321,44 +321,6 @@ export default function DebtDetailPage() {
                         </span>
                     </div>
 
-                    {(() => {
-                        let totalDirect = 0, totalBalance = 0
-                        for (const p of payments) {
-                            const amt = parseFloat(p.amount) || 0
-                            const pType = String(p.payment_type || '').toLowerCase()
-                            const dId = p.debt_id ?? p.debtId ?? p.debt?.id
-                            const isBalance = pType.includes('balance') || pType.includes('customer') || pType.includes('deposit') || pType.includes('umumiy')
-                                || (dId === null || dId === undefined || String(dId) === '0' || String(dId) === 'null')
-                            if (isBalance) totalBalance += amt; else totalDirect += amt
-                        }
-                        return (totalDirect > 0 || totalBalance > 0) && (
-                            <div className="grid grid-cols-2 gap-2 mb-4">
-                                {totalDirect > 0 && (
-                                    <div className="p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-900/15 border border-blue-100/60 dark:border-blue-900/40">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                                                <Tag size={13} className="text-blue-600 dark:text-blue-400" />
-                                            </div>
-                                            <p className="text-[11px] text-blue-600/80 dark:text-blue-400/80 font-bold uppercase tracking-wider">To'g'ridan to'lov</p>
-                                        </div>
-                                        <p className="text-[14px] font-bold text-blue-700 dark:text-blue-300">{formatCurrency(totalDirect)} so'm</p>
-                                    </div>
-                                )}
-                                {totalBalance > 0 && (
-                                    <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-900/15 border border-emerald-100/60 dark:border-emerald-900/40">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-                                                <Wallet size={13} className="text-emerald-600 dark:text-emerald-400" />
-                                            </div>
-                                            <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase tracking-wider">Balansdan ayirilgan</p>
-                                        </div>
-                                        <p className="text-[14px] font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(totalBalance)} so'm</p>
-                                    </div>
-                                )}
-                            </div>
-                        )
-                    })()}
-
                     <div className="space-y-3">
                         {payments.map(payment => {
                             const pType = String(payment.payment_type || '').toLowerCase()
