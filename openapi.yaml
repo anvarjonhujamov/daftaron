@@ -84,6 +84,8 @@ tags:
     description: Joylashuv ma'lumotlari
   - name: Webhooks
     description: Tashqi webhook (to'lov callback)
+  - name: Suppliers
+    description: "Yetkazib beruvchilar (Postavchiklar) — Kreditorlik (biznesning supplierlarga qarzi). Customer nasiyasi (Debitorlik) va Supplier (Kreditorlik) ALOHIDA saqlanadi."
 
 components:
   securitySchemes:
@@ -1863,3 +1865,302 @@ paths:
       responses:
         "200":
           description: "JSON-RPC 2.0 response (result yoki error)"
+
+  # ========================================================
+  # SUPPLIERS — Yetkazib beruvchilar (Postavchiklar)
+  # Customer Nasiya = Debitorlik | Supplier = Kreditorlik
+  # ========================================================
+
+  /suppliers:
+    get:
+      tags: [Suppliers]
+      summary: Supplierlar ro'yxati (search/filter/pagination)
+      security: [{ bearerAuth: [] }]
+      description: |
+        **Ruxsat:** `view_suppliers` yoki admin/manager.
+        Query: `q` (name/company/phone/address search), `status` (active|inactive), `in_debt` (bool), `overdue` (bool), `per_page` (pagination, bo'lmasa list ko'rinishida).
+        Mijozlarning nasiyasi (Debitorlik) dan **ALOHIDA** — bu biznesning supplierlarga qarzi (Kreditorlik).
+      parameters:
+        - in: query; name: q; required: false; schema: {type: string}
+        - in: query; name: status; required: false; schema: {type: string, enum: [active, inactive]}
+        - in: query; name: in_debt; required: false; schema: {type: boolean}
+        - in: query; name: overdue; required: false; schema: {type: boolean}
+        - in: query; name: per_page; required: false; schema: {type: integer, minimum: 1, maximum: 200}
+      responses:
+        "200":
+          description: Supplierlar ro'yxati
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Supplier' }
+        "403":
+          description: Ruxsat yo'q (permission yoki tenant IDOR)
+    post:
+      tags: [Suppliers]
+      summary: Yana supplier yaratish (TARIF LIMITI SERVER-SIDE TEKSHIRILADI)
+      security: [{ bearerAuth: [] }]
+      description: |
+        **Ruxsat:** `create_suppliers`.
+        **Limit:** Oddiy=10, Pro=50, Premium=cheksiz. Limit tugaganida → `403` JSON `{error:true, message, remaining_limit}`.
+        Tranzaktsiyalar soniga **LIMIT YO'Q** (faqat supplier soni limitlangan).
+        Frontend balansiga **ISHONILMAYDI** — `current_debt` serverda hisoblanadi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string, maxLength: 255}
+                company_name: {type: string, maxLength: 255, nullable: true}
+                phone: {type: string, maxLength: 20, nullable: true, description: "Tenant ichida unique"}
+                address: {type: string, maxLength: 500, nullable: true}
+                note: {type: string, maxLength: 1000, nullable: true}
+                status: {type: string, enum: [active, inactive], default: active}
+      responses:
+        "201":
+          description: Muvaffaqiyatli yaratildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: {type: boolean, example: true}
+                  message: {type: string}
+                  supplier: { $ref: '#/components/schemas/Supplier' }
+                  remaining_supplier_limit: {type: integer, example: 9}
+                  total_supplier_limit: {type: integer, nullable: true, example: 10}
+                  used_supplier_limit: {type: integer, example: 1}
+        "403":
+          description: "Limit tugadi yoki permission yo'q"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: {type: boolean, example: true}
+                  message: {type: string, example: "Yetkazib beruvchi limitingiz tugadi (10/10). Pro yoki Premium tarifga o'ting."}
+                  remaining_limit: {type: integer, example: 0}
+        "422":
+          description: Validation error
+
+  /suppliers/statistics:
+    get:
+      tags: [Suppliers]
+      summary: Supplier umumiy statistika (tenant scope)
+      security: [{ bearerAuth: [] }]
+      description: "**Ruxsat:** `view_suppliers`. Customer nasiya statistikasi ALOHIDA saqlanadi va bu yerga kirmaydi."
+      responses:
+        "200":
+          description: Statistika
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_suppliers: {type: integer}
+                  active_suppliers: {type: integer}
+                  in_debt_suppliers: {type: integer}
+                  overdue_suppliers: {type: integer}
+                  total_bought: {type: number, format: float, description: "Umumiy qarzga olingan summa"}
+                  total_paid: {type: number, format: float, description: "Umumiy to'langan summa"}
+                  total_debt: {type: number, format: float, description: "Joriy qarzdorlik (total_bought - total_paid)"}
+                  overdue_debt: {type: number, format: float, description: "Muddati o'tgan qarz miqdori"}
+
+  /suppliers/{supplier}:
+    parameters:
+      - in: path; name: supplier; required: true; schema: {type: integer}
+    get:
+      tags: [Suppliers]
+      summary: Supplier detali (+ virtual current_debt server-side)
+      security: [{ bearerAuth: [] }]
+      description: "**Ruxsat:** `view_suppliers`. **IDOR guard:** Faqat o'z tenantidagi supplier ko'rinadi."
+      responses:
+        "200":
+          description: Detallari
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Supplier' }
+        "403":
+          description: "Tenant IDOR: boshqa do'kon supplieriga urinish"
+    put:
+      tags: [Suppliers]
+      summary: Supplierni tahrirlash
+      security: [{ bearerAuth: [] }]
+      description: "**Ruxsat:** `edit_suppliers`"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string}
+                company_name: {type: string, nullable: true}
+                phone: {type: string, nullable: true, description: "Unique per tenant, ignore o'zi"}
+                address: {type: string, nullable: true}
+                note: {type: string, nullable: true}
+                status: {type: string, enum: [active, inactive]}
+      responses:
+        "200":
+          description: Yangilandi
+    delete:
+      tags: [Suppliers]
+      summary: Supplierni o'chirish (+ unga tegishli barcha tranzaktsiyalar cascade o'chadi)
+      security: [{ bearerAuth: [] }]
+      description: "**Ruxsat:** `delete_suppliers`. shop_worker ga TA'QIQLANADI (RoleSeeder)."
+      responses:
+        "200":
+          description: O'chirildi
+        "403":
+          description: "Permission yo'q (masalan shop_worker)"
+
+  /suppliers/{supplier}/transactions:
+    get:
+      tags: [Suppliers]
+      summary: Supplier tranzaktsiyalari tarixi (qarz + to'lovlar)
+      security: [{ bearerAuth: [] }]
+      description: "**Ruxsat:** `view_supplier_transactions`. Query optional `type=debt` yoki `type=payment`."
+      parameters:
+        - in: query; name: type; required: false; schema: {type: string, enum: [debt, payment]}
+      responses:
+        "200":
+          description: "Tranzaktsiyalar (type=debt | payment, status=open|closed|canceled)"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SupplierTransaction' }
+
+  /suppliers/{supplier}/debt:
+    post:
+      tags: [Suppliers]
+      summary: "Qarz qo'shish — supplierdan qarzga mahsulot/xizmat olish"
+      security: [{ bearerAuth: [] }]
+      description: |
+        **Ruxsat:** `create_supplier_transactions`.
+        Bu amal **KREDITORLIKNI OSHIRADI** — biznesning supplierga qarzi ortadi.
+        Har bir qo'shilgan qarz alohida `SupplierTransaction` (type=debt, status=open) saqlanadi.
+        `due_date` o'tib ketgan va to'lanmagan bo'lsa → `overdue` holati.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount: {type: number, format: float, minimum: 0.01, maximum: 99999999999}
+                transaction_date: {type: string, format: date, nullable: true, description: "Default: today. Future emas."}
+                due_date: {type: string, format: date, nullable: true, description: "To'lov muddati (transaction_dan keyin)."}
+                description: {type: string, maxLength: 500, nullable: true}
+      responses:
+        "201":
+          description: "Qarz saqlandi — joriy qarzdorlik qaytariladi"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: {type: boolean, example: true}
+                  transaction: { $ref: '#/components/schemas/SupplierTransaction' }
+                  current_debt: {type: number, format: float, description: "SERVERDA hisoblangan (frontend ga ishonilmagan)"}
+        "422":
+          description: "Validation yoki amount<=0 xatosi"
+
+  /suppliers/{supplier}/payment:
+    post:
+      tags: [Suppliers]
+      summary: "To'lov qo'shish — supplierga to'lov qilish (partial payment qo'llanadi)"
+      security: [{ bearerAuth: [] }]
+      description: |
+        **Ruxsat:** `create_supplier_transactions`.
+        **Juda muhim:** Overpaymentga **RUHSAT BERILMAYDI** — agar `amount > current_debt` bo'lsa, 422 xato qaytariladi (ortiqcha to'lov blok).
+        Partial to'lovlar qo'llanadi (qisman to'lash).
+        To'lovlar FIFO (eng qadimgi qarzdan boshlab) tartibda allokatsiya qilinadi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount: {type: number, format: float, minimum: 0.01}
+                transaction_date: {type: string, format: date, nullable: true}
+                description: {type: string, maxLength: 500, nullable: true}
+      responses:
+        "201":
+          description: "To'lov saqlandi. Yangi current_debt serverda hisoblanadi."
+        "422":
+          description: |
+            **Ortiqcha to'lov xatosi:**
+            ```json
+            {
+              "error": true,
+              "message": "Ortiqcha to'lov (overpayment) ta'qiqlanadi. Joriy qarzdorlik: 50,000 so'm, kiritilgan: 60,000 so'm.",
+              "current_debt": 50000,
+              "requested": 60000,
+              "overpayment_amount": 10000
+            }
+            ```
+
+  /supplier-transactions/{supplierTransaction}/cancel:
+    patch:
+      tags: [Suppliers]
+      summary: "Tranzaktsiyani bekor qilish (status=canceled, qarzdorlik qayta hisoblanadi)"
+      security: [{ bearerAuth: [] }]
+      description: |
+        **Ruxsat:** `cancel_supplier_transactions`.
+        shop_worker ga bu permission **BERILMAYDI** (RoleSeeder).
+        - Agar **payment** bekor qilingan bo'lsa → oldingi qarz miqdori RESTORE qilinadi.
+        - Agar **debt** bekor qilingan bo'lsa → u hisobdan chiqariladi.
+        - Har doim fresh `current_debt` qaytariladi.
+      responses:
+        "200":
+          description: "Bekor qilindi, yangi qarzdorlik bilan"
+        "403":
+          description: "Cancel permission yo'q (shop_worker)"
+
+components:
+  schemas:
+    Supplier:
+      type: object
+      properties:
+        id: {type: integer}
+        tenant_id: {type: integer, description: "Multi-tenant: barcha supplierlar faqat o'z do'koni uchun ko'rinadi"}
+        manager_id: {type: integer, nullable: true}
+        created_by_user_id: {type: integer, nullable: true}
+        name: {type: string}
+        company_name: {type: string, nullable: true}
+        phone: {type: string, nullable: true}
+        address: {type: string, nullable: true}
+        note: {type: string, nullable: true}
+        status: {type: string, enum: [active, inactive]}
+        current_debt: {type: number, format: float, description: "SERVERDA HISOBLANADI: sum(debt not canceled) - sum(payment not canceled)"}
+        total_bought: {type: number, format: float, description: "Jami qarzga olinganlar summasi"}
+        total_paid: {type: number, format: float, description: "Jami to'langanlar summasi"}
+        is_overdue: {type: boolean, description: "Agar due_date muddati o'tgan va qoldiq qarz > 0"}
+        created_at: {type: string, format: date-time, nullable: true}
+        updated_at: {type: string, format: date-time, nullable: true}
+
+    SupplierTransaction:
+      type: object
+      properties:
+        id: {type: integer}
+        tenant_id: {type: integer}
+        supplier_id: {type: integer}
+        created_by_user_id: {type: integer, nullable: true}
+        type: {type: string, enum: [debt, payment], description: "debt = qarz olish; payment = to'lov qilish"}
+        amount: {type: number, format: float}
+        remaining_amount: {type: number, format: float, description: "Agar debt: amount - to'lgan qismi"}
+        is_overdue: {type: boolean, description: "due_date < today AND remaining_amount > 0 (faqat debt uchun)"}
+        transaction_date: {type: string, format: date}
+        due_date: {type: string, format: date, nullable: true, description: "Faqat debt uchun"}
+        description: {type: string, nullable: true}
+        status: {type: string, enum: [open, closed, canceled], description: "open=jarayonda, closed=to'liq to'langan, canceled=bekor qilingan"}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}

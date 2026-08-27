@@ -1594,4 +1594,210 @@ Agar ma'lumot tarafdorlariga qo'l bilan yangilash kerak bo'lsa, quyidagi manbala
 
 ---
 
-*So'nggi yangilanish: 2026-04-23* | **Muallif:** Daftaron Development Team
+## 21. Yetkazib beruvchilar (Suppliers / Postavchiklar) — KREDITORLIK
+
+> **Muhim farq:**
+> - **Mijozlar Nasiya (Debts) → DEBITORLIK** = mijozlarning biznesga qarzi (biz uchun asset).
+> - **Yetkazib beruvchilar (Suppliers) → KREDITORLIK** = biznesning yetkazib beruvchilarga qarzi (biz uchun liability).
+> - Mavjud Nasiya statistikasi BUZILMAYDI, ALOHIDA saqlanadi, ALOHIDA API orqali olinadi, Dashboardda ikkalasi alohida ko'rsatiladi.
+
+### 21.1. Asosiy ekranlar
+
+| Ekran | Tavsif |
+|-------|--------|
+| Ro'yxat | Barcha supplierlar (Card/List), search + filters |
+| Detali | Ma'lumot, `current_debt` (server-side), tranzaktsiyalar |
+| Qo'shish | Create form — limit tugaganda taqiqlanadi |
+| Qarz qo'shish | Supplierdan qarzga olib kelingan mahsulot/xizmat → qarzdorlik OSHADI |
+| To'lov | Supplierga to'lov → qarzdorlik KAMAYADI (partial payment qo'llanadi, ortiqcha to'lov ta'qiqlanadi) |
+| Tranzaksiya bekor | Admin/shop_owner → status=canceled |
+| Statistika | Umumiy → total/qarzdor/overdue/total_debt/paid |
+
+### 21.2. Ta'rif LIMITLARI (faqat supplier soni, tranzaktsiyalar cheksiz)
+
+| Ta'rif | Supplier max | Tranzaktsiyalar |
+|--------|--------------|-----------------|
+| Oddiy (Basic) | 10 | Cheksiz |
+| Pro | 50 | Cheksiz |
+| Premium | Cheksiz (DB null) | Cheksiz |
+
+**Qo'shimcha supplier paketlari:** Pro va Premium tariflarida yoqilgan (`allow_extra_supplier_packages`=1) bo'lsa, extra sotib olish mumkin. Oddiy: Premium/Pro ga o'tish tavsiya qilinadi.
+
+### 21.3. Supplier ro'yxat API
+
+**GET** `/api/v1/suppliers` (Bearer + trial)
+
+Query:
+- `q` — name/company_name/phone/address bo'yicha search
+- `status` — active / inactive
+- `in_debt=true` — faqat qarzdorlar
+- `overdue=true` — faqat muddati o'tganlar
+- `per_page=N` — pagination (1..200), default → list
+
+Response example:
+```json
+[
+  {
+    "id": 1,
+    "name": "ACME Supplies",
+    "company_name": "ACME LLC",
+    "phone": "+998901111111",
+    "status": "active",
+    "current_debt": 875000,
+    "total_bought": 1200000,
+    "total_paid": 325000,
+    "is_overdue": true
+  }
+]
+```
+
+### 21.4. Yaratish API + Limit xatosi
+
+**POST** `/api/v1/suppliers`
+
+Request: `{name, company_name?, phone?, address?, note?, status?}`
+
+**Success 201:** `{success:true, supplier, remaining_supplier_limit, used_supplier_limit, total_supplier_limit}`
+
+**Limit tugasa (403):**
+```json
+{
+  "error": true,
+  "message": "Yetkazib beruvchi limitingiz tugadi (10/10). Pro yoki Premium tarifga o'ting.",
+  "remaining_limit": 0
+}
+```
+
+### 21.5. Moliyaviy Tranzaktsiyalar
+
+#### 21.5.1. Qarz qo'shish (Debt — kreditorlik oshadi)
+**POST** `/api/v1/suppliers/{id}/debt`
+
+Body: `{amount: 100000, transaction_date: "2026-08-20", due_date: "2026-09-20", description?: "..."}`
+
+- `amount > 0` majburiy.
+- `due_date` o'tib ketgan va to'lanmagan bo'lsa → supplier `is_overdue=true` belgilandi.
+
+Response 201:
+```json
+{
+  "success": true,
+  "message": "Qarz qo'shildi...",
+  "transaction": { "id": 91, "type": "debt", "amount": 100000, "status": "open", "...": "..." },
+  "current_debt": 100000
+}
+```
+
+#### 21.5.2. To'lov qilish (Payment — kreditorlik kamayadi)
+**POST** `/api/v1/suppliers/{id}/payment`
+
+Body: `{amount: 40000, transaction_date?: "...", description?: "..."}`
+
+Qoidalar:
+- **Partial payment:** 100k qarzdan 40k to'lansa → 60k qoldi ✅.
+- **Overpayment BLOK:** 100k qarzdan 110k → **422 error** (ortiqcha 10k → ta'qiqlanadi). Frontend to'lov maydonida `max = current_debt` deb qo'yilsa yaxshi.
+- **FIFO allocation:** Eng qadimgi qarzdan boshlab to'lab boriladi; qoldiq 0 bo'lganda debt status=closed.
+
+**Overpayment Error (422):**
+```json
+{
+  "error": true,
+  "message": "Ortiqcha to'lov (overpayment) ta'qiqlanadi. Joriy qarzdorlik: 100,000 so'm, kiritilgan: 110,000 so'm.",
+  "current_debt": 100000,
+  "requested": 110000,
+  "overpayment_amount": 10000
+}
+```
+
+### 21.6. Tranzaktsiyalar ro'yxati + bekor qilish
+
+**GET** `/api/v1/suppliers/{id}/transactions`?type=`debt|payment`
+
+Har bir transaction:
+```json
+{
+  "id": 7, "type": "debt|payment", "amount": 100000,
+  "remaining_amount": 60000, "is_overdue": true,
+  "transaction_date": "2026-08-20", "due_date": "2026-09-20",
+  "status": "open|closed|canceled"
+}
+```
+
+**Bekor qilish (admin/shop_owner):** `PATCH /api/v1/supplier-transactions/{tx_id}/cancel`
+
+Qayta hisoblash:
+- **Payment cancel bo'lsa:** to'lovni inkor et → qarz asl holiga qaytadi.
+- **Debt cancel bo'lsa:** qarzni olib tashla → qarzdorlik kamayadi.
+- Status `canceled` → umumiy statistikaga kirmaydi.
+
+### 21.7. Statistika
+
+**GET** `/api/v1/suppliers/statistics` va Dashboard `/api/v1/dashboard` → `suppliers.*` nested key:
+```json
+{
+  "total_customers": 120,
+  "total_debts": 50000000,
+  "remaining_debts": 24000000,
+  "...": "... existing Nasiya statistikasi SAQLANADI ...",
+  "suppliers": {
+    "total_suppliers": 37,
+    "active_suppliers": 30,
+    "in_debt_suppliers": 9,
+    "overdue_suppliers": 2,
+    "total_bought": 50000000,
+    "total_paid": 45000000,
+    "total_debt": 5000000,
+    "overdue_debt": 1200000,
+    "recent_transactions": [ "... 5 ta oxirgi tranzaktsiya ..." ]
+  }
+}
+```
+
+### 21.8. Permission / Role matritsa (Supplier)
+
+| Permission | shop_owner | shop_worker | manager | admin |
+|------------|------------|-------------|---------|-------|
+| view_suppliers | ✅ | ✅ | ✅ | ✅ |
+| create_suppliers | ✅ | ✅ | ✅ | ✅ |
+| edit_suppliers | ✅ | ❌ | ✅ | ✅ |
+| delete_suppliers | ✅ | ❌ | ✅ | ✅ |
+| view_supplier_transactions | ✅ | ✅ | ✅ | ✅ |
+| create_supplier_transactions | ✅ | ✅ | ✅ | ✅ |
+| edit_supplier_transactions | ✅ | ❌ | ✅ | ✅ |
+| cancel_supplier_transactions | ✅ | ❌ | ✅ | ✅ |
+
+### 21.9. Tenant Isolation (IDOR)
+
+Har bir API so'rovda avtomatik:
+- `tenant_id` → request user/selected shop ga mos kelishiga tekshiriladi.
+- Do'kon A useri → Do'kon B supplier id'siga GET/PUT/DELETE → **403** "Bu yozuvga kirish huquqingiz yo'q".
+- Admin va Manager rollarida global access mavjud.
+
+### 21.10. HTTP kodlari
+
+| Kod | Holat |
+|-----|-------|
+| 200 | GET/PUT/PATCH muvaffaqiyatli |
+| 201 | POST yaratish (supplier, debt, payment) |
+| 403 | Permission yo'q / Tenant IDOR / Supplier limit tugadi |
+| 422 | Validation / Overpayment / Amount ≤ 0 |
+| 404 | Supplier / Transaction topilmadi |
+
+---
+
+*Yangilandi: Supplier modul qo'shildi (v1.2.0)*
+
+---
+
+*Hujjat TZ.md va kodga asosan tuzilgan. API o'zgarishi bo'lsa ushbu UserFlow ham yangilanadi.*
+*So'nggi yangilanish: 2026-08-23*
+
+---
+
+## Yangilanishlar tarixi (yangi)
+
+| Sana | Yangilanish | Tavsif |
+|------|-------------|--------|
+| 2026-08-23 | v1.2.0 | - **Yetkazib beruvchilar (Suppliers) moduli qo'shildi** (Kreditorlik, customer nasiya debitorlikdan ALOHIDA)<br>- CRUD + search/filter/pagination<br>- Moliyaviy: debt/payment/partial/overpayment block/due_date/overdue/cancel/FIFO allocation<br>- current_debt 100% server-side<br>- Permission supplier.* va supplier_transactions.* Spatie Permission orqali<br>- Supplier tarif limitlari: Basic(10) / Pro(50) / Premium(cheksiz) + server-side enforce<br>- Premium yangi plan qo'shildi (cheksiz hamma narsa + 200 SMS)<br>- `/api/v1/dashboard` supplier nested stats, existing customer stats SAQLANDI<br>- 103 ta PHPUnit test (513 assertion) PASS (old 90 + yangi 13 supplier regression testi)<br>- OpenAPI docs UserFlow-Mobile.md TZ.md yangilandi |
+
+*So'nggi yangilanish: 2026-08-23* | **Muallif:** Daftaron Development Team

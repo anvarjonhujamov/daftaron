@@ -2983,22 +2983,271 @@ GROQ_API_KEY=...
 
 ---
 
-## Yangilanishlar tarixi
+## 18. Yetkazib beruvchilar (Suppliers / Postavchiklar) — KREDITORLIK (v1.2.0)
 
-| Sana | Yangilanish | Tavsif |
-|------|-------------|--------|
-| 2026-04-23 | v1.1.0 | - Public Offer, Privacy Policy va aloqa ma'lumotlari admin panelda qo'shildi<br>- OpenAPI 3.0 spesifikatsiyasi yaratildi<br>- Tashkent mahalla seederini yangilandi (placeholder o'rniga haqiqiy nomlar)<br>- Admin sozlamalariga yangi maydonlar qo'shildi<br>- Public API endpointlari qo'shildi |
-| 2026-04-01 | v1.0.0 | - Dastlabki versiya<br>- Laravel 12, PHP 8.2+, MySQL<br>- Multi-tenant arxitektura<br>- Click va Payme to'lov tizimlari<br>- Eskiz SMS integratsiyasi<br>- AI SupportBot (Groq)<br>- Admin panel<br>- Mobil API<br>- Promocodlar tizimi |
-| 2026-03-26 | v0.9.0 | - Promocodlar tizimi qo'shildi<br>- Managerlar uchun chegirma boshqaruvi<br>- Promo usage tracking |
-| 2026-03-22 | v0.8.0 | - UserFlow-Mobile.md hujjati yaratildi<br>- Mobil ilova uchun batafsil flow<br>- API endpointlar dokumentatsiyasi |
-| 2026-03-15 | v0.7.0 | - Qo'shimcha paketlar tizimi<br>- Nasiya va SMS paketlari<br>- Limit boshqaruvi |
-| 2026-03-01 | v0.6.0 | - Trial va obuna tizimi<br>- Balans to'ldirish<br>- Ta'riflar boshqaruvi |
-| 2026-02-15 | v0.5.0 | - Mijozlar, nasiyalar, to'lovlar CRUD<br>- SMS bildirishnomalar<br>- Muddati o'tgan qarzdorlar |
-| 2026-02-01 | v0.4.0 | - Autentifikatsiya tizimi<br>- Sanctum Bearer token<br>- Telegram login |
-| 2026-01-15 | v0.3.0 | - Ma'lumotlar bazasi sxemasi<br>- Migrationlar<br>- Seedlar |
-| 2026-01-01 | v0.2.0 | - Laravel loyihasi yaratildi<br>- Asosiy arxitektura<br>- Routing va controllerlar |
-| 2025-12-15 | v0.1.0 | - TZ va UserFlow hujjatlari<br>- Loyiha rejalashtiruvi |
+> **Muhim ajratish (DEBITORLIK ⚠️ KREDITORLIK):**
+>
+> | Turi | Nima | Kim kimga qarzi? | Jadvallar |
+> |------|------|------------------|-----------|
+> | **Debitorlik (Mavjud)** | Mijozlar Nasiya (Debts) | Mijoz → biznesga qarshi | customers, debts, payments |
+> | **Kreditorlik (YANGI MODUL)** | Yetkazib beruvchilar | Biznes → yetkazib beruvchiga qarshi | suppliers, supplier_transactions |
+>
+> Mavjud mijoz nasiya va to'lovlar statistikasi ASLO BUZILMAYDI, ular alohida saqlanadi va dashboardda alohida ko'rsatiladi (ikkalasini ham yig'ib beriladi, nested key `suppliers.*` ichida).
+
+### 18.1. Modul maqsadi
+Biznesga tovar/xizmat yetkazib beruvchilarni (postavchiklarni) boshqarish:
+- Ulardan qarzga mahsulot olish → **Kreditorlikni oshirish**
+- Ularga to'lov qilish → **Kreditorlikni kamaytirish** (qisman / partial payment ham qo'llanadi)
+- Qarzdorlik muddati (due_date) va muddati o'tgan (overdue) holatlarni kuzatish
+- Tranzaktsiyalar tarixi va bekor qilish (cancel) imkoniyati
+
+### 18.2. Maydonlar (Supplier jadvali)
+
+| Maydon | Tip | Majburiy | Tavsif |
+|--------|-----|----------|--------|
+| id | bigint PK | ✅ | |
+| tenant_id | FK tenants | ✅ | Har bir supplier TENANT ICHIDA |
+| manager_id | FK users | ❌ | Yetkazilgan manager (bo'sh bo'lishi mumkin) |
+| created_by_user_id | FK users | ❌ | Yaratgan foydalanuvchi |
+| name | string (255) | ✅ | Yetkazib beruvchi nomi / FIO |
+| company_name | string (255) | ❌ | Tashkilot nomi (LLC, MCHJ va h.k.) |
+| phone | string (20) | ❌ | Aloqa (unique per tenant_id) |
+| address | string (500) | ❌ | Manzil |
+| note | text | ❌ | Eslatma |
+| status | enum: `active\|inactive` | ❌ default active | |
+| created_at / updated_at | timestamps | auto | |
+
+**Indexlar:**
+- UNIQUE (`tenant_id`, `phone`) → bir xil telefon raqam ikki marta kiritilmasin (bir do'kon ichida)
+- INDEX (`tenant_id`, `status`, `created_at`) → tez filtr va sort
+
+### 18.3. Virtual accessorlar (DB da SAQLANMAYDI, har request da hisoblanadi)
+
+**Supplier modeliga qo'shilgan accessorlar (server-only):**
+```php
+// 100% SERVERDA HISOBLANADI — FRONTEND YUBORGAN BALANSGA ISHONILMAYDI
+getCurrentDebtAttribute() : float
+  = sum(supplier_transactions where type=debt, status != canceled).amount
+  - sum(supplier_transactions where type=payment, status != canceled).amount
+  → max(0, natija), 2 kasrga yaxlitlangan.
+
+getTotalBoughtAttribute()  = sum(debt, status != canceled)
+getTotalPaidAttribute()    = sum(payment, status != canceled)
+getIsOverdueAttribute()    = true, if any OPEN debt due_date < today AND qoldiq qarz > 0
+```
+
+### 18.4. SupplierTransaction jadvali (har bir tranzaksiya alohida — qarz ham, to'lov ham)
+
+| Maydon | Tip | Tavsif |
+|--------|-----|--------|
+| id | PK | |
+| tenant_id | FK (cascade) | ✅ |
+| supplier_id | FK (cascade on delete) | ✅ supplier o'chirilganda shu bilan birga tranzaktsiyalar ham o'chadi |
+| created_by_user_id | FK users nullOnDelete | Kim yaratgan |
+| type | enum: `debt \| payment` | debt = qarzga olish; payment = to'lov qilish |
+| amount | decimal(18,2) | Miqdor (always > 0) |
+| transaction_date | date | Yaratilgan sana |
+| due_date | date? nullable | **Faqat debt uchun** to'lov muddati |
+| description | string? | Izoh |
+| status | enum: `open \| closed \| canceled` | open=jarayonda; closed=to'liq to'langan; canceled=bekor; canceled hisobga olinmaydi |
+| created_at/updated_at | timestamps | |
+
+**Enum statuslar:**
+```
+debt:
+  open     → qisman to'langan yoki umuman to'lanmagan
+  closed   → to'liq to'langan (remaining_amount 0)
+  canceled → bekor qilingan (umumiy balansga kirmaydi)
+
+payment:
+  open     → aktiv
+  canceled → admin tomonidan bekor qilingan (qarz avvalgi holatiga qaytadi)
+```
+
+### 18.5. Moliyaviy qoidalar (Juda MUHIM)
+
+1. **Qarz qo'shish (debt):**
+   - `amount > 0` majburiy (0 ta xatolik).
+   - `due_date` ixtiyoriy, lekin berilgan bo'lsa: `due_date < today AND remaining > 0` → `overdue`.
+
+2. **To'lov qilish (payment):**
+   - **Partial payment qo'llanadi** — 100k qarzdan 30k → qoldi 70k ✅.
+   - **Overpayment ta'qiqlanadi** — 100k qarzdan 110k → `422 { error:true, message, current_debt, requested, overpayment_amount }`. Frontendda max qiymat sifatida supplier.current_debt ni o'zgartirib yozilishi kerak.
+   - **FIFO allokatsiya:** to'lovlar yaratilgan tartibda (transaction_date asc, id asc) eng qadimgi qarzdan boshlab yopiladi; qoldiq 0 bo'lganda status=closed.
+
+3. **Tranzaktsiyani cancel qilish:**
+   - Admin/shop_owner tomonidan (shop_worker ta'qiqlanadi).
+   - Payment cancel bo'lsa → to'lov inkor qilinadi → eski qarzdorlik QAYTA RESTORE (qayta hisoblash).
+   - Debt cancel bo'lsa → bu qarz umumiy balansdan chiqariladi.
+   - Cancel status = umumiy statistikaga kirmaydi (sum da status != canceled).
+
+4. **Due date & Overdue:**
+   - `is_overdue` = due_date < today AND (remaining_amount > 0 OR debt status still open).
+   - `overdue()` scope va statistics orqali umumiy overdue miqdorni olish mumkin.
+
+### 18.6. CRUD API Endpointlar (Bearer + trial middleware)
+
+| Method | URL | Ruxsat | Tavsif |
+|--------|-----|--------|--------|
+| GET | `/api/v1/suppliers` | `view_suppliers` | List (q=search, status, in_debt, overdue, per_page) |
+| POST | `/api/v1/suppliers` | `create_suppliers` | Yaratish (LIMIT server-side) |
+| GET | `/api/v1/suppliers/{supplier}` | `view_suppliers` | Detallari |
+| PUT | `/api/v1/suppliers/{supplier}` | `edit_suppliers` | Yangilash |
+| DELETE | `/api/v1/suppliers/{supplier}` | `delete_suppliers` | O'chirish (+ tranzaktsiyalar cascade) |
+| GET | `/api/v1/suppliers/statistics` | `view_suppliers` | Umumiy statistika |
+| GET | `/api/v1/suppliers/{id}/transactions` | `view_supplier_transactions` | Tranzaktsiyalar tarixi (type=debt/payment filter) |
+| POST | `/api/v1/suppliers/{id}/debt` | `create_supplier_transactions` | Qarz qo'shish |
+| POST | `/api/v1/suppliers/{id}/payment` | `create_supplier_transactions` | To'lov qilish (partial + overpayment block) |
+| PATCH | `/api/v1/supplier-transactions/{tx}/cancel` | `cancel_supplier_transactions` | Tranzaktsiyani bekor qilish |
+
+**Barcha endpointlar `auth:sanctum` va `check.trial` middleware group ichida.**
+
+### 18.7. Permissionlar (Spatie Permission orqali)
+
+Yangi 10 ta permission qo'shildi (RoleSeeder additive, duplicate oldini olish firstOrCreate):
+
+| Toifa | Permission | shop_owner | shop_worker | manager | admin |
+|-------|------------|------------|-------------|---------|-------|
+| Supplier | manage_suppliers | ✅ | ❌ | ✅ | ✅ |
+| | view_suppliers | ✅ | ✅ | ✅ | ✅ |
+| | create_suppliers | ✅ | ✅ | ✅ | ✅ |
+| | edit_suppliers | ✅ | ❌ | ✅ | ✅ |
+| | delete_suppliers | ✅ | ❌ | ✅ | ✅ |
+| Supplier Transaction | manage_supplier_transactions | ✅ | ❌ | ✅ | ✅ |
+| | view_supplier_transactions | ✅ | ✅ | ✅ | ✅ |
+| | create_supplier_transactions | ✅ | ✅ | ✅ | ✅ |
+| | edit_supplier_transactions | ✅ | ❌ | ✅ | ✅ |
+| | cancel_supplier_transactions | ✅ | ❌ | ✅ | ✅ |
+
+### 18.8. Ta'rif limitlari (SUPPLIER SONI — tranzaktsiyalarga LIMIT YO'Q)
+
+| Ta'rif | Max supplier | Max tranzaksiya | Qo'shimcha paket (allow_extra_supplier_packages) |
+|--------|--------------|-----------------|------------------------------------------------|
+| Oddiy (Basic) | 10 | ♾️ Cheksiz | ❌ 0 (faqat upgrade Premium/Pro tavsiya) |
+| Pro | 50 | ♾️ Cheksiz | ✅ 1 (extra paket sotib olish mumkin) |
+| Premium (YANGI) | ♾️ Cheksiz (DB `supplier_limit = NULL`) | ♾️ Cheksiz | ✅ 1 |
+
+- **Premium plan yangi qo'shildi:** narxi 99 000 so'm, cheksiz do'kon, cheksiz xodim, cheksiz supplier, 200 SMS/oy (PlanSeeder).
+- Limit yagona hisoblash: User → ownedTenants orqali Supplier::count; active shop bo'yicha ham to'g'ri.
+- Supplier yaratishda limit tekshiruvi: `used >= total` bo'lsa **403** JSON error.
+- Oddiy plan obuna expired bo'lsa ham (subscription_status = expired) yaratish taqiqlanadi.
+
+**Limit xatosi javobi (403):**
+```json
+{
+  "error": true,
+  "message": "Yetkazib beruvchi limitingiz tugadi (10/10). Pro yoki Premium tarifga o'ting.",
+  "remaining_limit": 0
+}
+```
+
+### 18.9. Statistika API va Dashboard integration
+
+**Supplier alohida statistics (GET /api/v1/suppliers/statistics):**
+```json
+{
+  "total_suppliers": 50,
+  "active_suppliers": 45,
+  "in_debt_suppliers": 12,
+  "overdue_suppliers": 3,
+  "total_bought": 50000000,
+  "total_paid":   45000000,
+  "total_debt":    5000000,
+  "overdue_debt":  1200000
+}
+```
+
+**Dashboard API (/api/v1/dashboard):**
+- Mavjud `total_customers`, `total_debts`, `remaining_debts`, `total_payments`, va boshqa customer/nasiya kalitlari **SAQLANADI**.
+- Yangicha **nested** `suppliers` kaliti qo'shildi (ikkalasini alohida turgani uchun old / customer buzilmagan).
+
+```json
+{
+  "total_customers": "...",
+  "remaining_debts": "...(mijoz qarzlari)",
+  "...": "...",
+  "suppliers": {
+    "total_suppliers": 50,
+    "active_suppliers": 45,
+    "in_debt_suppliers": 12,
+    "overdue_suppliers": 3,
+    "total_bought": 50000000,
+    "total_paid": 45000000,
+    "total_debt": 5000000,
+    "overdue_debt": 1200000,
+    "recent_transactions": [ "5 ta oxirgi supplier tranzaktsiyalari" ]
+  }
+}
+```
+
+### 18.10. Tenant Isolation (IDOR oldini olish)
+
+SupplierController da har bir actionda:
+- Private `authorizeSupplier(Request, Supplier, TenantResolver)` method.
+- Agar user admin/manager emas va `supplier->tenant_id !== user.tenant_id (yoki selected_shop)` → **403 abort**.
+- Har bir query scope uchun `TenantResolver::resolveForTenantQueries` avtomatik qo'llaniladi.
+- List endpointda ham `where tenant_id` filter qilinadi.
+
+### 18.11. Qo'shilgan fayllar / O'zgartirilgan joylar (Backend)
+
+| Tur | Fayl | O'zgarish turi |
+|-----|------|----------------|
+| Migration (ADDITIVE, NO DROP) | `2026_08_23_100000_create_suppliers_table.php` | YANGI jadval |
+| Migration | `2026_08_23_100001_create_supplier_transactions_table.php` | YANGI jadval |
+| Migration | `2026_08_23_100002_add_supplier_limit_to_plans.php` | ALTER plans (additive, Schema::hasColumn guard) |
+| Model | `app/Models/Supplier.php` | YANGI Model |
+| Model | `app/Models/SupplierTransaction.php` | YANGI Model |
+| Model | `app/Models/Tenant.php` | suppliers() + supplierTransactions() relations (ADDITIVE) |
+| Model | `app/Models/User.php` | usedCapacityFor FEATURE_SUPPLIER match (ADDITIVE) |
+| Model | `app/Models/Plan.php` | FEATURE_SUPPLIER const, LIMIT_FIELDS, fillable, getFeatureLimit (ADDITIVE) |
+| Service | `app/Services/SupplierService.php` | YANGI service (CRUD + debt/payment/cancel/statistics/limit check) |
+| Service | `app/Services/TenantStatsService.php` | supplier nested stats qo'shildi (additive return kalitlar) |
+| Controller | `app/Http/Controllers/Api/V1/Tenant/SupplierController.php` | YANGI API CRUD + tranzaksiya controller |
+| Routes | `routes/api.php` | 10 ta route, sanctum + trial middleware |
+| Seeder | `database/seeders/RoleSeeder.php` | 10 ta permission (supplier.* + supplier_transactions.*) firstOrCreate |
+| Seeder | `database/seeders/PlanSeeder.php` | Oddiy 10, Pro 50, Premium cheksiz + Premium plan yangi qo'shildi |
+| Controller | `SubscriptionController.php` | calculateUsage supplier_* kalitlar |
+| Test | `tests/Feature/SupplierManagementApiTest.php` | YANGI 13 ta test (regression) |
+| OpenAPI | `public/docs/openapi.yaml` | Suppliers tag + paths + schemas (yangi section) |
+| UserFlow | `UserFlow-Mobile.md` | Bo'lim 21 (Suppliers) + Yangilanish tarixi |
+| TZ | `TZ.md` | Bo'lim 18 (Suppliers / Kreditorlik) + Yangilanish tarixi |
+
+### 18.12. Migration qoidalari (AMALLAR DAFTARIGA OID)
+
+- ❌ **ASLIDA** migrate:fresh / Schema::drop / truncate ishlatilmagan (mavjud user/tenant/customer/debt/payment/subscription ma'lumotlari saqlanishi uchun).
+- ✅ Barcha migrationlar ADDITIVE: yangi jadval yaratish yoki yangi ustun qo'shish `Schema::hasColumn` guard bilan.
+- ✅ Foreign key `supplier_id → suppliers.id ON DELETE CASCADE` (supplier delete → barcha unga tegishli tranzaktsiyalar o'chadi).
+- ✅ Foreign key `tenant_id → tenants.id ON DELETE CASCADE` (tenant o'chganda supplierlar ham o'chadi).
+
+### 18.13. Test coverage (PHPUnit SQLite :memory:)
+
+```
+PHPUnit 11 → OK (103 tests, 513 assertions) — old 90 regression ham hali PASS ✅
+```
+
+Yangi supplier testlar (13 ta):
+- Supplier list/store/CRUD via API
+- Debt/payment flow + partial payment balance check
+- Overpayment block (422)
+- Overdue scope (due_date old days) detection
+- Payment cancel restore debt
+- Basic plan 10 → 11th 403 limit block
+- Pro plan 50 → 51st 403
+- Premium 60+ suppliers OK (unlimited)
+- shop_worker delete supplier → 403 (permission)
+- shop_owner delete → OK
+- Tenant A vs Tenant B supplier IDOR → 403
+- Supplier statistics endpoint OK + Dashboard API existing customer keys unchanged (regression)
+- Customer Debt/Payment (mavjud nasiya) partial payment flow regression unchanged
 
 ---
 
-*So'nggi yangilanish: 2026-04-23* | **Muallif:** Daftaron Development Team
+## Yangilanishlar tarixi (TZ)
+
+| Sana | Yangilanish | Tavsif |
+|------|-------------|--------|
+| 2026-08-23 | v1.2.0 | **Yetkazib beruvchilar (Suppliers) moduli qo'shildi (Kreditorlik)**<br>- 3 ta migration additive (suppliers, supplier_transactions, plans.supplier_limit)<br>- 2 ta Model (Supplier, SupplierTransaction)<br>- SupplierService (CRUD + debt/payment/cancel/FIFO/overdue/statistics/limit)<br>- 10 ta API route + SupplierController + permission & IDOR guards<br>- Plan limits: Oddiy(10), Pro(50), Premium(∞) + Premium yangi plan<br>- Permissionlar (10 ta) Spatie Role orqali<br>- Dashboard `suppliers` nested key (customer statistikasi buzilmagan)<br>- PHPUnit 103 test 513 assertion PASS<br>- OpenAPI/UserFlow/TZ yangilandi |
+
+---
+
+*So'nggi yangilanish: 2026-08-23* | **Muallif:** Daftaron Development Team

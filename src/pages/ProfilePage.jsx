@@ -6,7 +6,7 @@ import { subscriptionApi } from '../api/subscription.api'
 import { staffApi } from '../api/staff.api'
 import {
     User, Phone, Mail, Lock, LogOut, ChevronRight,
-    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle, Store, Bell, ShieldCheck, TrendingUp, BarChart3
+    Edit3, Loader2, Check, X, Moon, Sun, Clock, CreditCard, Wallet, Package, MessageCircle, Store, Bell, ShieldCheck, TrendingUp, BarChart3, Building2
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -437,6 +437,24 @@ export default function ProfilePage() {
                         </div>
                         <span className="text-[15px] font-medium text-gray-900 dark:text-white">
                             Xodimlar
+                        </span>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-400" />
+                </button>
+                )}
+
+                {/* Postavchiklar (Hamkorlar) */}
+                {!isStaff && (
+                <button
+                    onClick={() => navigate('/suppliers', { state: { from: location.pathname } })}
+                    className="w-full flex items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700/50"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                            <Building2 size={18} className="text-orange-500" />
+                        </div>
+                        <span className="text-[15px] font-medium text-gray-900 dark:text-white">
+                            Postavchiklar
                         </span>
                     </div>
                     <ChevronRight size={18} className="text-gray-400" />
