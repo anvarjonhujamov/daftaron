@@ -116,16 +116,7 @@ export default function SuppliersPage() {
             }
             loadSuppliers()
         } catch (err) {
-            const resp = err.response?.data
-            if (err.response?.status === 422 && resp?.errors) {
-                const firstFieldError = Object.values(resp.errors)?.[0]?.[0]
-                toast.error(firstFieldError || "Kiritilgan ma'lumotlar noto'g'ri")
-            } else if (resp?.message) {
-                toast.error(resp.message)
-            } else {
-                toast.error("Postavchini saqlashda xatolik yuz berdi")
-            }
-            throw err
+            console.error('Failed to save supplier:', err)
         }
     }
 
@@ -151,7 +142,7 @@ export default function SuppliersPage() {
             toast.success("Postavchi o'chirildi")
             setSuppliers(prev => prev.filter(s => s.id !== id))
         } catch (err) {
-            toast.error(err.response?.data?.message || "Postavchini o'chirishda xatolik")
+            console.error('Failed to delete supplier:', err)
         } finally {
             setDeletingId(null)
         }
