@@ -443,8 +443,7 @@ export default function ProfilePage() {
                 </button>
                 )}
 
-                {/* Postavchiklar (Hamkorlar) */}
-                {!isStaff && (
+                {/* Postavchiklar (Hamkorlar) — Owner va Sotuvchi (staff) uchun */}
                 <button
                     onClick={() => navigate('/suppliers', { state: { from: location.pathname } })}
                     className="w-full flex items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700/50"
@@ -459,7 +458,6 @@ export default function ProfilePage() {
                     </div>
                     <ChevronRight size={18} className="text-gray-400" />
                 </button>
-                )}
 
                 {/* Subscription / Tariff */}
                 {!isStaff && (
