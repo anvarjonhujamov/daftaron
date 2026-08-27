@@ -117,6 +117,7 @@ export default function SuppliersPage() {
             loadSuppliers()
         } catch (err) {
             console.error('Failed to save supplier:', err)
+            throw err
         }
     }
 
@@ -143,6 +144,7 @@ export default function SuppliersPage() {
             setSuppliers(prev => prev.filter(s => s.id !== id))
         } catch (err) {
             console.error('Failed to delete supplier:', err)
+            throw err
         } finally {
             setDeletingId(null)
         }
