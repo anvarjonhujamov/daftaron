@@ -48,7 +48,6 @@ export default function SuppliersPage() {
             const msg = err.response?.data?.message || err.message || 'Postavchiklar yuklanmadi'
             setErrorState({ code: status, message: msg })
             setSuppliers([])
-            toast.error(msg)
         } finally {
             setLoading(false)
         }
