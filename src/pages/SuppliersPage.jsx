@@ -4,7 +4,7 @@ import { suppliersApi } from '../api/suppliers.api'
 import {
     Building2, UserPlus, ArrowLeft, MoreVertical,
     Trash2, Edit2, AlertCircle, Loader2, Search,
-    Phone, User, MapPin, FileText, Hash, TrendingDown, TrendingUp, Package, ShieldX, RefreshCw
+    Phone, User, MapPin, FileText, Hash, TrendingDown, TrendingUp, Package, RefreshCw
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -48,9 +48,7 @@ export default function SuppliersPage() {
             const msg = err.response?.data?.message || err.message || 'Postavchiklar yuklanmadi'
             setErrorState({ code: status, message: msg })
             setSuppliers([])
-            if (status !== 403) {
-                toast.error(msg)
-            }
+            toast.error(msg)
         } finally {
             setLoading(false)
         }
@@ -164,81 +162,6 @@ export default function SuppliersPage() {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <LoadingSpinner />
-            </div>
-        )
-    }
-
-    if (errorState && !loading) {
-        const is403 = errorState.code === 403
-        const is404 = errorState.code === 404
-        return (
-            <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors">
-                <div className="sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-700">
-                    <div className="px-4 h-[60px] flex items-center justify-between gap-3">
-                        <button
-                            onClick={handleBack}
-                            className="w-10 h-10 -ml-2 rounded-xl flex items-center justify-center active:bg-gray-100 dark:active:bg-gray-700 transition-colors"
-                        >
-                            <ArrowLeft size={22} className="text-gray-700 dark:text-gray-300" />
-                        </button>
-                        <h1 className="flex-1 text-[18px] font-extrabold text-gray-900 dark:text-white truncate">
-                            Postavchiklar
-                        </h1>
-                    </div>
-                </div>
-
-                <div className="p-4 flex-1 flex items-center justify-center">
-                    <div className="flex flex-col items-center justify-center pt-8 pb-16 px-4 text-center animate-in fade-in slide-in-from-bottom-4 duration-500 w-full max-w-sm">
-                        <div className={`w-28 h-28 rounded-[40px] flex items-center justify-center mb-6 border-4 border-white dark:border-gray-700 shadow-sm ${
-                            is403
-                                ? 'bg-red-50 dark:bg-red-900/20'
-                                : 'bg-gray-100 dark:bg-gray-800'
-                        }`}>
-                            <ShieldX size={46} className={is403 ? 'text-red-400' : 'text-gray-400'} />
-                        </div>
-                        <h3 className="text-[20px] font-bold text-gray-900 dark:text-white mb-2">
-                            {is403 ? 'Huquq yetarli emas' : 'Xatolik yuz berdi'}
-                        </h3>
-                        <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-2 leading-relaxed">
-                            {is403
-                                ? "Sizda Postavchiklar (Yetkazib beruvchilar) bo'limini ko'rish va boshqarish huquqi yo'q."
-                                : 'Ma\'lumotlarni yuklashda ulanib bo\'lmadi.'
-                            }
-                        </p>
-                        {is403 && (
-                            <div className="bg-orange-50/60 dark:bg-orange-900/10 border border-orange-200/60 dark:border-orange-900/30 rounded-2xl p-4 mb-6 text-left w-full">
-                                <div className="flex items-start gap-2.5">
-                                    <AlertCircle size={16} className="text-orange-500 shrink-0 mt-0.5" />
-                                    <div className="text-[12.5px] text-gray-600 dark:text-gray-300 leading-relaxed">
-                                        <p className="font-bold text-orange-600 dark:text-orange-400 mb-1">Server xabari:</p>
-                                        <p>{errorState.message}</p>
-                                        <p className="mt-3 font-semibold">Ehtimoli yechimlar:</p>
-                                        <ul className="list-disc list-inside mt-1 space-y-0.5">
-                                            <li>Admin dan huquq (permission) so'rang</li>
-                                            <li>Ta'rif (obuna) planingizni tekshiring</li>
-                                            <li>Profil sahifasidan qayta kiring</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        <div className="flex gap-3 w-full">
-                            <button
-                                onClick={() => loadSuppliers()}
-                                className="flex-1 py-3.5 rounded-2xl font-bold text-[14.5px] shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-orange-500/20"
-                            >
-                                <RefreshCw size={16} />
-                                Qayta yuklash
-                            </button>
-                            <button
-                                onClick={() => navigate(-1)}
-                                className="py-3.5 px-5 rounded-2xl font-bold text-[14.5px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:scale-95 transition-all"
-                            >
-                                Orqaga
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </div>
         )
     }
