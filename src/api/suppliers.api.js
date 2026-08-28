@@ -68,7 +68,11 @@ const unwrapSupplierList = (responseData) => {
 
 export const suppliersApi = {
     getSuppliers: async (params = {}) => {
-        const res = await tryEndpoints('get', '', null, params)
+        const cleanParams = { ...params }
+        if (cleanParams.per_page !== undefined && cleanParams.per_page !== null) {
+            delete cleanParams.per_page
+        }
+        const res = await tryEndpoints('get', '', null, cleanParams)
         const data = res.data || {}
         const list = unwrapSupplierList(data)
         if (Array.isArray(data?.data) || Array.isArray(data)) {
@@ -89,24 +93,47 @@ export const suppliersApi = {
     createSupplier: async (data) => {
         const payload = {
             name: data.name,
+            company_name: data.company_name || data.name || null,
             phone: data.phone,
             contact_person: data.contact_person || null,
+            contact: data.contact || data.contact_person || null,
+            manager_name: data.manager_name || data.contact_person || null,
+            responsible: data.responsible || data.contact_person || null,
             address: data.address || null,
-            inn: data.inn || data.stir || null,
+            inn: data.inn || data.stir || data.tin || null,
+            stir: data.stir || data.inn || data.tin || null,
+            tin: data.tin || data.inn || data.stir || null,
             note: data.note || null
         }
-        if (data.stir !== undefined) payload.stir = data.stir || null
         if (data.balance !== undefined) payload.balance = data.balance || 0
+        if (data.current_debt !== undefined) payload.current_debt = data.current_debt || 0
 
         const res = await tryEndpoints('post', '', payload)
         return unwrapSupplier(res.data)
     },
 
     updateSupplier: async (id, data) => {
+        const payload = {
+            name: data.name,
+            company_name: data.company_name || data.name || null,
+            phone: data.phone,
+            contact_person: data.contact_person || null,
+            contact: data.contact || data.contact_person || null,
+            manager_name: data.manager_name || data.contact_person || null,
+            responsible: data.responsible || data.contact_person || null,
+            address: data.address || null,
+            inn: data.inn || data.stir || data.tin || null,
+            stir: data.stir || data.inn || data.tin || null,
+            tin: data.tin || data.inn || data.stir || null,
+            note: data.note || null
+        }
+        if (data.balance !== undefined) payload.balance = data.balance || 0
+        if (data.current_debt !== undefined) payload.current_debt = data.current_debt || 0
+
         const sendRequest = async (method) => {
             const suffix = `/${id}`
-            if (method === 'put') return tryEndpoints('put', suffix, data)
-            return tryEndpoints('patch', suffix, data)
+            if (method === 'put') return tryEndpoints('put', suffix, payload)
+            return tryEndpoints('patch', suffix, payload)
         }
 
         try {

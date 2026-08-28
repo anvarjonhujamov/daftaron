@@ -19,7 +19,56 @@ export default function SuppliersPage() {
     const [editingSupplier, setEditingSupplier] = useState(null)
     const [deletingId, setDeletingId] = useState(null)
     const [searchQuery, setSearchQuery] = useState('')
-    const [errorState, setErrorState] = useState(null) // {code: 403/404/500, message: ''}
+    const [errorState, setErrorState] = useState(null)
+
+    const pickStr = (obj, keys, fallback = null) => {
+        if (!obj || typeof obj !== 'object') return fallback
+        for (const k of keys) {
+            const v = obj[k]
+            if (v !== undefined && v !== null && String(v).trim() !== '') return v
+            if (k.includes('.')) {
+                const parts = k.split('.')
+                let cur = obj
+                for (const p of parts) { cur = cur?.[p]; if (cur === undefined) break }
+                if (cur !== undefined && cur !== null && String(cur).trim() !== '') return cur
+            }
+        }
+        return fallback
+    }
+
+    const pickNum = (obj, keys, fallback = 0) => {
+        if (!obj || typeof obj !== 'object') return fallback
+        for (const k of keys) {
+            const v = obj[k]
+            if (v === undefined || v === null || v === '') continue
+            const n = Number(v)
+            if (!Number.isNaN(n)) return n
+        }
+        return fallback
+    }
+
+    const normalizeSupplier = (raw) => {
+        if (!raw) return raw
+        return {
+            ...raw,
+            id: raw.id ?? raw.supplier_id ?? raw.uuid ?? raw._id,
+            name: pickStr(raw, ['name', 'company_name', 'full_name', 'title', 'organization_name', 'supplier_name', 'partner_name']),
+            company_name: pickStr(raw, ['company_name', 'name', 'organization']),
+            phone: pickStr(raw, ['phone', 'tel', 'mobile', 'telephone', 'phone_number', 'contact_phone']),
+            contact_person: pickStr(raw, ['contact_person', 'contact', 'manager_name', 'responsible', 'representative', 'person', 'owner', 'contact_name']),
+            inn: pickStr(raw, ['inn', 'stir', 'tin', 'inn_stir', 'tin_inn', 'tax_id', 'taxpayer_id']),
+            stir: pickStr(raw, ['stir', 'inn', 'tin']),
+            address: pickStr(raw, ['address', 'location', 'region_name', 'full_address']),
+            note: pickStr(raw, ['note', 'notes', 'comment', 'description', 'extra']),
+            status: pickStr(raw, ['status', 'state', 'active_status'], 'active'),
+            balance: pickNum(raw, ['balance', 'current_debt', 'debt', 'debt_amount', 'remaining', 'remaining_amount', 'payable', 'total_debt', 'overdue_amount']),
+            current_debt: pickNum(raw, ['current_debt', 'debt', 'balance', 'debt_amount']),
+            total_bought: pickNum(raw, ['total_bought', 'purchased', 'total_purchase', 'amount_bought']),
+            total_paid: pickNum(raw, ['total_paid', 'paid', 'payment_total', 'amount_paid']),
+            created_at: raw.created_at ?? raw.createdAt ?? raw.date ?? null,
+            updated_at: raw.updated_at ?? raw.updatedAt ?? null
+        }
+    }
 
     const getActiveTenantId = () => {
         try {
@@ -39,8 +88,9 @@ export default function SuppliersPage() {
         setErrorState(null)
         try {
             suppliersApi._resetDetection()
-            const response = await suppliersApi.getSuppliers({ per_page: 500 })
-            const data = Array.isArray(response) ? response : (response?.data || [])
+            const response = await suppliersApi.getSuppliers()
+            const raw = Array.isArray(response) ? response : (response?.data || [])
+            const data = raw.map(normalizeSupplier)
             setSuppliers(data)
         } catch (err) {
             console.error('Failed to load suppliers:', err)
@@ -103,7 +153,9 @@ export default function SuppliersPage() {
     const handleSaveSupplier = async (formData) => {
         try {
             if (editingSupplier) {
-                await suppliersApi.updateSupplier(editingSupplier.id, formData)
+                const updated = await suppliersApi.updateSupplier(editingSupplier.id, formData)
+                const normalized = normalizeSupplier({ ...editingSupplier, ...updated, ...formData, id: editingSupplier.id })
+                setSuppliers(prev => prev.map(s => s.id === editingSupplier.id ? normalized : s))
                 toast.success("Postavchi muvaffaqiyatli tahrirlandi")
             } else {
                 const tenantId = getActiveTenantId()
@@ -111,10 +163,14 @@ export default function SuppliersPage() {
                     ...formData,
                     ...(tenantId ? { tenant_id: tenantId } : {})
                 }
-                await suppliersApi.createSupplier(payload)
+                const created = await suppliersApi.createSupplier(payload)
+                const normalized = normalizeSupplier({ ...payload, ...created })
+                if (normalized && normalized.id) {
+                    setSuppliers(prev => [normalized, ...(prev || [])])
+                }
                 toast.success("Yangi postavchi muvaffaqiyatli qo'shildi")
             }
-            loadSuppliers()
+            try { await loadSuppliers() } catch {}
         } catch (err) {
             console.error('Failed to save supplier:', err)
             throw err
