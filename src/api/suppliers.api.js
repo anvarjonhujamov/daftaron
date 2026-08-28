@@ -1,5 +1,4 @@
 import api from './axios'
-
 const ENDPOINT_CANDIDATES = [
     '/suppliers',
     '/partners',
