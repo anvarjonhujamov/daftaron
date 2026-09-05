@@ -382,20 +382,9 @@ export default function SupplierDetailPage() {
                         </div>
                     </div>
 
-                    {(supplier.phone || supplier.contact_person || supplier.inn || supplier.address || supplier.note || supplier.created_at) && (
+                    {(supplier.contact_person || supplier.inn || supplier.address || supplier.note || supplier.created_at) && (
                         <div className="px-5 pt-3.5 mt-3 border-t border-gray-100 dark:border-gray-700/50">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                                {supplier.phone && (
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
-                                            <PhoneIcon size={13} className="text-gray-500" />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Tel</p>
-                                            <p className="text-[12.5px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{formatPhone(supplier.phone)}</p>
-                                        </div>
-                                    </div>
-                                )}
                                 {supplier.contact_person && (
                                     <div className="flex items-center gap-2 min-w-0">
                                         <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
