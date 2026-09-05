@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { suppliersApi } from '../api/suppliers.api'
 import {
     Building2, UserPlus, ArrowLeft, MoreVertical,
-    Trash2, Edit2, AlertCircle, Loader2, Search,
+    Trash2, Edit2, AlertCircle, Loader2, Search, Eye,
     Phone, User, MapPin, FileText, Hash, TrendingDown, TrendingUp, Package, RefreshCw
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -371,6 +371,12 @@ export default function SuppliersPage() {
                                         </div>
                                         
                                         <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                                onClick={() => navigate(`/suppliers/${s.id}`)}
+                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                            >
+                                                <Eye size={18} />
+                                            </button>
                                             <button 
                                                 onClick={() => {
                                                     setEditingSupplier(s)
@@ -397,36 +403,34 @@ export default function SuppliersPage() {
                                         </div>
                                     )}
 
-                                    {(balance !== 0 || note) && (
-                                        <div className={`rounded-2xl p-3 ${note ? 'bg-gray-50/50 dark:bg-gray-700/30' : (balance !== 0 ? (hasDebt ? 'bg-red-50/70 dark:bg-red-900/10' : 'bg-emerald-50/70 dark:bg-emerald-900/10') : 'bg-gray-50/50')}`}>
-                                            {balance !== 0 && (
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="flex items-center gap-1.5">
-                                                        {hasDebt
-                                                            ? <TrendingUp size={13} className="text-red-500" />
-                                                            : <TrendingDown size={13} className="text-emerald-500" />
-                                                        }
-                                                        <span className={`text-[11px] font-bold uppercase tracking-wider ${
-                                                            hasDebt ? 'text-red-500' : 'text-emerald-500'
-                                                        }`}>
-                                                            {hasDebt ? "Bizga qarzdor" : "Avans"}
-                                                        </span>
-                                                    </div>
-                                                    <span className={`text-[15px] font-black ${
-                                                        hasDebt ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'
-                                                    }`}>
-                                                        {Intl.NumberFormat('uz-UZ').format(absBalance)} so'm
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {note && (
-                                                <div className={`flex items-start gap-2 ${balance !== 0 ? 'pt-2 border-t border-gray-200/50 dark:border-gray-600/30' : ''}`}>
-                                                    <FileText size={12} className="text-gray-400 shrink-0 mt-0.5" />
-                                                    <p className="text-[12.5px] text-gray-500 dark:text-gray-400 leading-snug">{note}</p>
-                                                </div>
-                                            )}
+                                    <div className={`rounded-2xl p-3 ${note ? 'bg-gray-50/50 dark:bg-gray-700/30' : (balance !== 0 ? (hasDebt ? 'bg-red-50/70 dark:bg-red-900/10' : hasCredit ? 'bg-emerald-50/70 dark:bg-emerald-900/10' : 'bg-gray-50/50 dark:bg-gray-700/30') : 'bg-gray-50/50 dark:bg-gray-700/30')}`}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-1.5">
+                                                {hasDebt
+                                                    ? <TrendingUp size={13} className="text-red-500" />
+                                                    : hasCredit
+                                                        ? <TrendingDown size={13} className="text-emerald-500" />
+                                                        : <Package size={13} className="text-gray-400" />
+                                                }
+                                                <span className={`text-[11px] font-bold uppercase tracking-wider ${
+                                                    hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-400'
+                                                }`}>
+                                                    {hasDebt ? "Bizga qarzdor" : hasCredit ? "Avans" : "Balans"}
+                                                </span>
+                                            </div>
+                                            <span className={`text-[15px] font-black ${
+                                                hasDebt ? 'text-red-600 dark:text-red-400' : hasCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-300'
+                                            }`}>
+                                                {absBalance === 0 ? '0' : Intl.NumberFormat('uz-UZ').format(absBalance)} so'm
+                                            </span>
                                         </div>
-                                    )}
+                                        {note && (
+                                            <div className={`flex items-start gap-2 pt-2 border-t border-gray-200/50 dark:border-gray-600/30`}>
+                                                <FileText size={12} className="text-gray-400 shrink-0 mt-0.5" />
+                                                <p className="text-[12.5px] text-gray-500 dark:text-gray-400 leading-snug">{note}</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )
                         })}

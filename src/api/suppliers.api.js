@@ -1,4 +1,5 @@
 import api from './axios'
+
 const ENDPOINT_CANDIDATES = [
     '/suppliers',
     '/partners',
@@ -87,6 +88,71 @@ export const suppliersApi = {
     getSupplier: async (id) => {
         const res = await tryEndpoints('get', `/${id}`)
         return unwrapSupplier(res.data)
+    },
+
+    getSupplierPurchases: async (id, params = {}) => {
+        const subEndpoints = [
+            `/${id}/purchases`, `/${id}/invoices`, `/${id}/orders`,
+            `/${id}/bought`, `/${id}/buyings`, `/${id}/purchase-history`,
+            `/${id}/products`, `/purchases`, `/invoices`
+        ]
+        for (const sub of subEndpoints) {
+            try {
+                const url = `${detectedEndpoint || ENDPOINT_CANDIDATES[0]}${sub}`
+                const res = await api.get(url, { params })
+                const d = res?.data
+                const arr = Array.isArray(d) ? d
+                    : d?.purchases || d?.invoices || d?.orders || d?.data || d?.items || []
+                if (Array.isArray(arr)) return { data: arr, raw: d }
+            } catch (err) {
+                const status = err?.response?.status
+                if (status === 401 || status === 403 || status === 422) break
+            }
+        }
+        return { data: [], raw: null }
+    },
+
+    getSupplierPayments: async (id, params = {}) => {
+        const subEndpoints = [
+            `/${id}/payments`, `/${id}/transactions`, `/${id}/history`,
+            `/${id}/paid`, `/${id}/payment-history`, `/${id}/movements`,
+            `/${id}/ledger`, `/payments`
+        ]
+        for (const sub of subEndpoints) {
+            try {
+                const url = `${detectedEndpoint || ENDPOINT_CANDIDATES[0]}${sub}`
+                const res = await api.get(url, { params })
+                const d = res?.data
+                const arr = Array.isArray(d) ? d
+                    : d?.payments || d?.transactions || d?.movements || d?.history || d?.data || d?.items || []
+                if (Array.isArray(arr)) return { data: arr, raw: d }
+            } catch (err) {
+                const status = err?.response?.status
+                if (status === 401 || status === 403 || status === 422) break
+            }
+        }
+        return { data: [], raw: null }
+    },
+
+    getSupplierLedger: async (id, params = {}) => {
+        const subEndpoints = [
+            `/${id}/ledger`, `/${id}/movements`, `/${id}/operations`,
+            `/${id}/history`, `/${id}/transactions`, `/${id}/journal`
+        ]
+        for (const sub of subEndpoints) {
+            try {
+                const url = `${detectedEndpoint || ENDPOINT_CANDIDATES[0]}${sub}`
+                const res = await api.get(url, { params })
+                const d = res?.data
+                const arr = Array.isArray(d) ? d
+                    : d?.ledger || d?.movements || d?.operations || d?.history || d?.transactions || d?.data || d?.items || []
+                if (Array.isArray(arr)) return { data: arr, raw: d }
+            } catch (err) {
+                const status = err?.response?.status
+                if (status === 401 || status === 403 || status === 422) break
+            }
+        }
+        return { data: [], raw: null }
     },
 
     createSupplier: async (data) => {

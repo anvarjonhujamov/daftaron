@@ -31,6 +31,7 @@ import LegalManagementPage from './pages/LegalManagementPage'
 import ShopsPage from './pages/ShopsPage'
 import StaffPage from './pages/StaffPage'
 import SuppliersPage from './pages/SuppliersPage'
+import SupplierDetailPage from './pages/SupplierDetailPage'
 import SupportPage from './pages/SupportPage'
 
 export default function App() {
@@ -85,6 +86,7 @@ export default function App() {
                     <Route path="/shops" element={<ShopsPage />} />
                     <Route path="/staff" element={<StaffPage />} />
                     <Route path="/suppliers" element={<SuppliersPage />} />
+                    <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
                     <Route path="/support" element={<SupportPage />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                     <Route path="/admin/legal" element={<LegalManagementPage />} />
