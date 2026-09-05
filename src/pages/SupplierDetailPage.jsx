@@ -332,8 +332,8 @@ export default function SupplierDetailPage() {
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors overflow-x-hidden">
             <div className="px-4 mt-2">
-                <div className="bg-white dark:bg-gray-800 pt-2 pb-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all">
-                    <div className="flex items-center justify-between px-4 py-0.5 mb-2">
+                <div className="bg-white dark:bg-gray-800 pt-2 pb-4 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all">
+                    <div className="flex items-center justify-between px-4 py-0.5 mb-1">
                         <button
                             onClick={() => navigate(-1)}
                             className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform"
@@ -348,30 +348,30 @@ export default function SupplierDetailPage() {
                         </button>
                     </div>
 
-                    <div className="flex flex-col items-center text-center px-6">
-                        <div className="w-20 h-20 mb-3 bg-gradient-to-tr from-orange-100 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-600 dark:text-orange-400 rounded-[28px] flex items-center justify-center shadow-inner">
-                            <Building2 size={36} />
+                    <div className="flex flex-col items-center text-center px-5">
+                        <div className="w-16 h-16 mb-2.5 bg-gradient-to-tr from-orange-100 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-600 dark:text-orange-400 rounded-[24px] flex items-center justify-center shadow-inner">
+                            <Building2 size={30} />
                         </div>
 
-                        <h1 className="text-[19px] font-bold text-gray-900 dark:text-white mb-0.5 leading-tight">
+                        <h1 className="text-[18px] font-bold text-gray-900 dark:text-white mb-0.5 leading-tight">
                             {supplier.name}
                         </h1>
                         {supplier.company_name && supplier.company_name !== supplier.name && (
-                            <p className="text-gray-400 dark:text-gray-500 text-[12px] font-medium mb-1">
+                            <p className="text-gray-400 dark:text-gray-500 text-[11.5px] font-medium mb-0.5">
                                 {supplier.company_name}
                             </p>
                         )}
-                        <p className="text-gray-400 dark:text-gray-500 text-[12px] font-medium mb-3">
+                        <p className="text-gray-400 dark:text-gray-500 text-[11.5px] font-medium mb-2">
                             {supplier.phone ? formatPhone(supplier.phone) : ''}
                         </p>
 
-                        <div className={`text-[30px] font-extrabold tracking-tight mb-2 ${
+                        <div className={`text-[26px] font-extrabold tracking-tight mb-1.5 ${
                             hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-600 dark:text-gray-300'
                         }`}>
-                            {formatCurrency(absBalance)} <span className="text-[14px] font-bold opacity-70">so'm</span>
+                            {formatCurrency(absBalance)} <span className="text-[12px] font-bold opacity-70">so'm</span>
                         </div>
 
-                        <div className={`inline-flex items-center px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        <div className={`inline-flex items-center px-3.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             hasDebt
                                 ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30'
                                 : hasCredit
@@ -381,202 +381,199 @@ export default function SupplierDetailPage() {
                             {hasDebt ? 'Bizga qarzdor' : hasCredit ? 'Biz unga qarzdor' : 'Balans nol'}
                         </div>
                     </div>
+
+                    {(supplier.phone || supplier.contact_person || supplier.inn || supplier.address || supplier.note || supplier.created_at) && (
+                        <div className="px-5 pt-3.5 mt-3 border-t border-gray-100 dark:border-gray-700/50">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                                {supplier.phone && (
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
+                                            <PhoneIcon size={13} className="text-gray-500" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Tel</p>
+                                            <p className="text-[12.5px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{formatPhone(supplier.phone)}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {supplier.contact_person && (
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
+                                            <User size={13} className="text-gray-500" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Mas'ul</p>
+                                            <p className="text-[12.5px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{supplier.contact_person}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {supplier.inn && (
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
+                                            <Hash size={13} className="text-gray-500" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">INN</p>
+                                            <p className="text-[12.5px] font-semibold text-gray-900 dark:text-white leading-tight font-mono truncate">{supplier.inn}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {supplier.created_at && (
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
+                                            <RefreshCw size={13} className="text-gray-500" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Sana</p>
+                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{formatDateShort(supplier.created_at)}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {supplier.address && (
+                                <div className="flex items-start gap-2 min-w-0 mt-2.5">
+                                    <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <MapPin size={13} className="text-gray-500" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Manzil</p>
+                                        <p className="text-[12.5px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.address}</p>
+                                    </div>
+                                </div>
+                            )}
+                            {supplier.note && (
+                                <div className="flex items-start gap-2 min-w-0 mt-2">
+                                    <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <FileText size={13} className="text-gray-500" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[9.5px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Izoh</p>
+                                        <p className="text-[12.5px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.note}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="px-4 mt-4">
-                <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                                <ShoppingCart size={15} className="text-blue-500" />
+            <div className="px-4 mt-3">
+                <div className="grid grid-cols-3 gap-2.5">
+                    <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                                <ShoppingCart size={13} className="text-blue-500" />
                             </div>
                         </div>
-                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami xarid</p>
-                        <p className="text-[15px] font-black text-gray-900 dark:text-white leading-tight truncate">
+                        <p className="text-[9.5px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami xarid</p>
+                        <p className="text-[14.5px] font-black text-gray-900 dark:text-white leading-tight truncate">
                             {formatCurrency(totalBought)}
                         </p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">so'm</p>
+                        <p className="text-[9.5px] text-gray-400 mt-0.5">so'm</p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
-                                <CheckCircle2 size={15} className="text-emerald-500" />
+                    <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                                <CheckCircle2 size={13} className="text-emerald-500" />
                             </div>
                         </div>
-                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami to'lov</p>
-                        <p className="text-[15px] font-black text-gray-900 dark:text-white leading-tight truncate">
+                        <p className="text-[9.5px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami to'lov</p>
+                        <p className="text-[14.5px] font-black text-gray-900 dark:text-white leading-tight truncate">
                             {formatCurrency(totalPaid)}
                         </p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">so'm</p>
+                        <p className="text-[9.5px] text-gray-400 mt-0.5">so'm</p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
                                 hasDebt ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-gray-700/30'
                             }`}>
                                 {hasDebt
-                                    ? <TrendingUp size={15} className="text-red-500" />
+                                    ? <TrendingUp size={13} className="text-red-500" />
                                     : hasCredit
-                                        ? <TrendingDown size={15} className="text-emerald-500" />
-                                        : <Wallet size={15} className="text-gray-400" />
+                                        ? <TrendingDown size={13} className="text-emerald-500" />
+                                        : <Wallet size={13} className="text-gray-400" />
                                 }
                             </div>
                         </div>
-                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Farq</p>
-                        <p className={`text-[15px] font-black leading-tight truncate ${
+                        <p className="text-[9.5px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Farq</p>
+                        <p className={`text-[14.5px] font-black leading-tight truncate ${
                             hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-900 dark:text-white'
                         }`}>
                             {formatCurrency(absBalance)}
                         </p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">so'm</p>
+                        <p className="text-[9.5px] text-gray-400 mt-0.5">so'm</p>
                     </div>
                 </div>
             </div>
 
-            <div className="px-4 mt-4">
-                <div className="flex gap-3 mb-3">
+            <div className="px-4 mt-3">
+                <div className="flex gap-2.5">
                     <button
                         onClick={handleCall}
                         disabled={!supplier.phone}
-                        className="btn btn-outline flex-1 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 disabled:opacity-40"
+                        className="btn btn-outline flex-1 py-2.5 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 disabled:opacity-40 text-[13.5px]"
                     >
-                        <PhoneIcon size={18} />Qo'ng'iroq
+                        <PhoneIcon size={17} />Qo'ng'iroq
                     </button>
                     <button
                         onClick={handleMessage}
                         disabled={!supplier.phone}
-                        className="btn btn-outline flex-1 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 disabled:opacity-40"
+                        className="btn btn-outline flex-1 py-2.5 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 disabled:opacity-40 text-[13.5px]"
                     >
-                        <MessageSquare size={18} />Xabar
+                        <MessageSquare size={17} />Xabar
                     </button>
                 </div>
             </div>
 
             <div className="px-4 mt-4">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-5">
-                    <h3 className="text-[14px] font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <Tag size={15} className="text-orange-500" />
-                        Umumiy ma'lumotlar
-                    </h3>
-                    <div className="space-y-3.5">
-                        {supplier.phone && (
-                            <div className="flex items-start gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
-                                    <PhoneIcon size={15} className="text-gray-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Telefon</p>
-                                    <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{formatPhone(supplier.phone)}</p>
-                                </div>
-                            </div>
-                        )}
-                        {supplier.contact_person && (
-                            <div className="flex items-start gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
-                                    <User size={15} className="text-gray-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Mas'ul shaxs</p>
-                                    <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{supplier.contact_person}</p>
-                                </div>
-                            </div>
-                        )}
-                        {supplier.inn && (
-                            <div className="flex items-start gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
-                                    <Hash size={15} className="text-gray-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">INN / STIR</p>
-                                    <p className="text-[14px] font-semibold text-gray-900 dark:text-white font-mono">{supplier.inn}</p>
-                                </div>
-                            </div>
-                        )}
-                        {supplier.address && (
-                            <div className="flex items-start gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
-                                    <MapPin size={15} className="text-gray-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Manzil</p>
-                                    <p className="text-[14px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.address}</p>
-                                </div>
-                            </div>
-                        )}
-                        {supplier.note && (
-                            <div className="flex items-start gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
-                                    <FileText size={15} className="text-gray-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Izoh</p>
-                                    <p className="text-[14px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.note}</p>
-                                </div>
-                            </div>
-                        )}
-                        {supplier.created_at && (
-                            <div className="flex items-start gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0">
-                                    <RefreshCw size={15} className="text-gray-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Qo'shilgan sana</p>
-                                    <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{formatDate(supplier.created_at)}</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            <div className="px-4 mt-6">
-                <div className="flex items-center justify-between mb-3">
-                <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">Operatsiyalar tarixi</h2>
-                <span className="text-[13px] text-gray-400">
+                <div className="flex items-center justify-between mb-2.5">
+                <h2 className="text-[16px] font-bold text-gray-900 dark:text-white">Operatsiyalar tarixi</h2>
+                <span className="text-[12px] text-gray-400">
                     {historyTab === 'all' ? `${allMovements.length} ta`
                         : historyTab === 'purchases' ? `${purchases.length} ta xarid`
                             : `${payments.length} ta to'lov`}
                 </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-5">
+            <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-4">
                 <button
                     type="button"
                     onClick={() => setHistoryTab('all')}
-                    className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
+                    className={`py-2 rounded-xl text-[12.5px] font-bold transition-all ${
                         historyTab === 'all'
                             ? 'bg-white dark:bg-gray-900 text-orange-600 dark:text-orange-400 shadow-sm'
                             : 'text-gray-500 dark:text-gray-400'
                     }`}
                 >
-                    <ArrowRightLeft size={13} className="inline mr-1 -mt-0.5" />
+                    <ArrowRightLeft size={12} className="inline mr-1 -mt-0.5" />
                     Hammasi
                 </button>
                 <button
                     type="button"
                     onClick={() => setHistoryTab('purchases')}
-                    className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
+                    className={`py-2 rounded-xl text-[12.5px] font-bold transition-all ${
                         historyTab === 'purchases'
                             ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm'
                             : 'text-gray-500 dark:text-gray-400'
                     }`}
                 >
-                    <ShoppingCart size={13} className="inline mr-1 -mt-0.5" />
+                    <ShoppingCart size={12} className="inline mr-1 -mt-0.5" />
                     Xaridlar
                 </button>
                 <button
                     type="button"
                     onClick={() => setHistoryTab('payments')}
-                    className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
+                    className={`py-2 rounded-xl text-[12.5px] font-bold transition-all ${
                         historyTab === 'payments'
                             ? 'bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
                             : 'text-gray-500 dark:text-gray-400'
                     }`}
                 >
-                    <CreditCard size={13} className="inline mr-1 -mt-0.5" />
+                    <CreditCard size={12} className="inline mr-1 -mt-0.5" />
                     To'lovlar
                 </button>
             </div>
