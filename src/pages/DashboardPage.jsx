@@ -587,14 +587,8 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 4. SOF MOLIYAVIY HOLAT = mijozlardan - postavchiklarga */}
-                <div className={`relative overflow-hidden rounded-[20px] p-4 h-[100px] active:scale-[0.98] transition-all shadow-lg ${
-                    isNetPositive
-                        ? 'bg-gradient-to-br from-emerald-400 to-teal-600 shadow-emerald-500/20'
-                        : isNetNegative
-                            ? 'bg-gradient-to-br from-rose-600 to-red-800 shadow-rose-500/20'
-                            : 'bg-gradient-to-br from-slate-500 to-slate-700 shadow-slate-500/20'
-                }`}>
+                {/* 4. SOF MOLIYAVIY HOLAT = mijozlardan - postavchiklarga (DOIMIY PURPLE GRADIENT — rang o'zgarmaydi, faqat qiymat + vs - prefiksi bilan) */}
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-purple-500 to-indigo-700 shadow-lg shadow-purple-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
                             <span className="text-[12px] font-medium opacity-90">Sof moliyaviy holat</span>
@@ -603,7 +597,12 @@ export default function DashboardPage() {
                             </div>
                         </div>
                         <p className="text-[18px] font-bold leading-none truncate">
-                            {isNetNegative ? `-${formatCurrency(Math.abs(netFinancial))}` : formatCurrency(netFinancial)}
+                            {isNetNegative
+                                ? <span className="text-red-100">−{formatCurrency(Math.abs(netFinancial))}</span>
+                                : isNetPositive
+                                    ? <span className="text-white">{formatCurrency(netFinancial)}</span>
+                                    : <span className="text-white">{formatCurrency(0)}</span>
+                            }
                         </p>
                     </div>
                 </div>

@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Users, FileText, History, Settings } from 'lucide-react'
+import { Home, Users, FileText, History, Settings, Package } from 'lucide-react'
 import { useSubscription } from '../contexts/SubscriptionContext'
 
 const FULL_NAV_ITEMS = [
     { to: '/', icon: Home, label: 'Asosiy' },
     { to: '/customers', icon: Users, label: 'Mijozlar' },
     { to: '/debts', icon: FileText, label: 'Hisobot' },
+    { to: '/suppliers', icon: Package, label: 'Yetkazuvchilar' },
     { to: '/payments', icon: History, label: 'Tarix' },
     { to: '/profile', icon: Settings, label: 'Sozlama' }
 ]

@@ -189,6 +189,16 @@
     0 1px 3px rgba(0, 0, 0, 0.03);
   width: calc(100% - 32px);
   max-width: 400px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.bottom-bar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .dark .bottom-bar {
@@ -218,12 +228,13 @@
 
 .bottom-bar-item:not(.bottom-bar-item-active) {
   flex: 1 1 0%;
+  min-width: 0;
 }
 
 .bottom-bar-item-active {
   background: #2563eb;
   color: #ffffff;
-  padding: 12px 18px;
+  padding: 10px 14px;
   box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
   flex: 0 0 auto;
 }
@@ -235,10 +246,32 @@
 }
 
 .bottom-bar-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.01em;
   white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .bottom-bar {
+    padding: 6px;
+    gap: 4px;
+    width: calc(100% - 20px);
+  }
+  .bottom-bar-item {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+  .bottom-bar-item-active {
+    padding: 8px 11px;
+  }
+  .bottom-bar-label {
+    font-size: 11px;
+  }
+  .bottom-bar-item svg {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 /* Safe area padding */

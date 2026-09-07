@@ -443,22 +443,6 @@ export default function ProfilePage() {
                 </button>
                 )}
 
-                {/* Postavchiklar (Hamkorlar) — Owner va Sotuvchi (staff) uchun */}
-                <button
-                    onClick={() => navigate('/suppliers', { state: { from: location.pathname } })}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700/50"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                            <Building2 size={18} className="text-orange-500" />
-                        </div>
-                        <span className="text-[15px] font-medium text-gray-900 dark:text-white">
-                            Postavchiklar
-                        </span>
-                    </div>
-                    <ChevronRight size={18} className="text-gray-400" />
-                </button>
-
                 {/* Subscription / Tariff */}
                 {!isStaff && (
                 <button
