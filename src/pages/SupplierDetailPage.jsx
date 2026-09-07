@@ -862,30 +862,32 @@ export default function SupplierDetailPage() {
             </div>
 
             {/* ==================================================================
-                EXISTING DRAWERS (preserved unchanged)
+                EXISTING DRAWERS (preserved structure, Customer style)
                ================================================================== */}
             <Drawer.Root open={showOptionsDrawer} onOpenChange={setShowOptionsDrawer} direction="bottom">
                 <Drawer.Portal>
-                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-40" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-[28px] border-t border-gray-100 dark:border-gray-700 max-h-[85vh] overflow-y-auto focus:outline-none">
-                        <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 pt-3 pb-2 flex justify-center border-b border-gray-100 dark:border-gray-700">
-                            <div className="w-12 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-                        </div>
-                        <div className="p-5 space-y-1.5 pb-8">
-                            <h3 className="text-[16px] font-bold text-gray-900 dark:text-white mb-4 px-1">Amallar</h3>
-                            <button onClick={() => { setShowOptionsDrawer(false); setShowEditModal(true) }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><Edit2 size={18} className="text-blue-500" /></div>
-                                <div className="flex-1 text-left"><p className="text-[14px] font-bold text-gray-900 dark:text-white">Tahrirlash</p></div>
-                            </button>
-                            <button onClick={() => { setShowOptionsDrawer(false); setShowDeleteConfirm(true) }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
-                                <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><Trash2 size={18} className="text-red-500" /></div>
-                                <div className="flex-1 text-left"><p className="text-[14px] font-bold text-red-500">O'chirish</p></div>
-                            </button>
-                            <div className="h-px bg-gray-100 dark:bg-gray-700 my-3" />
-                            <button onClick={() => setShowOptionsDrawer(false)} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
-                                <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center"><X size={18} className="text-gray-500" /></div>
-                                <div className="flex-1 text-left"><p className="text-[14px] font-bold text-gray-900 dark:text-white">Yopish</p></div>
-                            </button>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-3xl outline-none overflow-y-auto max-h-[85vh]">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-4 pb-8">
+                                <div className="space-y-1.5 pb-4">
+                                    <h3 className="text-[16px] font-bold text-gray-900 dark:text-white mb-4 px-1">Amallar</h3>
+                                    <button onClick={() => { setShowOptionsDrawer(false); setShowEditModal(true) }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><Edit2 size={18} className="text-blue-500" /></div>
+                                        <div className="flex-1 text-left"><p className="text-[14px] font-bold text-gray-900 dark:text-white">Tahrirlash</p></div>
+                                    </button>
+                                    <button onClick={() => { setShowOptionsDrawer(false); setShowDeleteConfirm(true) }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
+                                        <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><Trash2 size={18} className="text-red-500" /></div>
+                                        <div className="flex-1 text-left"><p className="text-[14px] font-bold text-red-500">O'chirish</p></div>
+                                    </button>
+                                    <div className="h-px bg-gray-100 dark:bg-gray-700 my-3" />
+                                    <button onClick={() => setShowOptionsDrawer(false)} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
+                                        <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center"><X size={18} className="text-gray-500" /></div>
+                                        <div className="flex-1 text-left"><p className="text-[14px] font-bold text-gray-900 dark:text-white">Yopish</p></div>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>
@@ -893,22 +895,22 @@ export default function SupplierDetailPage() {
 
             <Drawer.Root open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm} direction="bottom">
                 <Drawer.Portal>
-                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-40" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-[28px] border-t border-gray-100 dark:border-gray-700 max-h-[80vh] overflow-y-auto focus:outline-none">
-                        <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 pt-3 pb-2 flex justify-center border-b border-gray-100 dark:border-gray-700">
-                            <div className="w-12 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-                        </div>
-                        <div className="p-6 pb-8">
-                            <div className="flex flex-col items-center text-center mb-6">
-                                <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4"><AlertCircle size={30} className="text-red-500" /></div>
-                                <h3 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">O'chirishni tasdiqlang</h3>
-                                <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-[280px]">Ushbu postavchini o'chirib tashlamoqchimisiz? Bu amal qaytarilmaydi.</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => setShowDeleteConfirm(false)} disabled={submitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 active:scale-95 transition-all disabled:opacity-50">Bekor qilish</button>
-                                <button onClick={handleDelete} disabled={submitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-red-500 text-white active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-red-500/20 flex items-center justify-center gap-2">
-                                    {submitting ? <Loader2 size={18} className="animate-spin" /> : null}O'chirish
-                                </button>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-3xl outline-none overflow-y-auto max-h-[85vh]">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-4 pb-8">
+                                <div className="flex flex-col items-center text-center mb-6">
+                                    <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4"><AlertCircle size={30} className="text-red-500" /></div>
+                                    <h3 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">O'chirishni tasdiqlang</h3>
+                                    <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-[280px]">Ushbu postavchini o'chirib tashlamoqchimisiz? Bu amal qaytarilmaydi.</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={() => setShowDeleteConfirm(false)} disabled={submitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 active:scale-95 transition-all disabled:opacity-50">Bekor qilish</button>
+                                    <button onClick={handleDelete} disabled={submitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-red-500 text-white active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-red-500/20 flex items-center justify-center gap-2">
+                                        {submitting ? <Loader2 size={18} className="animate-spin" /> : null}O'chirish
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </Drawer.Content>
@@ -923,12 +925,11 @@ export default function SupplierDetailPage() {
             {/* ============ PURCHASE DRAWER (Create + Edit, Validation, Submit) ============ */}
             <Drawer.Root open={showPurchaseDrawer} onOpenChange={(v) => { if (!purchaseSubmitting) setShowPurchaseDrawer(v) }} direction="bottom">
                 <Drawer.Portal>
-                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-40" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-[28px] border-t border-gray-100 dark:border-gray-700 max-h-[92vh] overflow-y-auto focus:outline-none">
-                        <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 pt-3 pb-2 flex justify-center border-b border-gray-100 dark:border-gray-700">
-                            <div className="w-12 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-                        </div>
-                        <div className="p-5 pb-8">
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-3xl outline-none overflow-y-auto max-h-[90vh]">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="overflow-y-auto max-h-[calc(90vh-80px)] px-4 pb-8">
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-[18px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><Receipt size={18} className="text-blue-500" /></div>
@@ -1006,6 +1007,7 @@ export default function SupplierDetailPage() {
                                     </button>
                                 </div>
                             </div>
+                            </div>
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>
@@ -1014,12 +1016,11 @@ export default function SupplierDetailPage() {
             {/* ============ PAYMENT DRAWER ============ */}
             <Drawer.Root open={showPaymentDrawer} onOpenChange={(v) => { if (!paymentSubmitting) setShowPaymentDrawer(v) }} direction="bottom">
                 <Drawer.Portal>
-                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-40" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-[28px] border-t border-gray-100 dark:border-gray-700 max-h-[95vh] overflow-y-auto focus:outline-none">
-                        <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 pt-3 pb-2 flex justify-center border-b border-gray-100 dark:border-gray-700">
-                            <div className="w-12 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-                        </div>
-                        <div className="p-5 pb-8">
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-3xl outline-none overflow-y-auto max-h-[90vh]">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="overflow-y-auto max-h-[calc(90vh-80px)] px-4 pb-8">
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-[18px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center"><Wallet size={18} className="text-emerald-500" /></div>
@@ -1155,6 +1156,7 @@ export default function SupplierDetailPage() {
                                     </button>
                                 </div>
                             </div>
+                            </div>
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>
@@ -1163,34 +1165,36 @@ export default function SupplierDetailPage() {
             {/* ============ HISTORY ITEM OPTIONS DRAWER ============ */}
             <Drawer.Root open={showHistoryOptions} onOpenChange={setShowHistoryOptions} direction="bottom">
                 <Drawer.Portal>
-                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-40" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-[28px] border-t border-gray-100 dark:border-gray-700 max-h-[75vh] overflow-y-auto focus:outline-none">
-                        <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 pt-3 pb-2 flex justify-center border-b border-gray-100 dark:border-gray-700">
-                            <div className="w-12 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-                        </div>
-                        <div className="p-5 space-y-1 pb-8">
-                            <h3 className="text-[16px] font-bold text-gray-900 dark:text-white mb-4 px-1">
-                                {selectedMovement?._kind === 'purchase' ? "Xarid amallari" : "To'lov amallari"}
-                            </h3>
-                            <button onClick={() => {
-                                if (!selectedMovement) return
-                                const isPur = isMovementPurchase(selectedMovement)
-                                setShowHistoryOptions(false)
-                                if (isPur) openPurchaseEdit(selectedMovement)
-                                else openPaymentEdit(selectedMovement)
-                            }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><Edit2 size={18} className="text-blue-500" /></div>
-                                <div className="flex-1 text-left"><p className="text-[14px] font-bold text-gray-900 dark:text-white">Tahrirlash</p></div>
-                            </button>
-                            <button onClick={() => { setShowHistoryOptions(false); setShowMovementDelete(true) }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
-                                <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><Trash2 size={18} className="text-red-500" /></div>
-                                <div className="flex-1 text-left"><p className="text-[14px] font-bold text-red-500">O'chirish</p></div>
-                            </button>
-                            <div className="h-px bg-gray-100 dark:bg-gray-700 my-2.5" />
-                            <button onClick={() => setShowHistoryOptions(false)} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
-                                <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center"><X size={18} className="text-gray-500" /></div>
-                                <div className="flex-1 text-left"><p className="text-[14px] font-bold text-gray-900 dark:text-white">Yopish</p></div>
-                            </button>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-3xl outline-none overflow-y-auto max-h-[80vh]">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="overflow-y-auto max-h-[calc(80vh-80px)] px-4 pb-8">
+                                <div className="space-y-1 pb-4">
+                                    <h3 className="text-[16px] font-bold text-gray-900 dark:text-white mb-4 px-1">
+                                        {selectedMovement?._kind === 'purchase' ? "Xarid amallari" : "To'lov amallari"}
+                                    </h3>
+                                    <button onClick={() => {
+                                        if (!selectedMovement) return
+                                        const isPur = isMovementPurchase(selectedMovement)
+                                        setShowHistoryOptions(false)
+                                        if (isPur) openPurchaseEdit(selectedMovement)
+                                        else openPaymentEdit(selectedMovement)
+                                    }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><Edit2 size={18} className="text-blue-500" /></div>
+                                        <div className="flex-1 text-left"><p className="text-[14px] font-bold text-gray-900 dark:text-white">Tahrirlash</p></div>
+                                    </button>
+                                    <button onClick={() => { setShowHistoryOptions(false); setShowMovementDelete(true) }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
+                                        <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><Trash2 size={18} className="text-red-500" /></div>
+                                        <div className="flex-1 text-left"><p className="text-[14px] font-bold text-red-500">O'chirish</p></div>
+                                    </button>
+                                    <div className="h-px bg-gray-100 dark:bg-gray-700 my-2.5" />
+                                    <button onClick={() => setShowHistoryOptions(false)} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
+                                        <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center"><X size={18} className="text-gray-500" /></div>
+                                        <div className="flex-1 text-left"><p className="text-[14px] font-bold text-gray-900 dark:text-white">Yopish</p></div>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>
@@ -1199,25 +1203,25 @@ export default function SupplierDetailPage() {
             {/* ============ HISTORY ITEM DELETE CONFIRM ============ */}
             <Drawer.Root open={showMovementDelete} onOpenChange={setShowMovementDelete} direction="bottom">
                 <Drawer.Portal>
-                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-40" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-[28px] border-t border-gray-100 dark:border-gray-700 max-h-[80vh] overflow-y-auto focus:outline-none">
-                        <div className="sticky top-0 bg-white dark:bg-gray-800 z-10 pt-3 pb-2 flex justify-center border-b border-gray-100 dark:border-gray-700">
-                            <div className="w-12 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-                        </div>
-                        <div className="p-6 pb-8">
-                            <div className="flex flex-col items-center text-center mb-6">
-                                <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4"><AlertCircle size={30} className="text-red-500" /></div>
-                                <h3 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">O'chirishni tasdiqlang</h3>
-                                <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-[320px]">
-                                    Ushbu {selectedMovement?._kind === 'purchase' ? 'xarid' : "to'lov"}ni o'chirib tashlamoqchimisiz? Bu amal qaytarilmaydi.
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => setShowMovementDelete(false)} disabled={movementDeleteSubmitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 active:scale-95 transition-all disabled:opacity-50">Bekor qilish</button>
-                                <button onClick={handleDeleteMovement} disabled={movementDeleteSubmitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-red-500 text-white active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-red-500/20 flex items-center justify-center gap-2">
-                                    {movementDeleteSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={17} />}
-                                    O'chirish
-                                </button>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 rounded-t-3xl outline-none overflow-y-auto max-h-[85vh]">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-4 pb-8">
+                                <div className="flex flex-col items-center text-center mb-6">
+                                    <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4"><AlertCircle size={30} className="text-red-500" /></div>
+                                    <h3 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">O'chirishni tasdiqlang</h3>
+                                    <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-[320px]">
+                                        Ushbu {selectedMovement?._kind === 'purchase' ? 'xarid' : "to'lov"}ni o'chirib tashlamoqchimisiz? Bu amal qaytarilmaydi.
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={() => setShowMovementDelete(false)} disabled={movementDeleteSubmitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 active:scale-95 transition-all disabled:opacity-50">Bekor qilish</button>
+                                    <button onClick={handleDeleteMovement} disabled={movementDeleteSubmitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-red-500 text-white active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-red-500/20 flex items-center justify-center gap-2">
+                                        {movementDeleteSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={17} />}
+                                        O'chirish
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </Drawer.Content>
