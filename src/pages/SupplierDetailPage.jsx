@@ -126,7 +126,6 @@ export default function SupplierDetailPage() {
         amountDisplay: '',
         paid_at: new Date().toISOString().slice(0, 10),
         payment_method: 'cash',
-        mode: 'auto', // 'auto' | 'balance'
         description: '',
         errors: {}
     })
@@ -310,7 +309,6 @@ export default function SupplierDetailPage() {
             amountDisplay: '',
             paid_at: new Date().toISOString().slice(0, 10),
             payment_method: 'cash',
-            mode: 'auto',
             description: '',
             errors: {}
         })
@@ -322,16 +320,15 @@ export default function SupplierDetailPage() {
             amountDisplay: formatCurrency(movement.amount),
             paid_at: (movement.paid_at || movement.date || new Date()).toISOString().slice(0, 10),
             payment_method: movement.payment_method || 'cash',
-            mode: 'balance',
             description: movement.description || '',
             errors: {}
         })
         setShowPaymentDrawer(true)
     }
 
-    // Allocation preview (only used in auto mode)
+    // Allocation preview (doim avtomatik taqsimlash)
     const allocationPreview = useMemo(() => {
-        if (paymentForm.mode !== 'auto') return null
+        if (paymentEditId) return null
         const amount = parseCurrency(paymentForm.amountDisplay)
         if (amount <= 0 || purchases.length === 0) return []
         const rows = []
@@ -361,7 +358,7 @@ export default function SupplierDetailPage() {
             })
         }
         return rows
-    }, [paymentForm.amountDisplay, paymentForm.mode, purchases])
+    }, [paymentForm.amountDisplay, purchases])
 
     const handleSubmitPayment = async () => {
         const errors = {}
@@ -391,31 +388,24 @@ export default function SupplierDetailPage() {
                 const n = normalizeMovement({ amount, ...common, ...saved }, 'payment')
                 setPayments(prev => prev.map(p => String(p.id) === String(paymentEditId) ? n : p))
             } else {
-                if (paymentForm.mode === 'balance') {
-                    const payload = { amount, ...common, payment_type: 'supplier_balance' }
+                // doim avtomatik taqsimlash
+                const preview = allocationPreview || []
+                const createdRows = []
+                for (const row of preview) {
+                    const payload = {
+                        amount: row.allocated,
+                        purchase_id: row.type === 'purchase' ? row.purchase.id : null,
+                        ...common,
+                        payment_type: row.type === 'purchase' ? 'purchase_payment' : 'supplier_balance',
+                        description: row.type === 'purchase'
+                            ? (common.description || '') + (row.purchase?.reference ? ` (INV:${row.purchase.reference})` : '') || undefined
+                            : (common.description || null)
+                    }
                     const saved = await suppliersApi.createSupplierPayment(sid, payload)
                     const n = normalizeMovement({ ...payload, ...saved }, 'payment')
-                    if (n?.id) setPayments(prev => [n, ...(prev || [])])
-                } else {
-                    // auto mode: create 1 by 1 according to allocationPreview
-                    const preview = allocationPreview || []
-                    const createdRows = []
-                    for (const row of preview) {
-                        const payload = {
-                            amount: row.allocated,
-                            purchase_id: row.type === 'purchase' ? row.purchase.id : null,
-                            ...common,
-                            payment_type: row.type === 'purchase' ? 'purchase_payment' : 'supplier_balance',
-                            description: row.type === 'purchase'
-                                ? (common.description || '') + (row.purchase?.reference ? ` (INV:${row.purchase.reference})` : '') || undefined
-                                : (common.description || null)
-                        }
-                        const saved = await suppliersApi.createSupplierPayment(sid, payload)
-                        const n = normalizeMovement({ ...payload, ...saved }, 'payment')
-                        if (n?.id) createdRows.push(n)
-                    }
-                    if (createdRows.length) setPayments(prev => [...createdRows, ...(prev || [])])
+                    if (n?.id) createdRows.push(n)
                 }
+                if (createdRows.length) setPayments(prev => [...createdRows, ...(prev || [])])
             }
             toast.success(paymentEditId ? "To'lov tahrirlandi" : "To'lov muvaffaqiyatli qo'shildi")
             setShowPaymentDrawer(false)
@@ -1031,21 +1021,6 @@ export default function SupplierDetailPage() {
                                 </button>
                             </div>
                             <div className="space-y-4">
-                                {!paymentEditId && (
-                                    <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-700/50">
-                                        <button type="button" onClick={() => setPaymentForm(p => ({ ...p, mode: 'auto' }))}
-                                            className={`py-2.5 rounded-xl text-[12px] font-bold transition-all ${
-                                                paymentForm.mode === 'auto' ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
-                                            }`}
-                                        ><ArrowRightLeft size={12} className="inline mr-1 -mt-0.5" />Avtomatik taqsimlash</button>
-                                        <button type="button" onClick={() => setPaymentForm(p => ({ ...p, mode: 'balance' }))}
-                                            className={`py-2.5 rounded-xl text-[12px] font-bold transition-all ${
-                                                paymentForm.mode === 'balance' ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
-                                            }`}
-                                        ><Wallet size={12} className="inline mr-1 -mt-0.5" />Faqat balans</button>
-                                    </div>
-                                )}
-
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5 px-0.5">
                                         <label className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Summa <span className="text-red-400">*</span></label>
