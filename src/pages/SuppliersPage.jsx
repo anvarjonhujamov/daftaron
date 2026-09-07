@@ -9,6 +9,7 @@ import {
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import SupplierModal from '../components/SupplierModal'
+import { parseCurrency } from '../utils/format'
 
 export default function SuppliersPage() {
     const navigate = useNavigate()
@@ -92,6 +93,10 @@ export default function SuppliersPage() {
             const raw = Array.isArray(response) ? response : (response?.data || [])
             const data = raw.map(normalizeSupplier)
             setSuppliers(data)
+
+            if (data.length > 0) {
+                loadComputedBalances(data)
+            }
         } catch (err) {
             console.error('Failed to load suppliers:', err)
             const status = err.response?.status || 0
@@ -100,6 +105,58 @@ export default function SuppliersPage() {
             setSuppliers([])
         } finally {
             setLoading(false)
+        }
+    }
+
+    const loadComputedBalances = async (suppliersArray) => {
+        try {
+            const withComputed = await Promise.all(
+                suppliersArray.map(async (s) => {
+                    let totalBought = 0
+                    let totalPaid = 0
+                    try {
+                        const [purRes, payRes] = await Promise.all([
+                            suppliersApi.getSupplierPurchasesMerged(s.id).catch(() => ({ data: [] })),
+                            suppliersApi.getSupplierPaymentsMerged(s.id).catch(() => ({ data: [] }))
+                        ])
+                        const purchases = Array.isArray(purRes) ? purRes : (purRes?.data || [])
+                        const payments = Array.isArray(payRes) ? payRes : (payRes?.data || [])
+                        totalBought = purchases.reduce((sum, p) => sum + (parseFloat(p?.amount || p?.total_amount) || 0), 0)
+                        totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p?.amount) || 0), 0)
+                    } catch (e) {
+                        // ignore individual errors; default 0
+                    }
+                    const initialBalanceSign = parseFloat(s?.balance ?? s?.current_debt ?? 0) || 0
+                    const computed = {
+                        ...s,
+                        computed_total_bought: totalBought,
+                        computed_total_paid: totalPaid,
+                        computed_balance: (totalBought - totalPaid + initialBalanceSign)
+                    }
+                    return computed
+                })
+            )
+            setSuppliers(prev => {
+                const map = new Map()
+                prev.forEach(p => map.set(String(p.id), p))
+                withComputed.forEach(w => {
+                    const sid = String(w.id)
+                    const existing = map.get(sid)
+                    if (existing) {
+                        map.set(sid, {
+                            ...existing,
+                            computed_total_bought: w.computed_total_bought,
+                            computed_total_paid: w.computed_total_paid,
+                            computed_balance: w.computed_balance,
+                        })
+                    } else {
+                        map.set(sid, w)
+                    }
+                })
+                return Array.from(map.values())
+            })
+        } catch (e) {
+            console.warn('loadComputedBalances failed:', e)
         }
     }
 
@@ -121,6 +178,9 @@ export default function SuppliersPage() {
 
     const getSupplierBalance = (s) => {
         if (!s) return 0
+        if (s.computed_balance !== undefined && s.computed_balance !== null && !isNaN(Number(s.computed_balance))) {
+            return Number(s.computed_balance)
+        }
         const raw = pickSupplierField(s, ['balance', 'total_balance', 'current_balance', 'debt', 'debt_amount', 'amount_due', 'remaining_amount'])
         const num = Number(raw)
         return isNaN(num) ? 0 : num
