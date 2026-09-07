@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { dashboardApi } from '../api/dashboard.api'
 import { customersApi } from '../api/customers.api'
@@ -7,9 +7,11 @@ import { notificationsApi } from '../api/notifications.api'
 import { paymentsApi } from '../api/payments.api'
 import { profileApi } from '../api/profile.api'
 import { staffApi } from '../api/staff.api'
+import { suppliersApi } from '../api/suppliers.api'
 import {
     TrendingUp, Users, ChevronRight,
-    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone, UserCog
+    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone, UserCog,
+    Building2, Wallet, Calculator
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton, { DashboardSkeleton } from '../components/Skeleton'
@@ -23,6 +25,10 @@ export default function DashboardPage() {
     const [customers, setCustomers] = useState([])
     const [allDebts, setAllDebts] = useState([])
     const [allPayments, setAllPayments] = useState([])
+    const [suppliers, setSuppliers] = useState([])
+    // Each: { supplier_id: [...rows] }
+    const [supplierPurchasesMap, setSupplierPurchasesMap] = useState({})
+    const [supplierPaymentsMap, setSupplierPaymentsMap] = useState({})
     const [unreadNotifs, setUnreadNotifs] = useState(0)
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState(null)
@@ -87,12 +93,14 @@ export default function DashboardPage() {
     const loadStats = async () => {
         setLoading(true)
         try {
-            const [statsData, customersData, debtsData, notifsData, paymentsData] = await Promise.allSettled([
+            suppliersApi._resetDetection()
+            const [statsData, customersData, debtsData, notifsData, paymentsData, suppliersData] = await Promise.allSettled([
                 dashboardApi.getStats(),
                 customersApi.getCustomers(),
                 debtsApi.getDebts(),
                 notificationsApi.getNotifications(),
-                paymentsApi.getPayments()
+                paymentsApi.getPayments(),
+                suppliersApi.getSuppliers()
             ])
 
             if (statsData.status === 'fulfilled') {
@@ -118,6 +126,77 @@ export default function DashboardPage() {
             if (paymentsData.status === 'fulfilled') {
                 const data = paymentsData.value
                 setAllPayments(Array.isArray(data) ? data : (data.data || []))
+            }
+
+            let suppliersList = []
+            if (suppliersData.status === 'fulfilled') {
+                const data = suppliersData.value
+                suppliersList = Array.isArray(data) ? data : (data.data || [])
+                setSuppliers(suppliersList)
+            }
+
+            // Suppliers: Stage 1 — SYNC instant LS restore (0 flash) — darhol ko'rsatish
+            if (suppliersList.length > 0) {
+                try {
+                    const cacheRaw = typeof window !== 'undefined' ? window.localStorage.getItem('suppliers_page_balances_cache_v1') : null
+                    if (cacheRaw) {
+                        const cache = JSON.parse(cacheRaw) || {}
+                        const pMap = {}
+                        const yMap = {}
+                        suppliersList.forEach(s => {
+                            const sid = String(s.id)
+                            try {
+                                const pRaw = localStorage.getItem(`supplier_${s.id}_purchases`)
+                                const yRaw = localStorage.getItem(`supplier_${s.id}_payments`)
+                                if (pRaw) pMap[sid] = JSON.parse(pRaw)
+                                if (yRaw) yMap[sid] = JSON.parse(yRaw)
+                                else if (cache[sid]) {
+                                    // fallback: if no raw LS, cache has computed — at least init maps keys
+                                    if (!pMap[sid]) pMap[sid] = []
+                                    if (!yMap[sid]) yMap[sid] = []
+                                }
+                            } catch {}
+                        })
+                        if (Object.keys(pMap).length > 0) setSupplierPurchasesMap(pMap)
+                        if (Object.keys(yMap).length > 0) setSupplierPaymentsMap(yMap)
+                    }
+                } catch (e) { /* ignore cache read */ }
+
+                // Suppliers: Stage 2 — background async merged load (remote + LS dedup); updates map after network
+                setTimeout(async () => {
+                    try {
+                        const merged = await Promise.allSettled(
+                            suppliersList.map(s => Promise.allSettled([
+                                suppliersApi.getSupplierPurchasesMerged(s.id),
+                                suppliersApi.getSupplierPaymentsMerged(s.id)
+                            ]))
+                        )
+                        setSupplierPurchasesMap(prev => {
+                            const next = { ...prev }
+                            merged.forEach((r, i) => {
+                                if (r.status !== 'fulfilled') return
+                                const [pr] = r.value
+                                if (pr.status === 'fulfilled') {
+                                    const list = Array.isArray(pr.value) ? pr.value : (pr.value?.data || [])
+                                    if (list.length > 0 || prev[String(suppliersList[i].id)]) next[String(suppliersList[i].id)] = list
+                                }
+                            })
+                            return next
+                        })
+                        setSupplierPaymentsMap(prev => {
+                            const next = { ...prev }
+                            merged.forEach((r, i) => {
+                                if (r.status !== 'fulfilled') return
+                                const [, py] = r.value
+                                if (py.status === 'fulfilled') {
+                                    const list = Array.isArray(py.value) ? py.value : (py.value?.data || [])
+                                    if (list.length > 0 || prev[String(suppliersList[i].id)]) next[String(suppliersList[i].id)] = list
+                                }
+                            })
+                            return next
+                        })
+                    } catch (e) { /* ignore */ }
+                }, 0)
             }
         } catch (err) {
             console.error('Failed to load dashboard data:', err)
@@ -216,6 +295,67 @@ export default function DashboardPage() {
     )
 
     const monthlyPercent = Math.min(Math.round((monthlyPaid / (monthlyTotal || 1)) * 100), 100) || 0
+
+    // ============== SUPPLIERS AGGREGATE ==============
+    // Postavchiklar bo'yicha yig'indi:
+    //   Per supplier: computed_balance = totalBought - totalPaid + s.balance
+    //     > 0  → biz ularga to'lashimiz kerak → POSTAVCHIKLARGA QARZ (kreditorlik)
+    //     < 0  → ular bizga berishi kerak (abs)
+    const {
+        totalSupplierOurDebt,      // biz ularga qarzdor: sum over (computed_balance > 0 ? computed_balance : 0)
+        totalSupplierTheyOweUs,    // ular bizga qarzdor: sum over (computed_balance < 0 ? abs : 0)
+        todaySupplierPayments,     // bugun biz to'lgan supplier payments
+    } = useMemo(() => {
+        if (suppliers.length === 0) {
+            return { totalSupplierOurDebt: 0, totalSupplierTheyOweUs: 0, todaySupplierPayments: 0 }
+        }
+        let ourDebt = 0
+        let theyOwe = 0
+        let todayPay = 0
+        const todayRaw = new Date()
+        const todayStr = new Date(todayRaw - todayRaw.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+
+        suppliers.forEach(s => {
+            const sid = String(s.id)
+            const purList = Array.isArray(supplierPurchasesMap[sid]) ? supplierPurchasesMap[sid] : []
+            const payList = Array.isArray(supplierPaymentsMap[sid]) ? supplierPaymentsMap[sid] : []
+
+            const totalBought = purList.reduce((sum, p) => sum + (parseFloat(p?.amount || p?.total_amount) || 0), 0)
+            const totalPaid = payList.reduce((sum, p) => sum + (parseFloat(p?.amount) || 0), 0)
+            const initialSign = parseFloat(s?.balance ?? s?.current_debt ?? 0) || 0
+            const cb = totalBought - totalPaid + initialSign
+
+            if (cb > 0) ourDebt += cb
+            else if (cb < 0) theyOwe += Math.abs(cb)
+
+            // today supplier payments
+            payList.forEach(p => {
+                const dateStr = p?.created_at || p?.paid_at || p?.payment_date
+                if (!dateStr) return
+                try {
+                    const dt = new Date(dateStr)
+                    const localStr = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+                    if (localStr === todayStr) todayPay += (parseFloat(p?.amount) || 0)
+                } catch { /* ignore */ }
+            })
+        })
+
+        return {
+            totalSupplierOurDebt: ourDebt,
+            totalSupplierTheyOweUs: theyOwe,
+            todaySupplierPayments: todayPay,
+        }
+    }, [suppliers, supplierPurchasesMap, supplierPaymentsMap])
+
+    // Qarzdorlik turlari:
+    //   MIJOZLARDAN OLINADI (debitorlik) = totalDebt (mijozlarning qolgan qarzi)
+    //   POSTAVCHIKLARGA QARZ (kreditorlik) = totalSupplierOurDebt
+    //   SOF MOLIYAVIY HOLAT = mijozlardan_olinadi - postavchiklarga_qarz
+    const debitorTotal = totalDebt || 0
+    const kreditorTotal = totalSupplierOurDebt || 0
+    const netFinancial = debitorTotal - kreditorTotal
+    const isNetPositive = netFinancial > 0
+    const isNetNegative = netFinancial < 0
 
     // Today's stats — calculate from real debts and payments data in local time
     const todayRaw = new Date();
@@ -406,9 +546,9 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* Main Stats Grid */}
+            {/* Main Stats Grid — 4 ta karta: Nasiya soni / Mijozlardan / Postavchiklarga / Sof holat */}
             <div className="grid grid-cols-2 gap-3 mb-6">
-                {/* Jami nasiya */}
+                {/* 1. JAMI NASIYA SONI */}
                 <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
@@ -421,48 +561,56 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Umumiy nasiya */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-orange-400 to-rose-500 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all">
-                    <div className="relative z-10 flex flex-col justify-between h-full text-white">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-medium opacity-90">Umumiy nasiya</span>
-                            <div className="p-1.5 bg-white/20 rounded-lg">
-                                <TrendingUp size={16} className="text-white" />
-                            </div>
-                        </div>
-                        <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(totalGiven)}</p>
-                    </div>
-                </div>
-
-                {/* Qolgan qarz */}
+                {/* 2. MIJOZLARDAN OLINADI (Debitorlik) */}
                 <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-rose-500 to-red-700 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-medium opacity-90">Qolgan qarz</span>
+                            <span className="text-[12px] font-medium opacity-90">Mijozlardan olinadi</span>
                             <div className="p-1.5 bg-white/20 rounded-lg">
-                                <Activity size={16} className="text-white" />
+                                <ArrowUp size={16} className="text-white" />
                             </div>
                         </div>
-                        <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(totalDebt)}</p>
+                        <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(debitorTotal)}</p>
                     </div>
                 </div>
 
-                {/* To'langan summa */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all">
+                {/* 3. POSTAVCHIKLARGA QARZ (Kreditorlik) */}
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-orange-400 to-amber-600 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-medium opacity-90">To'langan summa</span>
+                            <span className="text-[12px] font-medium opacity-90">Postavchiklarga qarz</span>
                             <div className="p-1.5 bg-white/20 rounded-lg">
-                                <CheckCircle2 size={16} className="text-white" />
+                                <Building2 size={16} className="text-white" />
                             </div>
                         </div>
-                        <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(totalPaid)}</p>
+                        <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(kreditorTotal)}</p>
+                    </div>
+                </div>
+
+                {/* 4. SOF MOLIYAVIY HOLAT = mijozlardan - postavchiklarga */}
+                <div className={`relative overflow-hidden rounded-[20px] p-4 h-[100px] active:scale-[0.98] transition-all shadow-lg ${
+                    isNetPositive
+                        ? 'bg-gradient-to-br from-emerald-400 to-teal-600 shadow-emerald-500/20'
+                        : isNetNegative
+                            ? 'bg-gradient-to-br from-rose-600 to-red-800 shadow-rose-500/20'
+                            : 'bg-gradient-to-br from-slate-500 to-slate-700 shadow-slate-500/20'
+                }`}>
+                    <div className="relative z-10 flex flex-col justify-between h-full text-white">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[12px] font-medium opacity-90">Sof moliyaviy holat</span>
+                            <div className="p-1.5 bg-white/20 rounded-lg">
+                                <Calculator size={16} className="text-white" />
+                            </div>
+                        </div>
+                        <p className="text-[18px] font-bold leading-none truncate">
+                            {isNetNegative ? `-${formatCurrency(Math.abs(netFinancial))}` : formatCurrency(netFinancial)}
+                        </p>
                     </div>
                 </div>
             </div>
 
-            {/* Today Stats */}
-            <div className="flex gap-3 mb-6">
+            {/* Today Stats — 3 ta: Bugun nasiya / Bugun to'lov / Bugun postavchikka to'lov */}
+            <div className="flex flex-col gap-3 mb-6 md:flex-row">
                 <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
                         <ArrowDown size={16} className="text-red-500" />
@@ -479,6 +627,15 @@ export default function DashboardPage() {
                     <div className="min-w-0">
                         <p className="text-[11px] text-gray-400">Bugun to'lov</p>
                         <p className="text-[14px] font-bold text-green-500 truncate">{formatCurrency(todayPayments)}</p>
+                    </div>
+                </div>
+                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                        <Wallet size={16} className="text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-[11px] text-gray-400">Postavchikka to'lov</p>
+                        <p className="text-[14px] font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(todaySupplierPayments)}</p>
                     </div>
                 </div>
             </div>
