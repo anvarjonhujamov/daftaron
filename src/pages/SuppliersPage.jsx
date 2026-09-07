@@ -9,7 +9,7 @@ import {
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import SupplierModal from '../components/SupplierModal'
-import { parseCurrency } from '../utils/format'
+import { parseCurrency, formatCurrency } from '../utils/format'
 
 export default function SuppliersPage() {
     const navigate = useNavigate()
@@ -110,7 +110,87 @@ export default function SuppliersPage() {
 
     const loadComputedBalances = async (suppliersArray) => {
         try {
-            const withComputed = await Promise.all(
+            // Step 0: Darhol (sync) cache restore o'qilishi — oldingi ochilishdagi balanslar darhol
+            try {
+                const cacheRaw = typeof window !== 'undefined' ? window.localStorage.getItem('suppliers_page_balances_cache_v1') : null
+                if (cacheRaw) {
+                    const cache = JSON.parse(cacheRaw) || {}
+                    const withInstant = suppliersArray.map(s => {
+                        const c = cache[String(s.id)]
+                        if (!c) return s
+                        return {
+                            ...s,
+                            computed_total_bought: c.computed_total_bought ?? s.computed_total_bought,
+                            computed_total_paid: c.computed_total_paid ?? s.computed_total_paid,
+                            computed_balance: c.computed_balance ?? s.computed_balance,
+                        }
+                    })
+                    setSuppliers(prev => {
+                        const map = new Map()
+                        prev.forEach(p => map.set(String(p.id), p))
+                        withInstant.forEach(w => {
+                            const sid = String(w.id)
+                            const existing = map.get(sid)
+                            if (existing) {
+                                map.set(sid, {
+                                    ...existing,
+                                    computed_total_bought: w.computed_total_bought ?? existing.computed_total_bought,
+                                    computed_total_paid: w.computed_total_paid ?? existing.computed_total_paid,
+                                    computed_balance: w.computed_balance ?? existing.computed_balance,
+                                })
+                            } else {
+                                map.set(sid, w)
+                            }
+                        })
+                        return Array.from(map.values())
+                    })
+                }
+            } catch (e) { /* ignore cache read */ }
+
+            // Step 1: Synchronous — faqat LS dan o'qish (200 supplier uchun ham 1ms)
+            const lsOnly = suppliersArray.map(s => {
+                let totalBought = 0
+                let totalPaid = 0
+                try {
+                    const pRaw = localStorage.getItem(`supplier_${s.id}_purchases`)
+                    const yRaw = localStorage.getItem(`supplier_${s.id}_payments`)
+                    const pl = pRaw ? JSON.parse(pRaw) : []
+                    const yl = yRaw ? JSON.parse(yRaw) : []
+                    totalBought = (Array.isArray(pl) ? pl : []).reduce((sum, r) => sum + (parseFloat(r?.amount || r?.total_amount) || 0), 0)
+                    totalPaid = (Array.isArray(yl) ? yl : []).reduce((sum, r) => sum + (parseFloat(r?.amount) || 0), 0)
+                } catch (e) { /* ignore parse */ }
+                const initialBalanceSign = parseFloat(s?.balance ?? s?.current_debt ?? 0) || 0
+                return {
+                    id: s.id,
+                    computed_total_bought: totalBought,
+                    computed_total_paid: totalPaid,
+                    computed_balance: (totalBought - totalPaid + initialBalanceSign)
+                }
+            })
+            // Apply synchronous LS-results immediately — NO user-visible 0 flash
+            if (lsOnly.some(x => (x.computed_total_bought || x.computed_total_paid))) {
+                setSuppliers(prev => {
+                    const map = new Map()
+                    prev.forEach(p => map.set(String(p.id), p))
+                    lsOnly.forEach(w => {
+                        const sid = String(w.id)
+                        const existing = map.get(sid)
+                        if (existing) {
+                            map.set(sid, {
+                                ...existing,
+                                computed_total_bought: w.computed_total_bought ?? existing.computed_total_bought,
+                                computed_total_paid: w.computed_total_paid ?? existing.computed_total_paid,
+                                computed_balance: w.computed_balance ?? existing.computed_balance,
+                            })
+                        }
+                    })
+                    return Array.from(map.values())
+                })
+                saveBalancesCache(lsOnly.map(x => ({ id: x.id, computed_total_bought: x.computed_total_bought, computed_total_paid: x.computed_total_paid, computed_balance: x.computed_balance })))
+            }
+
+            // Step 2: Async background — remote + LS merge; yangilash kerak bo'lsa UI ni o'zgartir
+            const withRemote = await Promise.all(
                 suppliersArray.map(async (s) => {
                     let totalBought = 0
                     let totalPaid = 0
@@ -124,40 +204,62 @@ export default function SuppliersPage() {
                         totalBought = purchases.reduce((sum, p) => sum + (parseFloat(p?.amount || p?.total_amount) || 0), 0)
                         totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p?.amount) || 0), 0)
                     } catch (e) {
-                        // ignore individual errors; default 0
+                        // fall back to lsOnly result
+                        const ls = lsOnly.find(x => String(x.id) === String(s.id)) || {}
+                        totalBought = ls.computed_total_bought ?? 0
+                        totalPaid = ls.computed_total_paid ?? 0
                     }
                     const initialBalanceSign = parseFloat(s?.balance ?? s?.current_debt ?? 0) || 0
-                    const computed = {
-                        ...s,
+                    return {
+                        id: s.id,
                         computed_total_bought: totalBought,
                         computed_total_paid: totalPaid,
                         computed_balance: (totalBought - totalPaid + initialBalanceSign)
                     }
-                    return computed
                 })
             )
             setSuppliers(prev => {
                 const map = new Map()
                 prev.forEach(p => map.set(String(p.id), p))
-                withComputed.forEach(w => {
+                withRemote.forEach(w => {
                     const sid = String(w.id)
                     const existing = map.get(sid)
                     if (existing) {
+                        // skip unnecessary rerender if identical
+                        if (
+                            Number(existing.computed_balance) === Number(w.computed_balance) &&
+                            Number(existing.computed_total_bought) === Number(w.computed_total_bought) &&
+                            Number(existing.computed_total_paid) === Number(w.computed_total_paid)
+                        ) return
                         map.set(sid, {
                             ...existing,
                             computed_total_bought: w.computed_total_bought,
                             computed_total_paid: w.computed_total_paid,
                             computed_balance: w.computed_balance,
                         })
-                    } else {
-                        map.set(sid, w)
                     }
                 })
                 return Array.from(map.values())
             })
+            saveBalancesCache(withRemote)
         } catch (e) {
             console.warn('loadComputedBalances failed:', e)
         }
+    }
+
+    const saveBalancesCache = (rows) => {
+        try {
+            const cacheRaw = typeof window !== 'undefined' ? window.localStorage.getItem('suppliers_page_balances_cache_v1') : null
+            const cache = cacheRaw ? JSON.parse(cacheRaw) : {}
+            rows.forEach(r => {
+                cache[String(r.id)] = {
+                    computed_total_bought: r.computed_total_bought ?? 0,
+                    computed_total_paid: r.computed_total_paid ?? 0,
+                    computed_balance: r.computed_balance ?? 0,
+                }
+            })
+            window.localStorage.setItem('suppliers_page_balances_cache_v1', JSON.stringify(cache))
+        } catch (e) { /* ignore quota */ }
     }
 
     const pickSupplierField = (s, fields) => {
@@ -317,29 +419,37 @@ export default function SuppliersPage() {
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className={`grid gap-3 ${
+                            (stats.totalDebt > 0 && stats.totalCredit > 0) ? 'grid-cols-3'
+                                : (stats.totalDebt > 0 || stats.totalCredit > 0) ? 'grid-cols-2'
+                                    : 'grid-cols-1'
+                        }`}>
                             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
                                 <p className="text-[11px] text-white/70 uppercase font-bold tracking-wider mb-1">Jami</p>
                                 <p className="text-[24px] font-black leading-none">{stats.total}</p>
                             </div>
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
-                                <div className="flex items-center gap-1 mb-1">
-                                    <TrendingUp size={10} className="text-red-200" />
-                                    <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Bizga qarz</p>
+                            {stats.totalDebt > 0 && (
+                                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <TrendingUp size={10} className="text-red-200" />
+                                        <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Bizga qarz</p>
+                                    </div>
+                                    <p className="text-[15px] font-black leading-none truncate text-red-50 dark:text-red-100">
+                                        {formatCurrency(stats.totalDebt)}
+                                    </p>
                                 </div>
-                                <p className="text-[15px] font-black leading-none truncate">
-                                    {Intl.NumberFormat('uz-UZ').format(stats.totalDebt)}
-                                </p>
-                            </div>
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
-                                <div className="flex items-center gap-1 mb-1">
-                                    <TrendingDown size={10} className="text-green-200" />
-                                    <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Avans</p>
+                            )}
+                            {stats.totalCredit > 0 && (
+                                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <TrendingDown size={10} className="text-green-200" />
+                                        <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Avans</p>
+                                    </div>
+                                    <p className="text-[15px] font-black leading-none truncate text-green-50 dark:text-green-100">
+                                        {formatCurrency(stats.totalCredit)}
+                                    </p>
                                 </div>
-                                <p className="text-[15px] font-black leading-none truncate">
-                                    {Intl.NumberFormat('uz-UZ').format(stats.totalCredit)}
-                                </p>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -475,13 +585,13 @@ export default function SuppliersPage() {
                                                 <span className={`text-[11px] font-bold uppercase tracking-wider ${
                                                     hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-400'
                                                 }`}>
-                                                    {hasDebt ? "Bizga qarzdor" : hasCredit ? "Avans" : "Balans"}
+                                                    {hasDebt ? "QARZDOR" : hasCredit ? "BALANSDA" : "BALANS NOL"}
                                                 </span>
                                             </div>
                                             <span className={`text-[15px] font-black ${
                                                 hasDebt ? 'text-red-600 dark:text-red-400' : hasCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-300'
                                             }`}>
-                                                {absBalance === 0 ? '0' : Intl.NumberFormat('uz-UZ').format(absBalance)} so'm
+                                                {absBalance === 0 ? '0' : `${formatCurrency(absBalance)} so'm`}
                                             </span>
                                         </div>
                                         {note && (

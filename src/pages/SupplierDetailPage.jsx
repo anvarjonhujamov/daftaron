@@ -145,11 +145,28 @@ export default function SupplierDetailPage() {
         setLoading(true)
         try {
             suppliersApi._resetDetection()
+            // Step 0: Sync darhol LS restore — 0 flash yo'qoladi, oldingi saqlangan xarid/to'lovlar chiqadi
+            try {
+                const pRaw = localStorage.getItem(`supplier_${sid}_purchases`)
+                const yRaw = localStorage.getItem(`supplier_${sid}_payments`)
+                if (pRaw || yRaw) {
+                    const pLs = pRaw ? JSON.parse(pRaw) : []
+                    const yLs = yRaw ? JSON.parse(yRaw) : []
+                    if (Array.isArray(pLs) && pLs.length > 0) {
+                        setPurchases(pLs.map(r => normalizeMovement(r, 'purchase')))
+                    }
+                    if (Array.isArray(yLs) && yLs.length > 0) {
+                        setPayments(yLs.map(r => normalizeMovement(r, 'payment')))
+                    }
+                }
+            } catch (e) { /* ignore */ }
+
+            // Step 1: Supplier GET — async (but LS already shown)
             const supplierRaw = await suppliersApi.getSupplier(id)
             const normalized = normalizeSupplier(supplierRaw)
             setSupplier(normalized)
 
-            // PARALLEL call both merged endpoints (remote + localStorage combined)
+            // Step 2: Merged remote+LS — background refresh, dedup by id overwrites LS-only if id same
             const [purResp, payResp] = await Promise.all([
                 suppliersApi.getSupplierPurchasesMerged(sid),
                 suppliersApi.getSupplierPaymentsMerged(sid)
@@ -564,7 +581,7 @@ export default function SupplierDetailPage() {
                                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border border-emerald-100 dark:border-emerald-900/30'
                                         : 'bg-gray-100 dark:bg-gray-700/30 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700/50'
                             }`}>
-                                {hasDebt ? 'Qarzdor' : hasCredit ? 'Avans' : 'Balans nol'}
+                                {hasDebt ? 'QARZ' : hasCredit ? 'BALANSDA' : 'BALANS NOL'}
                             </div>
                         </div>
                     </div>
