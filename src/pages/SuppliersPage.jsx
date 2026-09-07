@@ -290,14 +290,14 @@ export default function SuppliersPage() {
 
     const stats = useMemo(() => {
         const total = suppliers.length
-        let totalDebt = 0
-        let totalCredit = 0
+        let totalOurDebt = 0    // computed_balance > 0 → biz ularga to'laymiz (bizda qarz bor) → label: "Qarz" (qizil)
+        let totalTheyOweUs = 0  // computed_balance < 0 → ular bizga berishadi (ularda qarz bor bizda haq) → label: "Bizga qarz" (yashil)
         suppliers.forEach(s => {
             const bal = getSupplierBalance(s)
-            if (bal > 0) totalDebt += bal
-            if (bal < 0) totalCredit += Math.abs(bal)
+            if (bal > 0) totalOurDebt += bal
+            if (bal < 0) totalTheyOweUs += Math.abs(bal)
         })
-        return { total, totalDebt, totalCredit }
+        return { total, totalDebt: totalOurDebt, totalCredit: totalTheyOweUs }
     }, [suppliers])
 
     const filteredSuppliers = useMemo(() => {
@@ -432,7 +432,7 @@ export default function SuppliersPage() {
                                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
                                     <div className="flex items-center gap-1 mb-1">
                                         <TrendingUp size={10} className="text-red-200" />
-                                        <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Bizga qarz</p>
+                                        <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Qarz</p>
                                     </div>
                                     <p className="text-[15px] font-black leading-none truncate text-red-50 dark:text-red-100">
                                         {formatCurrency(stats.totalDebt)}
@@ -443,7 +443,7 @@ export default function SuppliersPage() {
                                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
                                     <div className="flex items-center gap-1 mb-1">
                                         <TrendingDown size={10} className="text-green-200" />
-                                        <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Avans</p>
+                                        <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Bizga qarz</p>
                                     </div>
                                     <p className="text-[15px] font-black leading-none truncate text-green-50 dark:text-green-100">
                                         {formatCurrency(stats.totalCredit)}
@@ -585,7 +585,7 @@ export default function SuppliersPage() {
                                                 <span className={`text-[11px] font-bold uppercase tracking-wider ${
                                                     hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-400'
                                                 }`}>
-                                                    {hasDebt ? "QARZDOR" : hasCredit ? "BALANSDA" : "BALANS NOL"}
+                                                    {hasDebt ? "QARZ" : hasCredit ? "BIZGA QARZ" : "BALANS NOL"}
                                                 </span>
                                             </div>
                                             <span className={`text-[15px] font-black ${

@@ -581,7 +581,7 @@ export default function SupplierDetailPage() {
                                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border border-emerald-100 dark:border-emerald-900/30'
                                         : 'bg-gray-100 dark:bg-gray-700/30 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700/50'
                             }`}>
-                                {hasDebt ? 'QARZ' : hasCredit ? 'BALANSDA' : 'BALANS NOL'}
+                                {hasDebt ? 'QARZ' : hasCredit ? 'BIZGA QARZ' : 'BALANS NOL'}
                             </div>
                         </div>
                     </div>
