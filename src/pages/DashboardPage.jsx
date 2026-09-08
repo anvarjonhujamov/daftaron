@@ -546,10 +546,10 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* Main Stats Grid — 4 ta karta (original eski screenshotdagi to'liq mos rang sxemasi) */}
+            {/* Main Stats Grid — ASLI 3c74c86 committagi original gradient rang sxemasi */}
             <div className="grid grid-cols-2 gap-3 mb-6">
-                {/* 1. JAMI NASIYA SONI — toza ko'k (blue→indigo gradient) */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-blue-400 to-indigo-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
+                {/* 1. JAMI NASIYA SONI */}
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
                             <span className="text-[12px] font-medium opacity-90">Jami nasiya soni</span>
@@ -561,7 +561,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 2. UMUMIY NASIYA — oranji→qizilg'ich (orange→coral rose) */}
+                {/* 2. UMUMIY NASIYA */}
                 <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-orange-400 to-rose-500 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
@@ -574,8 +574,8 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 3. QOLGAN QARZ — yorqin pushti-qizil (rose→red) */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-rose-400 to-red-500 shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all">
+                {/* 3. QOLGAN QARZ */}
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-rose-500 to-red-700 shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
                             <span className="text-[12px] font-medium opacity-90">Qolgan qarz</span>
@@ -587,8 +587,8 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 4. TO'LANGAN SUMMA — och-yashil→to'q yashil (green→emerald) */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg shadow-green-500/20 active:scale-[0.98] transition-all">
+                {/* 4. TO'LANGAN SUMMA (asl original: emerald → teal) */}
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
                             <span className="text-[12px] font-medium opacity-90">To'langan summa</span>
