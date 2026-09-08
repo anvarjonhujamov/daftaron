@@ -546,7 +546,7 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* Main Stats Grid — 4 ta karta: Nasiya soni / Mijozlardan / Postavchiklarga / Sof holat */}
+            {/* Main Stats Grid — 2 ta karta: Jami nasiya soni / Mijozlardan olinadi (faqat mijozlar statistikasi) */}
             <div className="grid grid-cols-2 gap-3 mb-6">
                 {/* 1. JAMI NASIYA SONI */}
                 <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
@@ -573,42 +573,9 @@ export default function DashboardPage() {
                         <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(debitorTotal)}</p>
                     </div>
                 </div>
-
-                {/* 3. POSTAVCHIKLARGA QARZ (Kreditorlik) */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-orange-400 to-amber-600 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all">
-                    <div className="relative z-10 flex flex-col justify-between h-full text-white">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-medium opacity-90">Ta'minotchilarga qarz</span>
-                            <div className="p-1.5 bg-white/20 rounded-lg">
-                                <Building2 size={16} className="text-white" />
-                            </div>
-                        </div>
-                        <p className="text-[18px] font-bold leading-none truncate">{formatCurrency(kreditorTotal)}</p>
-                    </div>
-                </div>
-
-                {/* 4. SOF MOLIYAVIY HOLAT = mijozlardan - postavchiklarga (DOIMIY PURPLE GRADIENT — rang o'zgarmaydi, faqat qiymat + vs - prefiksi bilan) */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-purple-500 to-indigo-700 shadow-lg shadow-purple-500/20 active:scale-[0.98] transition-all">
-                    <div className="relative z-10 flex flex-col justify-between h-full text-white">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-medium opacity-90">Sof moliyaviy holat</span>
-                            <div className="p-1.5 bg-white/20 rounded-lg">
-                                <Calculator size={16} className="text-white" />
-                            </div>
-                        </div>
-                        <p className="text-[18px] font-bold leading-none truncate">
-                            {isNetNegative
-                                ? <span className="text-red-100">−{formatCurrency(Math.abs(netFinancial))}</span>
-                                : isNetPositive
-                                    ? <span className="text-white">{formatCurrency(netFinancial)}</span>
-                                    : <span className="text-white">{formatCurrency(0)}</span>
-                            }
-                        </p>
-                    </div>
-                </div>
             </div>
 
-            {/* Today Stats — 3 ta: Bugun nasiya / Bugun to'lov / Bugun postavchikka to'lov */}
+            {/* Today Stats — 2 ta: Bugun nasiya / Bugun to'lov (faqat mijozlar uchun) */}
             <div className="flex flex-col gap-3 mb-6 md:flex-row">
                 <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
@@ -626,15 +593,6 @@ export default function DashboardPage() {
                     <div className="min-w-0">
                         <p className="text-[11px] text-gray-400">Bugun to'lov</p>
                         <p className="text-[14px] font-bold text-green-500 truncate">{formatCurrency(todayPayments)}</p>
-                    </div>
-                </div>
-                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                        <Wallet size={16} className="text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-[11px] text-gray-400">Ta'minotchiga to'lov</p>
-                        <p className="text-[14px] font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(todaySupplierPayments)}</p>
                     </div>
                 </div>
             </div>
