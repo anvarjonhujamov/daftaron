@@ -578,7 +578,7 @@ export default function DashboardPage() {
                 <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-orange-400 to-amber-600 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
-                            <span className="text-[12px] font-medium opacity-90">Postavchiklarga qarz</span>
+                            <span className="text-[12px] font-medium opacity-90">Ta'minotchilarga qarz</span>
                             <div className="p-1.5 bg-white/20 rounded-lg">
                                 <Building2 size={16} className="text-white" />
                             </div>
@@ -633,7 +633,7 @@ export default function DashboardPage() {
                         <Wallet size={16} className="text-amber-600 dark:text-amber-400" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-[11px] text-gray-400">Postavchikka to'lov</p>
+                        <p className="text-[11px] text-gray-400">Ta'minotchiga to'lov</p>
                         <p className="text-[14px] font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(todaySupplierPayments)}</p>
                     </div>
                 </div>

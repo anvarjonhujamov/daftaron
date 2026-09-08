@@ -463,11 +463,11 @@ export default function DebtsPage() {
         return <CustomersSkeleton />
     }
 
-    const scopeLabel = scope === 'suppliers' ? 'Yetkazuvchilar' : 'Mijozlar'
+    const scopeLabel = scope === 'suppliers' ? "Ta'minotchilar" : 'Mijozlar'
     const debtLabel = scope === 'suppliers' ? 'Xaridlar summasi' : 'Berilgan nasiyalar'
-    const debtSubtitle = scope === 'suppliers' ? 'Yetkazuvchilardan olingan' : 'Sizga qarzdor'
+    const debtSubtitle = scope === 'suppliers' ? "Ta'minotchilardan olingan" : 'Sizga qarzdor'
     const debtCountText = scope === 'suppliers' ? 'ta xarid' : 'ta nasiya'
-    const paymentLabel = scope === 'suppliers' ? "Yetkazuvchilarga to'lovlar" : "Qabul qilingan to'lovlar"
+    const paymentLabel = scope === 'suppliers' ? "Ta'minotchilarga to'lovlar" : "Qabul qilingan to'lovlar"
     const paymentSubtitle = scope === 'suppliers' ? "Xaridlar uchun to'langan" : 'Mijozlardan olingan'
     const debtAmountClass = scope === 'suppliers' ? 'text-blue-500' : 'text-red-500'
     const debtIconClass = scope === 'suppliers' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-red-100 dark:bg-red-900/30'
@@ -500,7 +500,7 @@ export default function DebtsPage() {
                             ? 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-orange-500 shadow-sm'
                             : 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-medium text-gray-500 dark:text-gray-400'}
                     >
-                        <Package size={16} /> Yetkazuvchilar
+                        <Package size={16} /> Ta'minotchilar
                     </button>
                 </div>
 
@@ -751,7 +751,7 @@ export default function DebtsPage() {
                                 ? (isSupplier ? 'text-blue-500' : 'text-red-500')
                                 : (isSupplier ? 'text-amber-500' : 'text-green-500')
                             const nameText = isSupplier
-                                ? (getSupplierById(item.supplier_id)?.name || 'Yetkazuvchi')
+                                ? (getSupplierById(item.supplier_id)?.name || "Ta'minotchi")
                                 : (item.customer?.name || item.debt?.customer?.name || 'Mijoz')
                             const amountVal = item.total_amount ?? item.amount ?? 0
                             const dateVal = isSupplier

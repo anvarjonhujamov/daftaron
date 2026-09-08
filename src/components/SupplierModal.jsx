@@ -74,10 +74,10 @@ export default function SupplierModal({ isOpen, onClose, onSave, supplier }) {
                 <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
                 <Drawer.Content className="fixed bg-white dark:bg-gray-900 bottom-0 left-0 right-0 max-h-[92vh] rounded-t-[32px] z-50 animate-in slide-in-from-bottom flex flex-col focus:outline-none">
                     <Drawer.Title className="sr-only">
-                        {supplier ? "Postavchini tahrirlash" : "Yangi postavchi qo'shish"}
+                        {supplier ? "Ta'minotchini tahrirlash" : "Yangi ta'minotchi qo'shish"}
                     </Drawer.Title>
                     <Drawer.Description className="sr-only">
-                        {supplier ? "Postavchi ma'lumotlarini yangilang" : "Yangi postavchi (hamkor) ma'lumotlarini kiriting"}
+                        {supplier ? "Ta'minotchi ma'lumotlarini yangilang" : "Yangi ta'minotchi (hamkor) ma'lumotlarini kiriting"}
                     </Drawer.Description>
                     <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 my-4" />
                     
@@ -85,10 +85,10 @@ export default function SupplierModal({ isOpen, onClose, onSave, supplier }) {
                         <div className="flex items-center justify-between mb-8">
                             <div>
                                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    {supplier ? "Postavchini tahrirlash" : "Yangi postavchi"}
+                                    {supplier ? "Ta'minotchini tahrirlash" : "Yangi ta'minotchi"}
                                 </h2>
                                 <p className="text-[14px] text-gray-500 dark:text-gray-400 mt-1">
-                                    {supplier ? "Hamkor ma'lumotlarini o'zgartirish" : "Yangi hamkor (postavchi) ma'lumotlarini kiriting"}
+                                    {supplier ? "Hamkor ma'lumotlarini o'zgartirish" : "Yangi hamkor (ta'minotchi) ma'lumotlarini kiriting"}
                                 </p>
                             </div>
                             <button
@@ -235,7 +235,7 @@ export default function SupplierModal({ isOpen, onClose, onSave, supplier }) {
                                     {submitting ? (
                                         <Loader2 size={24} className="animate-spin" />
                                     ) : (
-                                        supplier ? "O'zgarishlarni saqlash" : "Postavchini qo'shish"
+                                        supplier ? "O'zgarishlarni saqlash" : "Ta'minotchini qo'shish"
                                     )}
                                 </button>
                             </div>

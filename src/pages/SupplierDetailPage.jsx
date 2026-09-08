@@ -192,7 +192,7 @@ export default function SupplierDetailPage() {
             const normalized = normalizeSupplier({ ...supplier, ...updated, ...formData, id: supplier?.id || id })
             setSupplier(normalized)
             setShowEditModal(false)
-            toast.success("Postavchi muvaffaqiyatli tahrirlandi")
+            toast.success("Ta'minotchi muvaffaqiyatli tahrirlandi")
             try { loadData() } catch {}
         } catch (err) {
             console.error('Update failed:', err)
@@ -204,7 +204,7 @@ export default function SupplierDetailPage() {
         setSubmitting(true)
         try {
             await suppliersApi.deleteSupplier(id)
-            toast.success("Postavchi o'chirildi")
+            toast.success("Ta'minotchi o'chirildi")
             navigate('/suppliers')
         } catch (err) {
             console.error('Delete failed:', err)
@@ -529,7 +529,7 @@ export default function SupplierDetailPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4">
                 <AlertCircle size={48} className="text-gray-400" />
-                <p className="text-gray-500">Postavchi topilmadi</p>
+                <p className="text-gray-500">Ta'minotchi topilmadi</p>
                 <button onClick={() => navigate('/suppliers')} className="btn btn-primary">Orqaga</button>
             </div>
         )
@@ -910,7 +910,7 @@ export default function SupplierDetailPage() {
                                 <div className="flex flex-col items-center text-center mb-6">
                                     <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4"><AlertCircle size={30} className="text-red-500" /></div>
                                     <h3 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">O'chirishni tasdiqlang</h3>
-                                    <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-[280px]">Ushbu postavchini o'chirib tashlamoqchimisiz? Bu amal qaytarilmaydi.</p>
+                                    <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-[280px]">Ushbu ta'minotchini o'chirib tashlamoqchimisiz? Bu amal qaytarilmaydi.</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button onClick={() => setShowDeleteConfirm(false)} disabled={submitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 active:scale-95 transition-all disabled:opacity-50">Bekor qilish</button>

@@ -100,7 +100,7 @@ export default function SuppliersPage() {
         } catch (err) {
             console.error('Failed to load suppliers:', err)
             const status = err.response?.status || 0
-            const msg = err.response?.data?.message || err.message || 'Postavchiklar yuklanmadi'
+            const msg = err.response?.data?.message || err.message || "Ta'minotchilar yuklanmadi"
             setErrorState({ code: status, message: msg })
             setSuppliers([])
         } finally {
@@ -318,7 +318,7 @@ export default function SuppliersPage() {
                 const updated = await suppliersApi.updateSupplier(editingSupplier.id, formData)
                 const normalized = normalizeSupplier({ ...editingSupplier, ...updated, ...formData, id: editingSupplier.id })
                 setSuppliers(prev => prev.map(s => s.id === editingSupplier.id ? normalized : s))
-                toast.success("Postavchi muvaffaqiyatli tahrirlandi")
+                toast.success("Ta'minotchi muvaffaqiyatli tahrirlandi")
             } else {
                 const tenantId = getActiveTenantId()
                 const payload = {
@@ -330,7 +330,7 @@ export default function SuppliersPage() {
                 if (normalized && normalized.id) {
                     setSuppliers(prev => [normalized, ...(prev || [])])
                 }
-                toast.success("Yangi postavchi muvaffaqiyatli qo'shildi")
+                toast.success("Yangi ta'minotchi muvaffaqiyatli qo'shildi")
             }
             try { await loadSuppliers() } catch {}
         } catch (err) {
@@ -353,12 +353,12 @@ export default function SuppliersPage() {
     }
 
     const handleDeleteSupplier = async (id) => {
-        if (!window.confirm("Haqiqatan ham ushbu postavchini o'chirib tashlamoqchimisiz?")) return
+        if (!window.confirm("Haqiqatan ham ushbu ta'minotchini o'chirib tashlamoqchimisiz?")) return
 
         setDeletingId(id)
         try {
             await suppliersApi.deleteSupplier(id)
-            toast.success("Postavchi o'chirildi")
+            toast.success("Ta'minotchi o'chirildi")
             setSuppliers(prev => prev.filter(s => s.id !== id))
         } catch (err) {
             console.error('Failed to delete supplier:', err)
@@ -387,7 +387,7 @@ export default function SuppliersPage() {
                         <ArrowLeft size={22} className="text-gray-700 dark:text-gray-300" />
                     </button>
                     <h1 className="flex-1 text-[18px] font-extrabold text-gray-900 dark:text-white truncate">
-                        Postavchiklar
+                        Ta'minotchilar
                     </h1>
                     <button
                         onClick={() => {
@@ -409,7 +409,7 @@ export default function SuppliersPage() {
                     <div className="relative z-10">
                         <div className="flex justify-between items-start mb-5">
                             <div>
-                                <h2 className="text-[20px] font-bold mb-1">Postavchiklar boshqaruvi</h2>
+                                <h2 className="text-[20px] font-bold mb-1">Ta'minotchilar boshqaruvi</h2>
                                 <p className="text-[13px] text-white/80">
                                     Hamkorlaringiz va ular bilan qarzdorlikni kuzating
                                 </p>
@@ -473,12 +473,12 @@ export default function SuppliersPage() {
                             <Building2 size={40} className="text-gray-400" />
                         </div>
                         <h3 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">
-                            {searchQuery ? "Hech narsa topilmadi" : "Hozircha postavchilar yo'q"}
+                            {searchQuery ? "Hech narsa topilmadi" : "Hozircha ta'minotchilar yo'q"}
                         </h3>
                         <p className="text-[14px] text-gray-500 dark:text-gray-400 max-w-[280px] mb-8 leading-relaxed">
                             {searchQuery
                                 ? "Boshqa kalit so'z bilan qidirib ko'ring."
-                                : "Siz hali birorta ham hamkor qo'shmagansiz. Yangi postavchi qo'shib biznesingizni kengaytiring."
+                                : "Siz hali birorta ham hamkor qo'shmagansiz. Yangi ta'minotchi qo'shib biznesingizni kengaytiring."
                             }
                         </p>
                         {!searchQuery && (
@@ -486,7 +486,7 @@ export default function SuppliersPage() {
                                 onClick={() => setIsModalOpen(true)}
                                 className="px-8 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-[15px] shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
                             >
-                                Birinchi postavchini qo'shish
+                                Birinchi ta'minotchini qo'shish
                             </button>
                         )}
                     </div>

@@ -6,7 +6,7 @@ const FULL_NAV_ITEMS = [
     { to: '/', icon: Home, label: 'Asosiy' },
     { to: '/customers', icon: Users, label: 'Mijozlar' },
     { to: '/debts', icon: FileText, label: 'Hisobot' },
-    { to: '/suppliers', icon: Package, label: 'Yetkazuvchilar' },
+    { to: '/suppliers', icon: Package, label: "Ta'minotchilar" },
     { to: '/payments', icon: History, label: 'Tarix' },
     { to: '/profile', icon: Settings, label: 'Sozlama' }
 ]

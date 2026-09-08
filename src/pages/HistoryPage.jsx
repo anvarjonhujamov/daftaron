@@ -120,13 +120,13 @@ export default function HistoryPage() {
     }
 
     // Header mode title helpers
-    const scopeLabel = scope === 'customers' ? 'Mijozlar' : 'Yetkazuvchilar'
+    const scopeLabel = scope === 'customers' ? 'Mijozlar' : "Ta'minotchilar"
     const modeTitle = scope === 'customers'
         ? (mode === 'payments' ? "To'lovlar tarixi" : "Nasiyalar tarixi")
-        : (mode === 'payments' ? "To'lovlar tarixi (yetkazuvchilarga)" : "Xaridlar tarixi (yetkazuvchilardan)")
+        : (mode === 'payments' ? "To'lovlar tarixi (Ta'minotchilarga)" : "Xaridlar tarixi (Ta'minotchilardan)")
     const modeSubtitle = scope === 'customers'
         ? (mode === 'payments' ? "Barcha qabul qilingan to'lovlar" : "Barcha berilgan nasiyalar")
-        : (mode === 'payments' ? "Yetkazuvchilarga berilgan barcha to'lovlar" : "Yetkazuvchilardan qilingan barcha xaridlar")
+        : (mode === 'payments' ? "Ta'minotchilarga berilgan barcha to'lovlar" : "Ta'minotchilardan qilingan barcha xaridlar")
 
     // Switching scope → reset display limit & set default mode accordingly
     const switchScope = (nextScope) => {
@@ -150,7 +150,7 @@ export default function HistoryPage() {
                     id: `p-${s.id}-${p.id ?? p.created_at ?? Math.random()}`,
                     _raw: p,
                     supplier: s,
-                    name: s?.name || s?.company_name || 'Yetkazuvchi',
+                    name: s?.name || s?.company_name || "Ta'minotchi",
                     phone: s?.phone || '',
                     amount: parseFloat(p?.amount || p?.total_amount || 0),
                     reference: p?.reference || p?.invoice || p?.description || '',
@@ -172,7 +172,7 @@ export default function HistoryPage() {
                     id: `y-${s.id}-${p.id ?? p.created_at ?? Math.random()}`,
                     _raw: p,
                     supplier: s,
-                    name: s?.name || s?.company_name || 'Yetkazuvchi',
+                    name: s?.name || s?.company_name || "Ta'minotchi",
                     phone: s?.phone || '',
                     amount: parseFloat(p?.amount || 0),
                     reference: p?.description || p?.note || p?.reference || '',
@@ -234,7 +234,7 @@ export default function HistoryPage() {
                 accentBg: 'bg-amber-500',
                 accentIcon: TrendingDown,
                 accentIconColor: 'text-amber-600 dark:text-amber-400',
-                emptyText: "Yetkazuvchilarga to'lovlar hali mavjud emas",
+                emptyText: "Ta'minotchilarga to'lovlar hali mavjud emas",
                 itemBadgeColor: 'text-amber-600 dark:text-amber-400',
                 itemBadgeBg: 'bg-amber-500/20'
             }
@@ -245,7 +245,7 @@ export default function HistoryPage() {
             accentBg: 'bg-blue-500',
             accentIcon: TrendingUp,
             accentIconColor: 'text-blue-500',
-            emptyText: "Yetkazuvchilardan xaridlar hali mavjud emas",
+            emptyText: "Ta'minotchilardan xaridlar hali mavjud emas",
             itemBadgeColor: 'text-blue-600 dark:text-blue-400',
             itemBadgeBg: 'bg-blue-500/20'
         }
@@ -330,7 +330,7 @@ export default function HistoryPage() {
                         }`}
                 >
                     <Package size={16} />
-                    Yetkazuvchilar
+                    Ta'minotchilar
                 </button>
             </div>
 
@@ -389,7 +389,7 @@ export default function HistoryPage() {
                                     const Icon = accentIcon
                                     const itemName = scope === 'customers'
                                         ? (item.customer?.name || item.debt?.customer?.name || 'Mijoz')
-                                        : (item.name || item.supplier?.name || 'Yetkazuvchi')
+                                        : (item.name || item.supplier?.name || "Ta'minotchi")
                                     const itemPhone = scope === 'customers'
                                         ? (item.customer?.phone || item.debt?.customer?.phone)
                                         : (item.phone || item.supplier?.phone)
