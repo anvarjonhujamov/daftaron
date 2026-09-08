@@ -546,10 +546,10 @@ export default function DashboardPage() {
                 )}
             </div>
 
-            {/* Main Stats Grid — 4 ta karta: Nasiya soni / Umumiy nasiya / Qolgan qarz / To'langan summa (rasmdagi eski holat) */}
+            {/* Main Stats Grid — 4 ta karta (original eski screenshotdagi to'liq mos rang sxemasi) */}
             <div className="grid grid-cols-2 gap-3 mb-6">
-                {/* 1. JAMI NASIYA SONI */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
+                {/* 1. JAMI NASIYA SONI — toza ko'k (blue→indigo gradient) */}
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-blue-400 to-indigo-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
                             <span className="text-[12px] font-medium opacity-90">Jami nasiya soni</span>
@@ -561,8 +561,8 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 2. UMUMIY NASIYA (Umumiy berilgan summa) */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-orange-400 to-red-500 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all">
+                {/* 2. UMUMIY NASIYA — oranji→qizilg'ich (orange→coral rose) */}
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-orange-400 to-rose-500 shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
                             <span className="text-[12px] font-medium opacity-90">Umumiy nasiya</span>
@@ -574,8 +574,8 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 3. QOLGAN QARZ (Mijozlardan olinadigan) */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-rose-400 to-red-700 shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all">
+                {/* 3. QOLGAN QARZ — yorqin pushti-qizil (rose→red) */}
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-rose-400 to-red-500 shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
                             <span className="text-[12px] font-medium opacity-90">Qolgan qarz</span>
@@ -587,8 +587,8 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* 4. TO'LANGAN SUMMA (Mijozlardan qabul qilingan) */}
-                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-green-500/20 active:scale-[0.98] transition-all">
+                {/* 4. TO'LANGAN SUMMA — och-yashil→to'q yashil (green→emerald) */}
+                <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg shadow-green-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
                         <div className="flex items-center justify-between">
                             <span className="text-[12px] font-medium opacity-90">To'langan summa</span>
@@ -604,30 +604,30 @@ export default function DashboardPage() {
             {/* Today Stats — 3 ta: Bugun nasiya / Bugun to'lov / Bugun ta'minotchiga berilgan */}
             <div className="flex flex-col gap-3 mb-6 md:flex-row">
                 <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                        <ArrowDown size={16} className="text-red-500" />
+                    <div className="w-10 h-10 rounded-full bg-red-900/40 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+                        <ArrowDown size={18} className="text-red-400 dark:text-red-300" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-[11px] text-gray-400">Bugun nasiya</p>
-                        <p className="text-[14px] font-bold text-red-500 truncate">{formatCurrency(todayDebts)}</p>
+                        <p className="text-[12px] text-gray-400">Bugun nasiya</p>
+                        <p className="text-[16px] font-bold text-red-400 dark:text-red-300 truncate">{formatCurrency(todayDebts)}</p>
                     </div>
                 </div>
                 <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
-                        <ArrowUp size={16} className="text-green-500" />
+                    <div className="w-10 h-10 rounded-full bg-green-900/40 dark:bg-green-900/50 flex items-center justify-center shrink-0">
+                        <ArrowUp size={18} className="text-green-400 dark:text-green-300" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-[11px] text-gray-400">Bugun to'lov</p>
-                        <p className="text-[14px] font-bold text-green-500 truncate">{formatCurrency(todayPayments)}</p>
+                        <p className="text-[12px] text-gray-400">Bugun to'lov</p>
+                        <p className="text-[16px] font-bold text-green-400 dark:text-green-300 truncate">{formatCurrency(todayPayments)}</p>
                     </div>
                 </div>
                 <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                        <Wallet size={16} className="text-amber-600 dark:text-amber-400" />
+                    <div className="w-10 h-10 rounded-full bg-amber-900/30 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                        <Wallet size={18} className="text-amber-400 dark:text-amber-300" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-[11px] text-gray-400">Bugun ta'minotchiga berilgan</p>
-                        <p className="text-[14px] font-bold text-amber-600 dark:text-amber-400 truncate">{formatCurrency(todaySupplierPayments)}</p>
+                        <p className="text-[12px] text-gray-400">Bugun ta'minotchiga berilgan</p>
+                        <p className="text-[16px] font-bold text-amber-400 dark:text-amber-300 truncate">{formatCurrency(todaySupplierPayments)}</p>
                     </div>
                 </div>
             </div>
