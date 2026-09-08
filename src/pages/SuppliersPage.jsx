@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { suppliersApi } from '../api/suppliers.api'
 import {
     Building2, UserPlus, ArrowLeft, MoreVertical,
-    Trash2, Edit2, AlertCircle, Loader2, Search, Eye,
-    Phone, User, MapPin, FileText, Hash, TrendingDown, TrendingUp, Package, RefreshCw
+    Trash2, Edit2, AlertCircle, Loader2, Search,
+    Phone, User, Hash, TrendingDown, TrendingUp, Package, RefreshCw
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -506,7 +506,8 @@ export default function SuppliersPage() {
                             return (
                                 <div 
                                     key={s.id} 
-                                    className="bg-white dark:bg-gray-800 p-5 rounded-[24px] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all animate-in fade-in slide-in-from-bottom-4"
+                                    onClick={() => navigate(`/suppliers/${s.id}`)}
+                                    className="bg-white dark:bg-gray-800 p-5 rounded-[24px] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all animate-in fade-in slide-in-from-bottom-4 cursor-pointer active:scale-[0.99]"
                                     style={{ animationDelay: `${index * 40}ms` }}
                                 >
                                     <div className="flex items-start gap-4 justify-between mb-4">
@@ -541,14 +542,9 @@ export default function SuppliersPage() {
                                         </div>
                                         
                                         <div className="flex items-center gap-1 shrink-0">
-                                            <button
-                                                onClick={() => navigate(`/suppliers/${s.id}`)}
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
                                             <button 
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
                                                     setEditingSupplier(s)
                                                     setIsModalOpen(true)
                                                 }}
@@ -557,7 +553,10 @@ export default function SuppliersPage() {
                                                 <Edit2 size={18} />
                                             </button>
                                             <button 
-                                                onClick={() => handleDeleteSupplier(s.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleDeleteSupplier(s.id)
+                                                }}
                                                 disabled={deletingId === s.id}
                                                 className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                             >
@@ -566,15 +565,8 @@ export default function SuppliersPage() {
                                         </div>
                                     </div>
 
-                                    {address && (
-                                        <div className="flex items-start gap-2 mb-3 px-1">
-                                            <MapPin size={12} className="text-gray-400 shrink-0 mt-0.5" />
-                                            <p className="text-[12.5px] text-gray-500 dark:text-gray-400 leading-snug">{address}</p>
-                                        </div>
-                                    )}
-
-                                    <div className={`rounded-2xl p-3 ${note ? 'bg-gray-50/50 dark:bg-gray-700/30' : (balance !== 0 ? (hasDebt ? 'bg-red-50/70 dark:bg-red-900/10' : hasCredit ? 'bg-emerald-50/70 dark:bg-emerald-900/10' : 'bg-gray-50/50 dark:bg-gray-700/30') : 'bg-gray-50/50 dark:bg-gray-700/30')}`}>
-                                        <div className="flex items-center justify-between mb-2">
+                                    <div className={`rounded-2xl p-3 ${balance !== 0 ? (hasDebt ? 'bg-red-50/70 dark:bg-red-900/10' : hasCredit ? 'bg-emerald-50/70 dark:bg-emerald-900/10' : 'bg-gray-50/50 dark:bg-gray-700/30') : 'bg-gray-50/50 dark:bg-gray-700/30'}`}>
+                                        <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-1.5">
                                                 {hasDebt
                                                     ? <TrendingUp size={13} className="text-red-500" />
@@ -594,12 +586,6 @@ export default function SuppliersPage() {
                                                 {absBalance === 0 ? '0' : `${formatCurrency(absBalance)} so'm`}
                                             </span>
                                         </div>
-                                        {note && (
-                                            <div className={`flex items-start gap-2 pt-2 border-t border-gray-200/50 dark:border-gray-600/30`}>
-                                                <FileText size={12} className="text-gray-400 shrink-0 mt-0.5" />
-                                                <p className="text-[12.5px] text-gray-500 dark:text-gray-400 leading-snug">{note}</p>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             )
