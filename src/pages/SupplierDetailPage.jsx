@@ -347,23 +347,24 @@ export default function SupplierDetailPage() {
     const allocationPreview = useMemo(() => {
         if (paymentEditId) return null
         const amount = parseCurrency(paymentForm.amountDisplay)
-        if (amount <= 0 || purchases.length === 0) return []
+        if (amount <= 0) return []
         const rows = []
         let remain = amount
-        const sorted = [...purchases].sort((a, b) => (new Date(b.created_at)) - (new Date(a.created_at)))
-        for (let i = 0; i < sorted.length && remain > 0; i++) {
-            const purch = sorted[i]
-            const remaining_purchase = parseFloat(purch.amount || purch.total_amount) || 0
-            // For simplicity, treat each purchase as fully unpaid unless purchase.remaining_amount is set
-            const to_alloc = Math.min(remaining_purchase, remain)
-            if (to_alloc > 0) {
-                rows.push({
-                    id: purch.id,
-                    purchase: purch,
-                    allocated: to_alloc,
-                    type: 'purchase'
-                })
-                remain -= to_alloc
+        if (purchases.length > 0) {
+            const sorted = [...purchases].sort((a, b) => (new Date(b.created_at)) - (new Date(a.created_at)))
+            for (let i = 0; i < sorted.length && remain > 0; i++) {
+                const purch = sorted[i]
+                const remaining_purchase = parseFloat(purch.amount || purch.total_amount) || 0
+                const to_alloc = Math.min(remaining_purchase, remain)
+                if (to_alloc > 0) {
+                    rows.push({
+                        id: purch.id,
+                        purchase: purch,
+                        allocated: to_alloc,
+                        type: 'purchase'
+                    })
+                    remain -= to_alloc
+                }
             }
         }
         if (remain > 0) {
@@ -382,9 +383,6 @@ export default function SupplierDetailPage() {
         const amount = parseCurrency(paymentForm.amountDisplay)
         if (!amount || amount <= 0) errors.amount = 'Summa kiritilishi shart'
         if (amount > 19999999999) errors.amount = 'Summa 19.999.999.999 dan oshmasligi kerak'
-        if (!paymentEditId && amount > Math.max(computedBalance, 0)) {
-            errors.amount = `Jami qarzdorlikdan ortiq to'lay olmaysiz. Maksimal: ${formatCurrency(Math.max(computedBalance, 0))} so'm`
-        }
         if (!paymentForm.paid_at) errors.paid_at = 'Sana kiritilishi shart'
         setPaymentForm(p => ({ ...p, errors }))
         if (Object.keys(errors).length > 0) return
@@ -1065,11 +1063,6 @@ export default function SupplierDetailPage() {
                                         <span className="mr-3.5 text-[12px] font-bold text-gray-400">so'm</span>
                                     </div>
                                     {paymentForm.errors.amount && <p className="text-[11px] text-red-500 mt-1.5 px-0.5">{paymentForm.errors.amount}</p>}
-                                    {!paymentEditId && maxAllowedPayment > 0 && (
-                                        <p className="text-[10.5px] text-gray-400 mt-1 px-0.5">
-                                            Maksimal: <span className="font-semibold text-gray-500 dark:text-gray-300">{formatCurrency(maxAllowedPayment)} so'm</span>
-                                        </p>
-                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
