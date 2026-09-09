@@ -309,6 +309,7 @@ export default function DashboardPage() {
         if (suppliers.length === 0) {
             return { totalSupplierOurDebt: 0, totalSupplierTheyOweUs: 0, todaySupplierPayments: 0 }
         }
+        
         let ourDebt = 0
         let theyOwe = 0
         let todayPay = 0
