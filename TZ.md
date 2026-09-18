@@ -1,6 +1,6 @@
 # Daftaron — Texnik Topshiriq (TZ)
 
-> So'nggi yangilanish: 2026-08-16
+> So'nggi yangilanish: 2026-09-18
 
 ## Mundarija
 
@@ -595,18 +595,44 @@ Mijozning UI da ko'rinishi kerak bo'lgan yangi virtual maydonlar (model accessor
 | `total_paid_amount` (virtual, accessor) | decimal | **Shu nasiya uchun TOLIQ TO'LANGAN SUMMA UI uchun**. To'g'ridan-to'g'ri bog'langan (debt_id = debt.id) barcha to'lovlarning yig'indisi. Bu yerga to'g'ridan specific paymentlar ham, customer general paymentlardan avtomatik allokatsiya qilingan to'lovlar ham kiradi. |
 | `paid_from_direct_payments` (virtual) | decimal | total_amount − remaining_amount |
 | `debt_date` | date | Nasiya sanasi (YYYY-MM-DD) |
+| `return_date` | date, nullable | Qaytarish sanasi (ixtiyoriy, YYYY-MM-DD). Ushbu sanada ertalab 09:00 (Asia/Tashkent) da avtomatik SMS eslatma yuboriladi. |
+| `return_date_sms_sent_at` | timestamp, nullable | Qaytarish sanasi eslatma SMS qachon yuborilganligi. |
+| `return_date_sms_error` | string, nullable | Agar SMS yuborishda xato bo'lsa (`failed`/`limit_exceeded`), xato xabari bu yerdadir. Limit tugagan hollarda: `sms_limit_exceeded`. Mijoz telefon raqami yo'q: `customer_phone_missing`. |
+| `return_date_sms_status` | enum | Avtomatik eslatma SMS holati: `pending` (hali yuborilmagan/kutilmoqda), `queued` (navbatga qo'yildi), `sent` (yuborildi), `failed` (xato), `skipped_limit` (mijoz telefon raqami yo'qligi sababli o'tkazildi), `limit_exceeded` (SMS limiti tugagan yoki balans yetarli emasligi sababli o'tkazildi). Default: `pending`. |
 | `status` | enum | `open` / `closed` |
 | `description` | text | Izoh |
 | `sms_sent` | boolean | SMS yuborilganmi |
 | `payments` (relation) | array | Barcha bog'liq to'lovlar — to'g'ridan to'g'ri + balansdan allokatsiya qilingan (ularning barchasida debt_id = shu debt.id) |
 
+### 8.1.1. Qaytarish sanasi va avtomatik SMS eslatma (Schedule)
+
+| Parametr | Qiymat |
+|----------|--------|
+| Jarayon turi | Artisan Command `debts:send-return-date-reminders` |
+| Schedule | Har kuni ertalab **09:00** (Vaqt zonasi: `Asia/Tashkent`) |
+| Laravel Schedule | `routes/console.php` → `Schedule::command('debts:send-return-date-reminders')->dailyAt('09:00')->timezone('Asia/Tashkent')->withoutOverlapping()->onOneServer()` |
+| Chunk | 100 tadan (`chunkById`) |
+| Qaysi debt lar | `status = 'open'` AND `return_date IS NOT NULL` AND `DATE(return_date) = DATE(today)` AND `return_date_sms_status = 'pending'` |
+| Qayta ishlash mantiq | Bir debt uchun maksimal 1 marta yuborish (idempotent). `return_date_sms_status != 'pending'` bo'lsa yana qayta ishlanmaydi. |
+| `return_date` o'zgartirilsa | Debt model `booted() saving` callbacki avtomatik `return_date_sms_status = pending` va `return_date_sms_sent_at = null` ga qaytaradi → sanasi o'zgargan debt uchun yana SMS ketadi. |
+
+#### 8.1.2. SMS yuborilish uchun scenario
+
+| Scenario | Natija |
+|----------|--------|
+| A) Mijozda `phone` mavjud emas | `return_date_sms_status = 'skipped_limit'` (sabab `customer_phone_missing`, `return_date_sms_error = 'customer_phone_missing'`); do'kon egasiga yangi Notification (type: `return_date_reminder_sms_skipped`) |
+| B) SMS limiti tugagan (`!isFree`) va user balansi < `extra_sms_price` (default 190 so'm) | `return_date_sms_status = 'limit_exceeded'` (sabab `sms_limit_exceeded`, `return_date_sms_error = 'sms_limit_exceeded'`); do'kon egasiga Notification — "SMS limiti tugadi, qaytarish sanasi eslatmasi yuborilmadi. Qayta aloqaga chiqing." |
+| C) `isFree = true` (limit ichida) yoki balansda pul yetarli | `SmsDispatchService::sendTemplate('return_date_reminder')` → muvaffaqiyatli → `sent` + `return_date_sms_sent_at = now()`; xato → `failed`; balansda pul yetarli bo'lsa → `DebtService::chargeForSms()` |
+
 ### 8.2. Sana qoidalari
 
 | Qoida | Tavsif |
 |-------|--------|
-| Tanlanmasa | Bugungi sana |
-| Oraliq | Oxirgi 1 oy (bugundan 1 oy oldin — bugun) |
-| Validatsiya | `nullable|date|after_or_equal:<1 oy oldin>|before_or_equal:today` |
+| `debt_date` tanlanmasa | Bugungi sana |
+| `debt_date` oraliq | Oxirgi 1 oy (bugundan 1 oy oldin — bugun) |
+| `debt_date` Validatsiya | `nullable|date|after_or_equal:<1 oy oldin>|before_or_equal:today` |
+| **`return_date` (Qaytarish sanasi)** | Ixtiyoriy (nullable). Minimal: **ertaga** (`after:today` → ertasi kunga teng yoki undan keyingi, o'tkan va bugungi kunga ruxsat yo'q). Maksimal: bugundan **+90 kun** (3 oy). Format: `YYYY-MM-DD`. |
+| **return_date order validatsiyasi** | `return_date` berilgan bo'lsa, `debt_date` dan kichik bo'lmasligi kerak (`return_date >= debt_date`). |
 
 ### 8.3. Yangi biznes qoidasi: BALANS → YANGI QARZNI AVTOMATIK TO'LASH
 
@@ -653,18 +679,30 @@ balance_after = 10 000
 
 ### 8.4. Endpointlar
 
-**Web:** `/debts` — to'liq CRUD + `PATCH /debts/{debt}/close`
+**Web:** `/debts` — to'liq CRUD + `PATCH /debts/{debt}/close`. Formada `return_date` datepicker (ixtiyoriy, `YYYY-MM-DD`, `min = today`). Show/index sahifalarida `return_date` va `SMS` badge (pending → sariq, sent → yashil, failed → qizil, skipped_limit → kulrang).
 
 **API:**
 
 | Metod | Endpoint | Body | Javob |
 |-------|----------|------|-------|
-| GET | `/debts` | `customer_id` (ixtiyoriy filter) | Nasiyalar ro'yxati (har biri `total_paid_amount`, `payments` relation bilan) |
-| POST | `/debts` | `customer_id`, `total_amount`, `debt_date`, `description`, `send_sms` | 201: `success`, `message`, `debt`, `remaining_limit`, `sms_sent`, `balance_applied`; 403: limit tugadi |
-| GET | `/debts/{id}` | — | Bitta nasiya (ichida to'liq to'lovlar statistikasi) |
-| PUT | `/debts/{id}` | `customer_id`, `total_amount`, `debt_date`, `description` | Yangilangan nasiya |
+| GET | `/debts` | `customer_id` (ixtiyoriy filter) | Nasiyalar ro'yxati (har biri `total_paid_amount`, `payments`, `return_date`, `return_date_sms_sent_at`, `return_date_sms_status` bilan) |
+| POST | `/debts` | `customer_id`, `total_amount`, `debt_date` (nullable), `return_date` (nullable, `YYYY-MM-DD`, `after_or_equal:today`), `description`, `send_sms` | 201: `success`, `message`, `debt`, `remaining_limit`, `sms_sent`, `balance_applied`; 403: limit tugadi |
+| GET | `/debts/{id}` | — | Bitta nasiya (ichida to'liq to'lovlar statistikasi, `return_date`, `return_date_sms_sent_at`, `return_date_sms_status`) |
+| PUT | `/debts/{id}` | `customer_id`, `total_amount`, `debt_date`, `return_date` (nullable, `YYYY-MM-DD`), `description` | Yangilangan nasiya; `return_date` o'zgartirilsa → SMS status `pending` ga qaytariladi |
 | DELETE | `/debts/{id}` | — | O'chirildi (bog'liq to'lovlar ham; nullOnDelete → debt_id = null qilib, paymentlar customer balansiga qaytadi) |
 | PATCH | `/debts/{id}/close` | — | Yopildi (qolgan summa to'lov sifatida yoziladi; yangi paymentga `customer_id` avtomatik set qiladi) |
+| **POST** | **`/debts/{id}/send-return-sms`** | **—** | **200:** Qaytarish sanasi eslatma SMS ni (agar return_date kelgan bo'lsa) qo'lda yuborish. Javob: `{success, message, sent_at, sms_status}`. 422: return_date belgilanmagan bo'lsa. |
+| **GET** | **`/debts/{id}/sms-status`** | **—** | **200:** Joriy debt ning return_date SMS holatini aniq olish. Javob: `{return_date, return_sms_status, return_sms_sent_at, return_sms_error, is_overdue, days_remaining}`. |
+
+### 8.6. SMS limiti tugaganda — UI darajadagi 3 darajali xavfsizlik (Frontend)
+
+**Shart:** `GET /subscription/status` → `usage.sms_remaining <= 0` VA `usage.subscription_status = 'active'`.
+
+| Daraja | Joylashuv | O'zgarish |
+|--------|----------|----------|
+| 1. TOP BANNER | DebtFormPage (standalone form) yuqorisida va CustomerDetail Drawer (Nasiya qo'shish) formasi TEPASIDA | 🟡 Amber rangli banner (MessageSquareOff icon): *"SMS limiti tugagan. Endi mijozlarga SMS yuborib bo'lmaydi. Yangi SMS paketini sotib oling..."* + CTA link `/subscription` SMS sotib olish sahifasiga. |
+| 2. TOGGLE hint | `SMS yuborish` switch yonida / ostida | Switch `disabled` emas, ammo opacity 70% + label rangi emerald → amber ga o'zgaradi. Switch ostida: ⚠️ *"SMS limiti tugagan"*. |
+| 3. PRE-API SUBMIT BLOCK | Saqlash tugmasi bosilganda (API chaqirishdan OLDIN, UI level) | Agar formda `send_sms = true` + sms_remaining=0 → **Submit BLOCKLANADI** va form pastida xato ko'rsatiladi: *"❌ SMS limiti tugagan, 'SMS yuborish' ni o'chiring yoki SMS paketini sotib oling."*. Request API ga jo'natilmaydi, Vaul Drawer YOPILMAYDI. |
 
 ### 8.5. Limit tekshiruvi
 
@@ -853,12 +891,18 @@ Misol uchun: 80 000 so'm nasiya yaratildi.
 
 ### 11.2. SMS turlari
 
-| Tur | Qachon | Shablon |
-|-----|--------|---------|
-| **Nasiya SMS** | Nasiya yaratishda `send_sms: true` | `{ism} aka siz {sana} sanasida {do'kon} dan {summa} so'm qarzdor bo'ldingiz. Qarzni vaqtida qaytarishni unutmang ! Do'kon raqami : {telefon}` |
-| **To'lov SMS** | To'lov yozishda `send_sms: true` | `{ism} aka {sana} sanasida {do'kon} uchun sizdan {summa} so'm to'lov qabul qilindi. Qolgan miqdor : {qolgan} so'm. Do'kon raqami : {telefon}` |
-| **Eslatma SMS** | Muddati o'tgan qarzdorga | Overdue sahifasidan qo'lda yuboriladi |
-| **Tasdiqlash SMS** | Login/register | `Tasdiqlash kodi: {4 raqam}` |
+| Tur | Qachon | Shablon kaliti | Placeholderlar |
+|-----|--------|----------------|----------------|
+| **Nasiya SMS** | Nasiya yaratishda `send_sms: true` | `debt_created` | `{customer_name}`, `{date}`, `{shop_name}`, `{amount}`, `{shop_phone}` |
+| **To'lov SMS** | To'lov yozishda `send_sms: true` | `payment_received` | `{customer_name}`, `{date}`, `{shop_name}`, `{amount}`, `{remaining}`, `{shop_phone}` |
+| **Overdue eslatma SMS** | Muddati o'tgan qarzdorga | `overdue_reminder` | `{customer_name}`, `{date}`, `{shop_name}`, `{remaining_amount}`, `{shop_phone}` |
+| **Qaytarish sanasi eslatma (AVTOMATIK)** | Qaytarish sanasi kelgan kundan keyin ertalab 09:00 (schedule orqali) | `return_date_reminder` | `{customer_name}`, `{return_date}`, `{amount}`, `{shop_name}`, `{shop_phone}` |
+| **Tasdiqlash SMS** | Login/register | `verification_code` | `{code}` |
+
+**Default matn (return_date_reminder):**
+```
+{customer_name} aka! Bugun ({return_date}) {shop_name} dan olgan {amount} so'm qarzingizni qaytarish sanasi keldi. Iltimos, qarzni vaqtida to'lang. Do'kon raqami: {shop_phone}
+```
 
 ### 11.3. SMS narxlash
 
@@ -1154,12 +1198,13 @@ Ma'lum vaqt oralig'idagi barcha tranzaksiyalar ro'yxati:
 
 ### 14.1. Qachon yuboriladi
 
-| Hodisa | Notification turi | Kimga |
-|--------|-------------------|-------|
-| Nasiya qo'shilganda | `debt_created` | Do'kon egasi |
-| Nasiyaga to'lov qilinganda | `debt_payment` | Do'kon egasi |
-| Balans to'ldirilganda | `balance_topped_up` | Foydalanuvchi |
-| Obuna sotib olinganda | `subscription_purchased` | Foydalanuvchi |
+| Hodisa | Notification turi | Kimga | Qo'shimcha maydonlar |
+|--------|-------------------|-------|---------------------|
+| Nasiya qo'shilganda | `debt_created` | Do'kon egasi | `tenant_name`, `amount`, `debt_id` |
+| Nasiyaga to'lov qilinganda | `debt_payment` | Do'kon egasi | `tenant_name`, `amount`, `debt_id` |
+| Balans to'ldirilganda | `balance_topped_up` | Foydalanuvchi | `amount`, `source` (`click`/`payme`/`admin`) |
+| Obuna sotib olinganda | `subscription_purchased` | Foydalanuvchi | `amount` |
+| **Qaytarish sanasi eslatma SMSi YUBORILMAGANI** (sabab: limit tugagan yoki telefon yo'q) | `return_date_reminder_sms_skipped` | Do'kon egasi (Tenant owner / user) | `type`, `message`, `debt_id`, `customer_name`, `customer_phone` (bo'lsa), `return_date`, `amount`, `reason` (`sms_limit_exceeded` yoki `customer_phone_missing`), `sms_price`, `tenant_id` |
 
 ### 14.2. Data tuzilishi
 

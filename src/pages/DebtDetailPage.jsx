@@ -5,7 +5,8 @@ import { staffApi } from '../api/staff.api'
 import {
     Clock, CheckCircle2, Trash2, ArrowLeft,
     FileText, Calendar, ChevronRight, CreditCard,
-    Wallet, Tag
+    Wallet, Tag, CalendarDays, CalendarClock, BellOff,
+    X, AlertTriangle
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { CustomerDetailSkeleton } from '../components/Skeleton'
@@ -211,7 +212,7 @@ export default function DebtDetailPage() {
 
             {/* Debt Card Detail */}
             <div className="card dark:bg-gray-800 p-5 mb-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                {/* Header with Customer Info */}
+                {/* Header with Customer Info + Return Date + SMS Status */}
                 <div className="mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
@@ -230,6 +231,142 @@ export default function DebtDetailPage() {
                             <p className="text-[15px] font-semibold text-gray-700 dark:text-gray-200">
                                 {formatDate(debt.debt_date || debt.created_at)}
                             </p>
+                        </div>
+                    </div>
+
+                    {/* Return Date + SMS Status block (NEW) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-100/60 dark:border-gray-700/60">
+                        {/* Return Date Badge */}
+                        <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700/80 flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                                <CalendarDays size={16} className="text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish sanasi</p>
+                                {(() => {
+                                    const rd = debt.return_date || debt.due_date || null
+                                    const today0 = new Date()
+                                    today0.setHours(0, 0, 0, 0)
+                                    if (!rd) {
+                                        return <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Belgilanmagan</p>
+                                    }
+                                    const dueDt = new Date(rd)
+                                    dueDt.setHours(0, 0, 0, 0)
+                                    const diffDays = Math.round((dueDt.getTime() - today0.getTime()) / (1000 * 60 * 60 * 24))
+                                    const isOverdue = diffDays < 0 && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0
+                                    const isDueSoon = diffDays >= 0 && diffDays <= 3 && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0
+                                    const isPaid = debt.status === 'closed' || Number(debt.remaining_amount || 0) === 0
+                                    const color = isPaid
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : isOverdue
+                                            ? 'text-red-600 dark:text-red-400'
+                                            : isDueSoon
+                                                ? 'text-amber-600 dark:text-amber-400'
+                                                : 'text-gray-800 dark:text-gray-100'
+                                    const text = isPaid
+                                        ? `To'langan (${formatDate(rd)})`
+                                        : isOverdue
+                                            ? `Kechikkan ${Math.abs(diffDays)} kun • ${formatDate(rd)}`
+                                            : isDueSoon
+                                                ? diffDays === 0
+                                                    ? `Bugun • ${formatDate(rd)}`
+                                                    : `${diffDays} kun qoldi • ${formatDate(rd)}`
+                                                : formatDate(rd)
+                                    return <p className={`text-[13px] font-bold ${color} leading-snug`}>{text}</p>
+                                })()}
+                            </div>
+                        </div>
+
+                        {/* SMS Status Badge (Return Date SMS) */}
+                        <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700/80 flex items-start gap-3">
+                            {(() => {
+                                const rd = debt.return_date || debt.due_date || null
+                                const smsStatus = debt.return_sms_status || debt.sms_status || null
+                                if (!rd) {
+                                    return (
+                                        <>
+                                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/50 flex items-center justify-center shrink-0">
+                                                <X size={16} className="text-gray-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">SMS xolat</p>
+                                                <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Sana belgilanmagan</p>
+                                            </div>
+                                        </>
+                                    )
+                                }
+                                if (smsStatus === 'sent') {
+                                    return (
+                                        <>
+                                            <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                                                <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">Yuborildi ✅</p>
+                                                {debt.return_sms_sent_at && (
+                                                    <p className="text-[11px] text-gray-400 mt-0.5">{formatDateTime(debt.return_sms_sent_at)}</p>
+                                                )}
+                                            </div>
+                                        </>
+                                    )
+                                }
+                                if (smsStatus === 'limit_exceeded') {
+                                    return (
+                                        <>
+                                            <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                                                <BellOff size={16} className="text-amber-600 dark:text-amber-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[13px] font-bold text-amber-600 dark:text-amber-300">⚠️ SMS limiti tugagan</p>
+                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">SMS yuborib bo'lmadi. Paketni sotib oling va qayta jo'nating.</p>
+                                            </div>
+                                        </>
+                                    )
+                                }
+                                if (smsStatus === 'failed') {
+                                    return (
+                                        <>
+                                            <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0">
+                                                <X size={16} className="text-red-500" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Yuborilmadi</p>
+                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">{debt.return_sms_error || 'Qayta urinib ko\'ring'}</p>
+                                            </div>
+                                        </>
+                                    )
+                                }
+                                if (smsStatus === 'pending' || smsStatus === 'queued') {
+                                    return (
+                                        <>
+                                            <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                                                <Clock size={16} className="text-blue-500 animate-pulse" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[13px] font-bold text-blue-600 dark:text-blue-400">Kutilmoqda ⏳</p>
+                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">Belgilangan kunda yuboriladi</p>
+                                            </div>
+                                        </>
+                                    )
+                                }
+                                // Default: SMS status yo'q yoki return_date hali kelmagan
+                                return (
+                                    <>
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/40 flex items-center justify-center shrink-0">
+                                            <CalendarClock size={16} className="text-gray-400" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                            <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Hali vaqti kelmagan</p>
+                                            <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasida avtomatik jo'natiladi</p>
+                                        </div>
+                                    </>
+                                )
+                            })()}
                         </div>
                     </div>
                 </div>

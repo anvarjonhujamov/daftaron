@@ -338,6 +338,39 @@ components:
         debt_date:
           type: string
           format: date
+        return_date:
+          type: string
+          format: date
+          nullable: true
+          description: |
+            Qaytarish sanasi (ixtiyoriy, YYYY-MM-DD). Ushbu sanada ertalab 09:00 (Asia/Tashkent) da
+            avtomatik SMS eslatma yuboriladi. SMS statusi pastdagi maydonlarda kuzatiladi.
+        return_date_sms_sent_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Qaytarish sanasi eslatma SMS qachon yuborilganligi.
+        return_date_sms_error:
+          type: string
+          nullable: true
+          description: |
+            Agar SMS yuborishda xato bo'lsa (`failed`, `limit_exceeded` yoki `skipped_limit`),
+            xato sababi bu yerda saqlanadi:
+            - `sms_limit_exceeded` — SMS limiti tugagan va balansda pul yetarli emas
+            - `customer_phone_missing` — mijoz telefon raqami belgilanmagan
+        return_date_sms_status:
+          type: string
+          nullable: true
+          enum: [pending, queued, sent, failed, skipped_limit, limit_exceeded]
+          description: |
+            Avtomatik qaytarish sanasi eslatma SMS holati:
+            - `pending` — SMS hali yuborilmagan (kutilmoqda)
+            - `queued` — SMS navbatga qo'yildi (tez orada yuboriladi)
+            - `sent` — SMS muvaffaqiyatli yuborildi
+            - `failed` — SMS yuborishda xato (provayder tomonidan xato)
+            - `skipped_limit` — Mijoz telefon raqami belgilanmaganligi sababli o'tkazildi
+            - `limit_exceeded` — SMS limiti tugagan yoki balans yetarli emasligi sababli o'tkazildi.
+              Bu holatda do'kon egasiga `return_date_reminder_sms_skipped` turidagi yangi bildirishnoma tushadi.
         status:
           type: string
           enum: [open, closed]
@@ -1306,10 +1339,20 @@ paths:
                 debt_date:
                   type: string
                   format: date
+                  nullable: true
+                  description: Nasiya sanasi (YYYY-MM-DD). Yuborilmasa — bugungi sana.
+                return_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: |
+                    Qaytarish sanasi (ixtiyoriy, YYYY-MM-DD). Minimal: bugungi sana (`after_or_equal:today`).
+                    Ushbu sanada ertalab 09:00 (Asia/Tashkent) da mijozga avtomatik SMS eslatma yuboriladi.
                 description:
                   type: string
                 send_sms:
                   type: boolean
+                  description: Nasiya yaratishni darhol mijozga SMS xabari yuborish (true/false). Default: false.
       responses:
         "201":
           description: |
@@ -1387,9 +1430,33 @@ paths:
           application/json:
             schema:
               type: object
+              properties:
+                customer_id:
+                  type: integer
+                total_amount:
+                  type: number
+                debt_date:
+                  type: string
+                  format: date
+                  nullable: true
+                return_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: |
+                    Qaytarish sanasi (ixtiyoriy, YYYY-MM-DD).
+                    Agar `return_date` oldingi qiymatdan O'ZGARSA → `return_date_sms_status` avtomatik `pending` ga va `return_date_sms_sent_at` → null ga qaytariladi,
+                    shunda yangi sanada yana SMS ketadi.
+                description:
+                  type: string
+                  nullable: true
       responses:
         "200":
           description: Yangilandi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Debt"
 
     delete:
       tags: [Debts]
@@ -1405,6 +1472,98 @@ paths:
       responses:
         "200":
           description: O'chirildi
+
+  /debts/{id}/send-return-sms:
+    post:
+      tags: [Debts]
+      summary: |
+        Qaytarish sanasi eslatma SMS ni qo'lda yuborish
+        (masalan, return_date avtomatik yuborilganidan keyin qayta yuborish kerak bo'lganda).
+        Agar `return_date` belgilanmagan bo'lsa — 422 xato.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: SMS yuborildi (yoki avval yuborilgan)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  sent_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  sms_status:
+                    type: string
+                    enum: [pending, queued, sent, failed, skipped_limit, limit_exceeded]
+                    nullable: true
+        "422":
+          description: "return_date belgilanmagan yoki hali sana kelmagan"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Nasiya topilmadi
+
+  /debts/{id}/sms-status:
+    get:
+      tags: [Debts]
+      summary: |
+        Joriy nasiyaning return_date va SMS status holatini aniq olish.
+        Response da qo'shimcha `is_overdue` (kechikkanmi) va `days_remaining` (necha kun qoldi)
+        hisoblangan holda qaytariladi.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Joriy return_date + SMS holati
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  return_date:
+                    type: string
+                    format: date
+                    nullable: true
+                  return_sms_status:
+                    type: string
+                    enum: [pending, queued, sent, failed, skipped_limit, limit_exceeded]
+                    nullable: true
+                  return_sms_sent_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  return_sms_error:
+                    type: string
+                    nullable: true
+                  is_overdue:
+                    type: boolean
+                    description: "true → return_date kelib o'tgan va nasiyani to'lanmagan"
+                  days_remaining:
+                    type: integer
+                    nullable: true
+                    description: "return_date gacha necha kun qoldi (manfiy = kechikkan kun)"
+        "404":
+          description: Nasiya topilmadi
 
   /debts/{id}/close:
     patch:

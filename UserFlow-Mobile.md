@@ -1,6 +1,6 @@
 # Daftaron — Mobile ilova uchun UserFlow
 
-> So'nggi yangilanish: 2026-08-16
+> So'nggi yangilanish: 2026-09-18
 
 Bu hujjat **mobil ilova dasturchisi** uchun yozilgan. Har bir ekran, API chaqiriq va xato holatlari batafsil tavsiflangan.
 
@@ -695,12 +695,14 @@ Bir userda bir nechta do'kon bo'lsa, ilova active do'konni tanlab ishlaydi. Tanl
 
 | Metod | Endpoint | Body / Param | Javob |
 |-------|----------|-------------|-------|
-| GET | `/debts` | `customer_id` (ixtiyoriy filter) | `200`: nasiyalar ro'yxati |
-| POST | `/debts` | `customer_id`, `total_amount`, `debt_date` (ixtiyoriy, YYYY-MM-DD), `description` (ixtiyoriy), `send_sms` (boolean, ixtiyoriy) | `201`: quyiga qarang |
-| GET | `/debts/{id}` | — | `200`: bitta nasiya |
-| PUT | `/debts/{id}` | `customer_id`, `total_amount`, `debt_date`, `description` | `200`: yangilangan |
+| GET | `/debts` | `customer_id` (ixtiyoriy filter) | `200`: nasiyalar ro'yxati (har birida `return_date`, `return_date_sms_sent_at`, `return_date_sms_status` qo'shimcha maydonlari) |
+| POST | `/debts` | `customer_id`, `total_amount`, `debt_date` (ixtiyoriy, YYYY-MM-DD), **`return_date`** (ixtiyoriy, YYYY-MM-DD, bugundan kichik bo'lmasligi kerak), `description` (ixtiyoriy), `send_sms` (boolean, ixtiyoriy) | `201`: quyiga qarang |
+| GET | `/debts/{id}` | — | `200`: bitta nasiya (+ `return_date`, `return_date_sms_sent_at`, `return_date_sms_status`) |
+| PUT | `/debts/{id}` | `customer_id`, `total_amount`, `debt_date`, **`return_date`** (nullable, YYYY-MM-DD), `description` | `200`: yangilangan; `return_date` o'zgartirilsa SMS status avtomat `pending` ga qaytariladi |
 | DELETE | `/debts/{id}` | — | `200/204`: o'chirildi |
 | PATCH | `/debts/{id}/close` | — | `200`: nasiya yopildi |
+| **POST** | **`/debts/{id}/send-return-sms`** | **—** | **200:** Qaytarish sanasi eslatma SMS ni qo'lda yuborish; 422: return_date belgilanmagan |
+| **GET** | **`/debts/{id}/sms-status`** | **—** | **200:** `{return_date, return_sms_status, return_sms_sent_at, return_sms_error, is_overdue, days_remaining}` — joriy return_date va SMS holatini aniq olish |
 
 ### 10.3. Nasiya yaratish javobi (201)
 
@@ -712,6 +714,9 @@ Bir userda bir nechta do'kon bo'lsa, ilova active do'konni tanlab ishlaydi. Tanl
     "total_amount": 540000,
     "remaining_amount": 540000,
     "debt_date": "2026-03-22",
+    "return_date": "2026-04-22",
+    "return_date_sms_sent_at": null,
+    "return_date_sms_status": "pending",
     "status": "open",
     "description": "Un, yog'",
     "sms_sent": true
@@ -748,8 +753,82 @@ Do'kon raqami : +998901234567
 | Minimal sana | 1 oy oldin (bugundan) |
 | Maksimal sana | Bugun |
 | Format | `YYYY-MM-DD` |
+| **`return_date` (Qaytarish sanasi)** | Ixtiyoriy (nullable). **Minimal: ertaga** (`after:today` — bugungi kunga va o'tkan kunlarga ruxsat yo'q). **Maksimal: bugundan +90 kun** (3 oy). Format: `YYYY-MM-DD`. |
+| **return_date ≥ debt_date** | Validatsiya: return_date berilgan bo'lsa, u nasiya sanasi (`debt_date`) dan kichik bo'lmasligi kerak. Aks holda 422: `"Qaytarish sanasi nasiya sanasidan oldin bo'lishi mumkin emas"`. |
+| Avtomatik eslatma | `return_date` ga teng bo'lgan kunda ertalab **09:00 (Asia/Tashkent)** mijozga SMS eslatma boradi. |
 
-### 10.6. Limit tekshiruvi
+### 10.6. Qaytarish sanasi va avtomatik SMS eslatma — Mobil UI tavsiya
+
+**Ro'yxat (`/debts`) kartasida:**
+- Har bir ochiq nasiya kartasida 2 ta badge ko'rsatiladi:
+
+**1) Qaytarish sanasi holati badge (rangli pill):**
+
+| Holat | Shart | Rang | Label namuna |
+|-------|-------|------|---------------|
+| To'langan | `status = 'closed'` yoki `remaining_amount <= 0` | 🟢 Yashil (emerald) | "To'langan • 22/04" |
+| Kechikkan | status ochiq VA `return_date < today` | 🔴 Qizil (red) | "Kechikkan 5 kun • 18/09" |
+| Bugun qaytarish | status ochiq VA `return_date = today` | 🟡 Sariq (amber) | "Bugun qaytarish • 20/09" |
+| 1–3 kun qoldi | status ochiq VA 0 < kunlar ≤ 3 | 🟡 Amber | "2 kun qoldi • 22/09" |
+| Oddiy kelajak | status ochiq VA 3 < kunlar | 🔵 Ko'k (indigo) | "Qaytish: 15/10" |
+| Belgilanmagan | `return_date = null` | — | badge ko'rsatilmaydi |
+
+**2) SMS status badge (rangli pill, icon + text):**
+
+| Qiymat (`return_date_sms_status`) | Rang | Icon | Label |
+|-----------------------------------|------|------|-------|
+| `pending` / `queued` | 🔵 Ko'k (blue) | ⏳ Clock (animate-pulse) | "Kutilmoqda" |
+| `sent` | 🟢 Yashil (emerald) | ✅ CheckCircle2 | "SMS yuborildi" (pastda `return_date_sms_sent_at` formatted) |
+| `failed` | 🔴 Qizil (red) | ❌ X | "Yuborilmadi" + hoverda `return_date_sms_error` |
+| `limit_exceeded` | ⚠️ **Sariq (amber)** | 🔕 BellOff | **"SMS limiti tugagan"** — user maxsus talab qilgan (qizildan farqli) |
+| `skipped_limit` | ⚪ Kulrang (gray) | ℹ️ Info | "O'tkazildi (telefon yo'q)" |
+| null + return_date mavjud | ⚪ Kulrang (gray) | 🕓 CalendarClock | "Hali vaqti kelmagan" |
+| null + return_date ham null | — | — | badge yo'q |
+
+**Yaratish / Tahrirlash ekranida:**
+- `Sana (debt_date)` dan keyin alohida input (ikkita input bir qatorda):
+  - Label: `Qaytarish sanasi (ixtiyoriy)`
+  - UI: Datepicker, **`minimumDate = tomorrow`** (bugungi va o'tkan sanani tanlash mumkin emas), `maximumDate = today + 90 kun`
+  - Tanlanmasa → `null` jo'natiladi
+  - Pastda kichik helper matn: "Ushbu sanada ertalab 09:00 da mijozga avtomatik eslatma SMS yuboriladi. 1-90 kun oralig'ida."
+  - Validatsiya: `return_date < debt_date` bo'lsa → inline error: "Qaytarish sanasi nasiya sanasidan oldin bo'lishi mumkin emas"
+
+**Detail (show) ekranida:**
+- Yuqoridagi badgelar va `return_date_sms_sent_at` formatlangan ko'rsatiladi.
+- 2 ta alohida kichik karta (grid 2-column): Qaytarish sanasi holati (chapda) + SMS status (o'ngda).
+- Agar `limit_exceeded` bo'lsa → ogohlantirish banner (sariq):
+  > "⚠️ Eslatma SMS yuborilmadi. SMS limiti tugagan. Sababni bilish uchun bildirishnomalarni ko'ring → `/notifications` ga navigatsiya tugmasi"
+
+**Debt list (CustomerDetail) va DebtsPage ro'yxatida:**
+- Har bir nasiya kartasida (name+date+amount ustiga, flex-wrap) ikkala badge ham ko'rsatiladi.
+
+### 10.6.1. Nasiya yaratishda SMS limiti tugaganda — Mobil 3-darajali xavfsizlik
+
+**Oldin tekshirish:** `/subscription/status` → `usage.sms_remaining <= 0` AND `usage.subscription_status = 'active'`.
+
+| # | Joy | O'zgarish |
+|---|-----|----------|
+| 1 | **FORM TEPASIDA BANNER** | 🟡 Amber/sariq banner, icon=MessageSquareOff, matn: *"SMS limiti tugagan. Yangi SMS paketini sotib oling → /subscription"*. Link tugmasi "SMS sotib olish" obuna sahifasiga o'tkazadi. |
+| 2 | **`SMS yuborish` SWITCH ostida** | Toggle label rangi emerald → amber o'zgaradi. Switch uchun opacity 70% hint. Ostida: ⚠️ *"SMS limiti tugagan"*. |
+| 3 | **SAQLASH OLDIN UI DARAJASIDA BLOCK** | User "Saqlash" ni bossa → form validatsiyasidan o'tganda, agar `send_sms = true` AND `sms_remaining <= 0` → **submit BLOCKLANADI** (API chaqirilmaydi). Pastda qizil xato: *"❌ SMS limiti tugagan, 'SMS yuborish' ni o'chiring yoki yangi SMS paketini sotib oling."*. Va Drawer (BottomSheet) **YOPILMAYDI** — xato ko'rinib turadi.
+
+### 10.7. SMS limiti tugaganda Notification flow
+
+Qaytarish sanasi kelganda:
+1. 09:00 da backend avtomatik tekshiradi: mijoz telefon bor / SMS limit yetarlimi / balansda 190 so'm bor-yo'q.
+2. Holatga qarab status:
+   - **Agar telefon raqami YO'Q**: `return_date_sms_status = skipped_limit` va `return_date_sms_error = 'customer_phone_missing'`.
+   - **Agar SMS limiti tugAGAN + balansda pul yetarli bo'lmasa**: `return_date_sms_status = limit_exceeded` va `return_date_sms_error = 'sms_limit_exceeded'`.
+3. Shunda do'kon egasiga (shop_owner) yangi database notification tushadi: `type = return_date_reminder_sms_skipped`.
+4. Mobil ilova `/notifications` sahifasida yangi turdagi bildirishnoma — **alohida icon/chala rang** (masalan, qizil/yashil emas — sariq/orange rang) bilan ajratiladi.
+
+Bildirishnoma matni namunasi:
+- Status = `limit_exceeded` / data.reason = sms_limit_exceeded`: *"⚠️ {customer_name} — {return_date} sanasidagi qaytarish eslatmasi yuborilmadi. SMS limiti tugagan va balans yetarli emas. Qayta aloqaga chiqing yoki balansni to'ldiring."*
+- Status = `skipped_limit / data.reason = customer_phone_missing`: *"ℹ️ {customer_name} — {return_date} qaytarish sanasi eslatmasi yuborilmadi. Mijoz telefon raqami belgilanmagan."*
+
+Click action: Notification bosilganda `/debts/{debt_id} screen ga o'tkaziladi.
+
+### 10.8. Limit tekshiruvi
 
 Nasiya yaratishda ta'rif limiti tekshiriladi:
 1. Obuna holati tekshiriladi — expired bo'lsa → **403** (`remaining_limit` bilan)
@@ -1080,8 +1159,14 @@ Authorization: Bearer <token>
 | `debt_payment` | Nasiyaga to'lov qilindi | `tenant_name`, `amount`, `debt_id` |
 | `balance_topped_up` | Balans to'ldirildi | `amount`, `source` (`click`/`payme`/`admin`) |
 | `subscription_purchased` | Obuna sotib olindi | `amount` |
+| **`return_date_reminder_sms_skipped`** | **Qaytarish sanasi eslatma SMS yuborilmadi** (limit tugagan / telefon yo'q) | `debt_id`, `customer_name`, `customer_phone` (nullable), `return_date`, `amount`, `reason` (`sms_limit_exceeded` yoki `customer_phone_missing`), `sms_price`, `tenant_id` |
 
 ### 14.3. UI tavsiya
+
+**Yangi `return_date_reminder_sms_skipped` turi uchun:**
+- Boshqa bildirishnomalardan **rang va icon** bilan ajratilsin (masalan: ⚠️ sariq / orange rangli border, `bell-off` icon).
+- Ogohlantirish darajasi = `warning` (baland, user darhol ko'rishi kerak).
+- Click: `debt_id` bor bo'lgani uchun, bosilganda to'g'ridan nasiya detail (`/debts/{debt_id}`) ekraniga o'tkaziladi.
 
 - `data.message` ni asosiy matn sifatida ko'rsatish
 - `read_at = null` → o'qilmagan (bold yoki badge)

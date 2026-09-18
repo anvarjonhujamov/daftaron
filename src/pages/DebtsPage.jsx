@@ -6,7 +6,8 @@ import { staffApi } from '../api/staff.api'
 import { suppliersApi } from '../api/suppliers.api'
 import {
     Calendar, ArrowUpRight, ArrowDownRight,
-    ChevronRight, History, Receipt, Clock, X, ChevronLeft, Users, Package
+    ChevronRight, History, Receipt, Clock, X, ChevronLeft, Users, Package,
+    CalendarDays, CalendarClock, CheckCircle2, BellOff
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -318,6 +319,14 @@ export default function DebtsPage() {
         const hh = String(date.getHours()).padStart(2, '0')
         const min = String(date.getMinutes()).padStart(2, '0')
         return `${mm}/${dd}/${yyyy} ${hh}:${min}`
+    }
+
+    const formatDateShort = (dateString) => {
+        if (!dateString) return ''
+        const date = new Date(dateString)
+        const mm = String(date.getMonth() + 1).padStart(2, '0')
+        const dd = String(date.getDate()).padStart(2, '0')
+        return `${dd}/${mm}`
     }
 
     const normalizeTwoDigits = (value) => String(value).padStart(2, '0')
@@ -744,6 +753,7 @@ export default function DebtsPage() {
                         {combinedActivity.map((item) => {
                             const isPurchase = item.type === 'debt' || item.type === 'supplier_purchase'
                             const isSupplier = item.type === 'supplier_purchase' || item.type === 'supplier_payment'
+                            const isDebtRow = item.type === 'debt'
                             const iconClass = isPurchase
                                 ? (isSupplier ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-red-100 dark:bg-red-900/30')
                                 : (isSupplier ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30')
@@ -761,31 +771,115 @@ export default function DebtsPage() {
                                 ? (item.type === 'supplier_purchase' ? `/suppliers/${item.supplier_id}` : `/suppliers/${item.supplier_id}`)
                                 : (item.type === 'debt' ? `/debts/${item.id}` : `/debts/${item.debt_id}`)
                             const IconA = isPurchase ? ArrowUpRight : ArrowDownRight
+
+                            let rdBadge = null
+                            let smsBadge = null
+                            if (isDebtRow) {
+                                const rd = item.return_date || item.due_date || null
+                                const remainingRaw = item.remaining_amount
+                                const paidFully = (item.status === 'paid' || item.status === 'closed' || (remainingRaw != null && Number(remainingRaw) <= 0.001))
+                                if (rd) {
+                                    const today0 = new Date(); today0.setHours(0, 0, 0, 0)
+                                    const rd0 = new Date(rd); rd0.setHours(0, 0, 0, 0)
+                                    const diffMs = rd0.getTime() - today0.getTime()
+                                    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+                                    const isOverdue = !paidFully && diffDays < 0
+                                    const isDueSoon = !paidFully && diffDays >= 0 && diffDays <= 3
+
+                                    let badgeCls = ''
+                                    let badgeText = ''
+                                    if (paidFully) {
+                                        badgeCls = 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/40'
+                                        badgeText = `To'langan • ${formatDateShort(rd)}`
+                                    } else if (isOverdue) {
+                                        badgeCls = 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40'
+                                        badgeText = `Kechikkan ${Math.abs(diffDays)} kun • ${formatDateShort(rd)}`
+                                    } else if (diffDays === 0) {
+                                        badgeCls = 'bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40'
+                                        badgeText = `Bugun qaytarish • ${formatDateShort(rd)}`
+                                    } else if (isDueSoon) {
+                                        badgeCls = 'bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40'
+                                        badgeText = `${diffDays} kun qoldi • ${formatDateShort(rd)}`
+                                    } else {
+                                        badgeCls = 'bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800/40'
+                                        badgeText = `Qaytish: ${formatDateShort(rd)}`
+                                    }
+
+                                    rdBadge = (
+                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-semibold ${badgeCls}`}>
+                                            <CalendarClock size={10.5} /> {badgeText}
+                                        </span>
+                                    )
+
+                                    const smsStatus = item.return_sms_status || item.sms_status || null
+                                    let smsMeta = null
+                                    if (smsStatus === 'sent') {
+                                        smsMeta = {
+                                            label: 'SMS yuborildi',
+                                            cls: 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/40',
+                                            icon: <CheckCircle2 size={10.5} />
+                                        }
+                                    } else if (smsStatus === 'limit_exceeded') {
+                                        smsMeta = {
+                                            label: 'SMS limiti tugagan',
+                                            cls: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40',
+                                            icon: <BellOff size={10.5} />
+                                        }
+                                    } else if (smsStatus === 'failed') {
+                                        smsMeta = {
+                                            label: 'Yuborilmadi',
+                                            cls: 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40',
+                                            icon: <X size={10.5} />
+                                        }
+                                    } else if (smsStatus === 'pending' || smsStatus === 'queued') {
+                                        smsMeta = {
+                                            label: 'Kutilmoqda',
+                                            cls: 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40',
+                                            icon: <Clock size={10.5} className="animate-pulse" />
+                                        }
+                                    }
+
+                                    if (smsMeta) {
+                                        smsBadge = (
+                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-semibold ${smsMeta.cls}`}>
+                                                {smsMeta.icon} {smsMeta.label}
+                                            </span>
+                                        )
+                                    }
+                                }
+                            }
+
                             return (
                                 <Link
                                     key={`${item.type}-${item.id}-${isSupplier ? 's' : 'c'}`}
                                     to={linkTo}
                                     className="card flex items-center gap-3 py-3 active:scale-[0.99] transition-transform"
                                 >
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${iconClass}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconClass}`}>
                                         <IconA size={20} className={amountClass} />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
                                             {nameText}
                                         </p>
+                                        {(rdBadge || smsBadge) && (
+                                            <div className="flex flex-wrap gap-1.5 mt-1.5 mb-1.5">
+                                                {rdBadge}
+                                                {smsBadge}
+                                            </div>
+                                        )}
                                         <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
                                             <Clock size={12} />
                                             {formatDate(dateVal)}
                                         </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right shrink-0">
                                         <p className={`text-[15px] font-bold ${amountClass}`}>
                                             {isPurchase ? '+' : ''}{formatCurrency(amountVal)}
                                         </p>
                                         <p className="text-[10px] text-gray-400">so'm</p>
                                     </div>
-                                    <ChevronRight size={16} className="text-gray-300 dark:text-gray-600" />
+                                    <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
                                 </Link>
                             )
                         })}

@@ -10,7 +10,8 @@ import toast from 'react-hot-toast'
 import {
     ChevronLeft, MoreVertical, Phone as PhoneIcon, MessageSquare,
     Plus, CreditCard, Loader2, FileText, X, Trash2, Edit2,
-    Wallet, CheckCircle2, Tag
+    Wallet, CheckCircle2, Tag, CalendarDays, AlertTriangle, MessageSquareOff,
+    Clock, Calendar, CalendarClock, BellOff
 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { useSubscription } from '../contexts/SubscriptionContext'
@@ -50,6 +51,7 @@ export default function CustomerDetailPage() {
         amount: '',
         description: '',
         debt_date: '',
+        return_date: '',
         send_sms: false
     })
     const [debtErrors, setDebtErrors] = useState({})
@@ -162,6 +164,29 @@ export default function CustomerDetailPage() {
         const numericAmount = parseCurrency(debtForm.amount)
         if (!numericAmount) return
         const prevBalance = customerBalance
+
+        // Qaytarish sanasi validatsiyasi
+        if (debtForm.return_date) {
+            const effectiveDebtDate = debtForm.debt_date
+                ? new Date(debtForm.debt_date)
+                : new Date()
+            if (new Date(debtForm.return_date) < effectiveDebtDate) {
+                setDebtErrors({
+                    return_date: ['Qaytarish sanasi nasiya sanasidan oldin bo\'lishi mumkin emas']
+                })
+                return
+            }
+        }
+
+        // SMS limit tekshiruvi
+        const isSmsEmpty = sms_remaining != null && Number(sms_remaining) <= 0
+        if (debtForm.send_sms && isSmsEmpty) {
+            setDebtErrors({
+                send_sms: ['SMS limiti tugagan. O\'chiring yoki SMS paketini sotib oling.']
+            })
+            return
+        }
+
         setSubmitting(true)
         setDebtErrors({})
         try {
@@ -170,9 +195,10 @@ export default function CustomerDetailPage() {
                 total_amount: numericAmount,
                 description: debtForm.description || null,
                 debt_date: debtForm.debt_date || null,
+                return_date: debtForm.return_date || null,
                 send_sms: debtForm.send_sms
             })
-            setDebtForm({ amount: '', description: '', debt_date: '', send_sms: false })
+            setDebtForm({ amount: '', description: '', debt_date: '', return_date: '', send_sms: false })
             setDebtErrors({})
             setShowDebtDrawer(false)
             await loadData()
@@ -647,12 +673,63 @@ export default function CustomerDetailPage() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {debts.map(debt => (
+                                {debts.map(debt => {
+                                    // Return date, overdue va SMS status hisoblari
+                                    const rd = debt.return_date || debt.due_date || null
+                                    const today0 = new Date()
+                                    today0.setHours(0, 0, 0, 0)
+                                    let daysLeft = null
+                                    let isOverdue = false
+                                    let isDueSoon = false
+                                    if (rd && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0) {
+                                        const dueDt = new Date(rd)
+                                        dueDt.setHours(0, 0, 0, 0)
+                                        const diffDays = Math.round((dueDt.getTime() - today0.getTime()) / (1000 * 60 * 60 * 24))
+                                        daysLeft = diffDays
+                                        isOverdue = diffDays < 0
+                                        isDueSoon = diffDays >= 0 && diffDays <= 3
+                                    }
+                                    // SMS status (API dan keladi: debt.return_sms_status = sent / failed / limit_exceeded / pending / null)
+                                    const smsStatus = debt.return_sms_status || debt.sms_status || null
+                                    const smsMeta = rd
+                                        ? (smsStatus === 'sent'
+                                            ? { label: 'SMS yuborildi', cls: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100/60 dark:border-emerald-800/30', icon: <CheckCircle2 size={10} /> }
+                                            : smsStatus === 'failed'
+                                                ? { label: 'SMS yuborilmadi', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <X size={10} /> }
+                                                : smsStatus === 'limit_exceeded'
+                                                    ? { label: 'SMS limiti tugagan', cls: 'bg-amber-50 dark:bg-amber-900/15 text-amber-700 dark:text-amber-300 border-amber-100/60 dark:border-amber-800/30', icon: <BellOff size={10} /> }
+                                                    : { label: null, cls: '', icon: null })
+                                        : { label: null, cls: '', icon: null }
+                                    return (
                                     <div key={debt.id} className="card !p-4 border-0 shadow-sm bg-white dark:bg-gray-800">
                                         <div className="flex items-center justify-between mb-4">
-                                            <span className={`badge px-2 py-0.5 rounded-lg text-[11px] ${debt.status === 'closed' ? 'badge-paid' : 'badge-debtor'}`}>
-                                                {debt.status === 'closed' ? 'Yopilgan' : 'Faol'}
-                                            </span>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className={`badge px-2 py-0.5 rounded-lg text-[11px] ${debt.status === 'closed' ? 'badge-paid' : 'badge-debtor'}`}>
+                                                    {debt.status === 'closed' ? 'Yopilgan' : 'Faol'}
+                                                </span>
+                                                {rd && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0 && (
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                                                        isOverdue
+                                                            ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100/60 dark:border-red-800/30'
+                                                            : isDueSoon
+                                                                ? 'bg-amber-50 dark:bg-amber-900/15 text-amber-600 dark:text-amber-400 border-amber-100/60 dark:border-amber-800/30'
+                                                                : 'bg-indigo-50 dark:bg-indigo-900/15 text-indigo-600 dark:text-indigo-400 border-indigo-100/60 dark:border-indigo-800/30'
+                                                    }`}>
+                                                        <CalendarClock size={10} />
+                                                        {isOverdue
+                                                            ? `Kechikkan ${Math.abs(daysLeft)} kun`
+                                                            : isDueSoon
+                                                                ? daysLeft === 0 ? 'Bugun' : `${daysLeft} kun qoldi`
+                                                                : `Qaytish: ${formatDateShort(rd)}`}
+                                                    </span>
+                                                )}
+                                                {smsMeta.label && (
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${smsMeta.cls}`}>
+                                                        {smsMeta.icon}
+                                                        {smsMeta.label}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="text-right">
                                                 <div className="text-[11px] text-gray-400">{formatDate(debt.created_at)}</div>
                                                 {getCreatorName(debt) && (
@@ -714,7 +791,8 @@ export default function CustomerDetailPage() {
                                             Batafsil ko'rish
                                         </Link>
                                     </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
                     </>
@@ -806,7 +884,7 @@ export default function CustomerDetailPage() {
                 setShowDebtDrawer(open)
                 if (!open) {
                     setTimeout(() => {
-                        setDebtForm({ amount: '', description: '', debt_date: '', send_sms: false })
+                        setDebtForm({ amount: '', description: '', debt_date: '', return_date: '', send_sms: false })
                         setDebtErrors({})
                     }, 300)
                 }
@@ -831,6 +909,16 @@ export default function CustomerDetailPage() {
                             </div>
                             <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-4 pb-8">
                                 <form onSubmit={handleAddDebt} className="space-y-4">
+                                    {/* SMS limit tugagan bo'lsa darhol ogohlantirish */}
+                                    {sms_remaining != null && Number(sms_remaining) <= 0 && (
+                                        <div className="p-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/15 dark:border-amber-800/40 text-amber-700 dark:text-amber-200 rounded-2xl text-[13px] flex items-start gap-2">
+                                            <MessageSquareOff size={17} className="text-amber-500 dark:text-amber-300 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="font-bold mb-0.5">SMS limiti tugagan</p>
+                                                <p className="opacity-80 text-[11.5px]">SMS yuborish uchun yangi paket sotib oling</p>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div>
                                         <label className="label">Summa</label>
                                         <div className="relative">
@@ -871,23 +959,46 @@ export default function CustomerDetailPage() {
                                         </div>
                                         {debtErrors.description && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.description[0]}</p>}
                                     </div>
-                                    <div>
-                                        <label className="label">Nasiya sanasi (ixtiyoriy)</label>
-                                        <input
-                                            type="date"
-                                            className={`input ${debtErrors.debt_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
-                                            value={debtForm.debt_date}
-                                            min={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                                            max={new Date().toISOString().split('T')[0]}
-                                            onChange={(e) => {
-                                                setDebtForm({ ...debtForm, debt_date: e.target.value })
-                                                if (debtErrors.debt_date) setDebtErrors({ ...debtErrors, debt_date: null })
-                                            }}
-                                        />
-                                        {debtErrors.debt_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.debt_date[0]}</p>}
-                                        <p className="text-[12px] text-gray-400 mt-1">
-                                            Bo'sh qolsa bugun olinadi. Oxirgi 1 oy ichida.
-                                        </p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="label">Nasiya sanasi</label>
+                                            <input
+                                                type="date"
+                                                className={`input ${debtErrors.debt_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                                                value={debtForm.debt_date}
+                                                min={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                                max={new Date().toISOString().split('T')[0]}
+                                                onChange={(e) => {
+                                                    setDebtForm({ ...debtForm, debt_date: e.target.value })
+                                                    if (debtErrors.debt_date) setDebtErrors({ ...debtErrors, debt_date: null })
+                                                }}
+                                            />
+                                            {debtErrors.debt_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.debt_date[0]}</p>}
+                                            <p className="text-[11px] text-gray-400 mt-1">
+                                                Oxirgi 1 oy ichida
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="label flex items-center gap-1">
+                                                <CalendarDays size={12} className="text-indigo-500" />
+                                                Qaytarish sanasi
+                                            </label>
+                                            <input
+                                                type="date"
+                                                className={`input border-indigo-100 dark:border-indigo-900/40 focus:border-indigo-500 focus:ring-indigo-500/20 ${debtErrors.return_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                                                value={debtForm.return_date}
+                                                min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                                max={new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                                onChange={(e) => {
+                                                    setDebtForm({ ...debtForm, return_date: e.target.value })
+                                                    if (debtErrors.return_date) setDebtErrors({ ...debtErrors, return_date: null })
+                                                }}
+                                            />
+                                            {debtErrors.return_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.return_date[0]}</p>}
+                                            <p className="text-[11px] text-gray-400 mt-1">
+                                                Shu kunda mijozga SMS yuboriladi
+                                            </p>
+                                        </div>
                                     </div>
                                     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl">
                                         <div className="flex-1">
@@ -895,15 +1006,24 @@ export default function CustomerDetailPage() {
                                                 Mijozga SMS yuborish
                                             </label>
                                             <p className="text-[11px] text-gray-400 opacity-80">
-                                                {sms_remaining != null ? `Qolgan SMS: ${sms_remaining} ta` : 'Limitdan keyin balansdan yechiladi.'}
+                                                {sms_remaining != null
+                                                    ? (Number(sms_remaining) <= 0
+                                                        ? <span className="text-amber-600 dark:text-amber-300 font-semibold">⚠️ SMS limiti tugagan</span>
+                                                        : `Qolgan SMS: ${sms_remaining} ta`)
+                                                    : 'Limitdan keyin balansdan yechiladi.'}
                                             </p>
+                                            {debtErrors.send_sms && (
+                                                <p className="text-[11.5px] text-amber-600 dark:text-amber-300 font-semibold mt-1">
+                                                    {debtErrors.send_sms[0]}
+                                                </p>
+                                            )}
                                         </div>
                                         <button
                                             id="customer_send_sms"
                                             type="button"
                                             role="switch"
                                             aria-checked={debtForm.send_sms}
-                                            className="ios-switch"
+                                            className={`ios-switch ${Number(sms_remaining) <= 0 ? 'opacity-70' : ''}`}
                                             data-state={debtForm.send_sms ? 'checked' : 'unchecked'}
                                             onClick={() => setDebtForm({ ...debtForm, send_sms: !debtForm.send_sms })}
                                         >
