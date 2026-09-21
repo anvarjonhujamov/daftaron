@@ -281,7 +281,7 @@ export default function DebtDetailPage() {
                         <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700/80 flex items-start gap-3">
                             {(() => {
                                 const rd = debt.return_date || debt.due_date || null
-                                const smsStatus = debt.return_sms_status || debt.sms_status || null
+                                const smsStatus = debt.return_date_sms_status || debt.return_sms_status || debt.sms_status || null
                                 if (!rd) {
                                     return (
                                         <>
@@ -304,8 +304,8 @@ export default function DebtDetailPage() {
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                                 <p className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">Yuborildi ✅</p>
-                                                {debt.return_sms_sent_at && (
-                                                    <p className="text-[11px] text-gray-400 mt-0.5">{formatDateTime(debt.return_sms_sent_at)}</p>
+                                                {(debt.return_sms_sent_at || debt.return_date_sms_sent_at) && (
+                                                    <p className="text-[11px] text-gray-400 mt-0.5">{formatDateTime(debt.return_sms_sent_at || debt.return_date_sms_sent_at)}</p>
                                                 )}
                                             </div>
                                         </>
@@ -325,6 +325,20 @@ export default function DebtDetailPage() {
                                         </>
                                     )
                                 }
+                                if (smsStatus === 'skipped_limit') {
+                                    return (
+                                        <>
+                                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/40 flex items-center justify-center shrink-0">
+                                                <BellOff size={16} className="text-gray-500 dark:text-gray-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[13px] font-bold text-gray-600 dark:text-gray-300">O'tkazildi</p>
+                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">{debt.return_date_sms_error || debt.return_sms_error || 'Mijoz telefon raqami belgilanmagan'}</p>
+                                            </div>
+                                        </>
+                                    )
+                                }
                                 if (smsStatus === 'failed') {
                                     return (
                                         <>
@@ -333,8 +347,8 @@ export default function DebtDetailPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Yuborilmadi</p>
-                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">{debt.return_sms_error || 'Qayta urinib ko\'ring'}</p>
+                                                <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Yuborilmadi ❌</p>
+                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">{debt.return_date_sms_error || debt.return_sms_error || 'Qayta urinib ko\'ring'}</p>
                                             </div>
                                         </>
                                     )
@@ -353,7 +367,26 @@ export default function DebtDetailPage() {
                                         </>
                                     )
                                 }
-                                // Default: SMS status yo'q yoki return_date hali kelmagan
+                                // smsStatus === null bo'lganda — return_date ga qaraymiz
+                                const today0 = new Date(); today0.setHours(0,0,0,0)
+                                const rd0 = new Date(rd); rd0.setHours(0,0,0,0)
+                                const rdPassedOrDue = rd0.getTime() <= today0.getTime()
+                                if (rdPassedOrDue) {
+                                    // return_date kelib o'tgan lekin status null → hech qanday SMS jo'natilmagan / backend statusi yozilmagan
+                                    return (
+                                        <>
+                                            <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0">
+                                                <AlertTriangle size={16} className="text-red-500" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Yuborilmagan</p>
+                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasi o'tib ketgan, SMS holati backenddan yuklanmadi.</p>
+                                            </div>
+                                        </>
+                                    )
+                                }
+                                // return_date hali kelmagan (kelajakda)
                                 return (
                                     <>
                                         <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/40 flex items-center justify-center shrink-0">

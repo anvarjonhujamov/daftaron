@@ -689,16 +689,24 @@ export default function CustomerDetailPage() {
                                         isOverdue = diffDays < 0
                                         isDueSoon = diffDays >= 0 && diffDays <= 3
                                     }
-                                    // SMS status (API dan keladi: debt.return_sms_status = sent / failed / limit_exceeded / pending / null)
-                                    const smsStatus = debt.return_sms_status || debt.sms_status || null
-                                    const smsMeta = rd
+                                    // SMS status (API dan keladi: debt.return_date_sms_status / return_sms_status = sent / failed / limit_exceeded / skipped_limit / pending / queued / null)
+                                    const smsStatus = debt.return_date_sms_status || debt.return_sms_status || debt.sms_status || null
+                                    const rd0 = rd ? (() => { const d = new Date(rd); d.setHours(0,0,0,0); return d.getTime() })() : null
+                                    const rdPassed = rd0 != null && rd0 <= today0.getTime()
+                                    let smsMeta = rd
                                         ? (smsStatus === 'sent'
                                             ? { label: 'SMS yuborildi', cls: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100/60 dark:border-emerald-800/30', icon: <CheckCircle2 size={10} /> }
                                             : smsStatus === 'failed'
                                                 ? { label: 'SMS yuborilmadi', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <X size={10} /> }
                                                 : smsStatus === 'limit_exceeded'
                                                     ? { label: 'SMS limiti tugagan', cls: 'bg-amber-50 dark:bg-amber-900/15 text-amber-700 dark:text-amber-300 border-amber-100/60 dark:border-amber-800/30', icon: <BellOff size={10} /> }
-                                                    : { label: null, cls: '', icon: null })
+                                                    : smsStatus === 'skipped_limit'
+                                                        ? { label: 'O\'tkazildi', cls: 'bg-gray-50 dark:bg-gray-700/40 text-gray-600 dark:text-gray-300 border-gray-100/60 dark:border-gray-600/40', icon: <BellOff size={10} /> }
+                                                        : smsStatus === 'pending' || smsStatus === 'queued'
+                                                            ? { label: 'Kutilmoqda', cls: 'bg-blue-50 dark:bg-blue-900/15 text-blue-700 dark:text-blue-300 border-blue-100/60 dark:border-blue-800/30', icon: <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> }
+                                                            : smsStatus == null && rdPassed
+                                                                ? { label: 'Yuborilmagan', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <AlertTriangle size={10} /> }
+                                                                : { label: null, cls: '', icon: null })
                                         : { label: null, cls: '', icon: null }
                                     return (
                                     <div key={debt.id} className="card !p-4 border-0 shadow-sm bg-white dark:bg-gray-800">

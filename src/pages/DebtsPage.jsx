@@ -7,7 +7,7 @@ import { suppliersApi } from '../api/suppliers.api'
 import {
     Calendar, ArrowUpRight, ArrowDownRight,
     ChevronRight, History, Receipt, Clock, X, ChevronLeft, Users, Package,
-    CalendarDays, CalendarClock, CheckCircle2, BellOff
+    CalendarDays, CalendarClock, CheckCircle2, BellOff, AlertTriangle
 } from 'lucide-react'
 import { Drawer } from 'vaul'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -811,7 +811,8 @@ export default function DebtsPage() {
                                         </span>
                                     )
 
-                                    const smsStatus = item.return_sms_status || item.sms_status || null
+                                    const smsStatus = item.return_date_sms_status || item.return_sms_status || item.sms_status || null
+                                    const rdPassed = rd0.getTime() <= today0.getTime()
                                     let smsMeta = null
                                     if (smsStatus === 'sent') {
                                         smsMeta = {
@@ -825,6 +826,12 @@ export default function DebtsPage() {
                                             cls: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40',
                                             icon: <BellOff size={10.5} />
                                         }
+                                    } else if (smsStatus === 'skipped_limit') {
+                                        smsMeta = {
+                                            label: 'O\'tkazildi',
+                                            cls: 'bg-gray-50 text-gray-600 border border-gray-100 dark:bg-gray-700/40 dark:text-gray-300 dark:border-gray-600/40',
+                                            icon: <BellOff size={10.5} />
+                                        }
                                     } else if (smsStatus === 'failed') {
                                         smsMeta = {
                                             label: 'Yuborilmadi',
@@ -836,6 +843,12 @@ export default function DebtsPage() {
                                             label: 'Kutilmoqda',
                                             cls: 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40',
                                             icon: <Clock size={10.5} className="animate-pulse" />
+                                        }
+                                    } else if (smsStatus == null && rdPassed) {
+                                        smsMeta = {
+                                            label: 'Yuborilmagan',
+                                            cls: 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40',
+                                            icon: <AlertTriangle size={10.5} />
                                         }
                                     }
 
