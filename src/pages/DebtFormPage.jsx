@@ -6,29 +6,7 @@ import { ArrowLeft, CalendarDays, AlertTriangle, MessageSquareOff } from 'lucide
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { useSubscription } from '../contexts/SubscriptionContext'
-
-const getToday = () => {
-    const d = new Date()
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-const getMonthAgo = () => {
-    const d = new Date()
-    d.setMonth(d.getMonth() - 1)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-const getMonthLater = () => {
-    const d = new Date()
-    d.setMonth(d.getMonth() + 3)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-const getTomorrow = () => {
-    const d = new Date()
-    d.setDate(d.getDate() + 1)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+import { todayYmd, addMonthsYmd } from '../utils/date'
 
 export default function DebtFormPage() {
     const navigate = useNavigate()
@@ -39,7 +17,7 @@ export default function DebtFormPage() {
         customer_id: preselectedCustomerId || '',
         total_amount: '',
         description: '',
-        debt_date: getToday(),
+        debt_date: todayYmd(),
         return_date: '',
         send_sms: false
     })
@@ -47,6 +25,7 @@ export default function DebtFormPage() {
     const [loading, setLoading] = useState(false)
     const [loadingCustomers, setLoadingCustomers] = useState(true)
     const [error, setError] = useState('')
+    const [fieldErrors, setFieldErrors] = useState({})
     const { sms_remaining, status } = useSubscription()
 
     const isSmsLimitEmpty = useMemo(() => {
@@ -84,11 +63,18 @@ export default function DebtFormPage() {
         e.preventDefault()
         setLoading(true)
         setError('')
+        setFieldErrors({})
 
-        // Qaytarish sanasi nasiya sanasidan kichik bo'lmasligi kerak
-        if (form.return_date && form.debt_date) {
-            if (new Date(form.return_date) < new Date(form.debt_date)) {
-                setError('Qaytarish sanasi nasiya sanasidan oldin bo\'lishi mumkin emas')
+        // "YYYY-MM-DD" satrlarini to'g'ridan-to'g'ri solishtiramiz (new Date() UTC bilan adashtiradi)
+        if (form.return_date) {
+            const today = todayYmd()
+            if (form.return_date < today) {
+                setFieldErrors({ return_date: ['Qaytarish sanasi bugundan oldin bo\'lishi mumkin emas'] })
+                setLoading(false)
+                return
+            }
+            if (form.debt_date && form.return_date < form.debt_date) {
+                setFieldErrors({ return_date: ['Qaytarish sanasi nasiya sanasidan oldin bo\'lishi mumkin emas'] })
                 setLoading(false)
                 return
             }
@@ -119,8 +105,12 @@ export default function DebtFormPage() {
                 navigate('/debts')
             }
         } catch (err) {
-            const msg = err.response?.data?.message || 'Xatolik yuz berdi'
-            setError(msg)
+            const errors = err.response?.status === 422 ? err.response?.data?.errors : null
+            if (errors && (errors.return_date || errors.debt_date)) {
+                setFieldErrors(errors)
+            } else {
+                setError(err.response?.data?.message || 'Xatolik yuz berdi')
+            }
         } finally {
             setLoading(false)
         }
@@ -226,12 +216,16 @@ export default function DebtFormPage() {
                             <label className="label">Nasiya sanasi</label>
                             <input
                                 type="date"
-                                className="input"
+                                className={`input ${fieldErrors.debt_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                                 value={form.debt_date}
-                                max={getToday()}
-                                min={getMonthAgo()}
-                                onChange={(e) => setForm({ ...form, debt_date: e.target.value })}
+                                max={todayYmd()}
+                                min={addMonthsYmd(todayYmd(), -1)}
+                                onChange={(e) => {
+                                    setForm({ ...form, debt_date: e.target.value })
+                                    if (fieldErrors.debt_date) setFieldErrors({ ...fieldErrors, debt_date: null })
+                                }}
                             />
+                            {fieldErrors.debt_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{fieldErrors.debt_date[0]}</p>}
                             <p className="text-[12px] text-gray-400 mt-1">
                                 Bo'sh qolsa bugungi sana olinadi. Oxirgi 1 oy ichida.
                             </p>
@@ -239,19 +233,21 @@ export default function DebtFormPage() {
                         <div>
                             <label className="label flex items-center gap-1.5">
                                 <CalendarDays size={13} className="text-indigo-500" />
-                                Qaytarish sanasi
+                                Qaytarish sanasi (ixtiyoriy)
                             </label>
                             <input
                                 type="date"
-                                className="input border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                className={`input border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500/20 ${fieldErrors.return_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                                 value={form.return_date}
-                                min={getTomorrow()}
-                                max={getMonthLater()}
-                                onChange={(e) => setForm({ ...form, return_date: e.target.value })}
+                                min={todayYmd()}
+                                onChange={(e) => {
+                                    setForm({ ...form, return_date: e.target.value })
+                                    if (fieldErrors.return_date) setFieldErrors({ ...fieldErrors, return_date: null })
+                                }}
                             />
+                            {fieldErrors.return_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{fieldErrors.return_date[0]}</p>}
                             <p className="text-[12px] text-gray-400 mt-1">
-                                Tanlansa, shu sanada mijozga avtomatik SMS yuboriladi.
-                                1-90 kun oralig'ida bo'lishi kerak.
+                                Shu kuni soat 09:00 da mijozga SMS eslatma boriladi
                             </p>
                         </div>
                     </div>

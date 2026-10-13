@@ -22,8 +22,8 @@ plugins {
 
 def twaManifest = [
     applicationId: 'app.vercel.daftaron.twa',
-    hostName: 'daftaron.vercel.app', // The domain being opened in the TWA.
-    launchUrl: 'https://daftaron.vercel.app/', // The start path for the TWA. Must be relative to the domain.
+    hostName: 'web.daftaron.uz', // The domain being opened in the TWA.
+    launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
     name: 'Daftaron', // The application name.
     launcherName: 'Daftaron', // The name shown on the Android Launcher.
     themeColor: '#FFFFFF', // The color used for the status bar.
@@ -76,12 +76,12 @@ android {
             // The URL the Web Manifest for the Progressive Web App that the TWA points to. This
             // is used by Chrome OS and Meta Quest to open the Web version of the PWA instead of
             // the TWA, as it will probably give a better user experience for non-mobile devices.
-            resValue "string", "webManifestUrl", 'https://daftaron.vercel.app/manifest.webmanifest'
+            resValue "string", "webManifestUrl", 'https://web.daftaron.uz/manifest.webmanifest'
         
 
         
             // This is used by Meta Quest.
-            resValue "string", "fullScopeUrl", 'https://daftaron.vercel.app/'
+            resValue "string", "fullScopeUrl", 'https://web.daftaron.uz/'
         
 
         

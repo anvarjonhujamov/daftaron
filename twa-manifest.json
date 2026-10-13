@@ -1,6 +1,6 @@
 {
   "packageId": "app.vercel.daftaron.twa",
-  "host": "daftaron.vercel.app",
+  "host": "web.daftaron.uz",
   "name": "Daftaron",
   "launcherName": "Daftaron",
   "display": "standalone",
@@ -12,9 +12,9 @@
   "navigationDividerColorDark": "#000000",
   "backgroundColor": "#7CC0FF",
   "enableNotifications": true,
-  "startUrl": "https://daftaron.vercel.app/",
-  "iconUrl": "https://daftaron.vercel.app/pwa-512x512.png",
-  "maskableIconUrl": "https://daftaron.vercel.app/pwa-512x512.png",
+  "startUrl": "/",
+  "iconUrl": "https://web.daftaron.uz/pwa-512x512.png",
+  "maskableIconUrl": "https://web.daftaron.uz/pwa-512x512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "D:\\WORK\\daftaron\\android.keystore",
@@ -24,7 +24,7 @@
   "appVersionCode": 1,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://daftaron.vercel.app/manifest.webmanifest",
+  "webManifestUrl": "https://web.daftaron.uz/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {
     "playBilling": {
@@ -37,7 +37,7 @@
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://daftaron.vercel.app/",
+  "fullScopeUrl": "https://web.daftaron.uz/",
   "minSdkVersion": 21,
   "orientation": "portrait",
   "fingerprints": [],

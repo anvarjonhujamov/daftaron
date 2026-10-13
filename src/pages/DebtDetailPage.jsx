@@ -6,11 +6,12 @@ import {
     Clock, CheckCircle2, Trash2, ArrowLeft,
     FileText, Calendar, ChevronRight, CreditCard,
     Wallet, Tag, CalendarDays, CalendarClock, BellOff,
-    X, AlertTriangle
+    X, AlertTriangle, Edit2
 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { CustomerDetailSkeleton } from '../components/Skeleton'
-import { formatCurrency } from '../utils/format'
+import { formatCurrency, parseCurrency } from '../utils/format'
+import { todayYmd, toYmd, diffDaysYmd } from '../utils/date'
 import EmptyState from '../components/EmptyState'
 import toast from 'react-hot-toast'
 import { useSubscription } from '../contexts/SubscriptionContext'
@@ -29,6 +30,10 @@ export default function DebtDetailPage() {
     const { status: subStatus, remaining } = useSubscription()
     const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
     const [isStaff, setIsStaff] = useState(false)
+    const [showEditDrawer, setShowEditDrawer] = useState(false)
+    // returnDateTouched: foydalanuvchi qaytarish sanasiga tegmasa, kalit umuman yuborilmaydi (sana o'zgarmaydi)
+    const [editForm, setEditForm] = useState({ amount: '', description: '', return_date: '', returnDateTouched: false })
+    const [editErrors, setEditErrors] = useState({})
 
     useEffect(() => {
         loadData()
@@ -97,6 +102,58 @@ export default function DebtDetailPage() {
         }
     }
 
+    const openEditDrawer = () => {
+        if (subStatus === 'expired') {
+            setShowBlockedDrawer(true)
+            return
+        }
+        setEditForm({
+            amount: formatCurrency(debt.total_amount),
+            description: debt.description || '',
+            return_date: toYmd(debt.return_date),
+            returnDateTouched: false
+        })
+        setEditErrors({})
+        setShowEditDrawer(true)
+    }
+
+    const handleUpdateDebt = async (e) => {
+        e.preventDefault()
+        const numericAmount = parseCurrency(editForm.amount)
+        if (!numericAmount) return
+
+        if (editForm.returnDateTouched && editForm.return_date && editForm.return_date < todayYmd()) {
+            setEditErrors({ return_date: ['Qaytarish sanasi bugundan oldin bo\'lishi mumkin emas'] })
+            return
+        }
+
+        const payload = {
+            customer_id: debt.customer_id ?? debt.customer?.id,
+            total_amount: numericAmount,
+            description: editForm.description || null
+        }
+        if (editForm.returnDateTouched) {
+            payload.return_date = editForm.return_date || null
+        }
+
+        setSubmitting(true)
+        setEditErrors({})
+        try {
+            await debtsApi.updateDebt(id, payload)
+            toast.success('Nasiya yangilandi')
+            setShowEditDrawer(false)
+            loadData()
+        } catch (err) {
+            if (err.response?.status === 422 && err.response?.data?.errors) {
+                setEditErrors(err.response.data.errors)
+            } else {
+                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+            }
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
     const handleDeleteDebt = async () => {
         if (isStaff) {
             toast.error("Xodim nasiyani o'chira olmaydi")
@@ -120,12 +177,11 @@ export default function DebtDetailPage() {
         }
     }
 
+    // debt_date UTC ISO keladi ("2026-09-07T19:00:00Z" = Toshkentda 08.09) -> toYmd orqali Toshkentga o'tkaziladi
     const formatDate = (dateString) => {
-        if (!dateString) return ''
-        const date = new Date(dateString)
-        const mm = String(date.getMonth() + 1).padStart(2, '0')
-        const dd = String(date.getDate()).padStart(2, '0')
-        const yyyy = date.getFullYear()
+        const ymd = toYmd(dateString)
+        if (!ymd) return ''
+        const [yyyy, mm, dd] = ymd.split('-')
         return `${mm}/${dd}/${yyyy}`
     }
 
@@ -245,14 +301,10 @@ export default function DebtDetailPage() {
                                 <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish sanasi</p>
                                 {(() => {
                                     const rd = debt.return_date || debt.due_date || null
-                                    const today0 = new Date()
-                                    today0.setHours(0, 0, 0, 0)
                                     if (!rd) {
                                         return <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Belgilanmagan</p>
                                     }
-                                    const dueDt = new Date(rd)
-                                    dueDt.setHours(0, 0, 0, 0)
-                                    const diffDays = Math.round((dueDt.getTime() - today0.getTime()) / (1000 * 60 * 60 * 24))
+                                    const diffDays = diffDaysYmd(toYmd(rd), todayYmd())
                                     const isOverdue = diffDays < 0 && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0
                                     const isDueSoon = diffDays >= 0 && diffDays <= 3 && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0
                                     const isPaid = debt.status === 'closed' || Number(debt.remaining_amount || 0) === 0
@@ -303,7 +355,7 @@ export default function DebtDetailPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">Yuborildi ✅</p>
+                                                <p className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">Yuborildi</p>
                                                 {(debt.return_sms_sent_at || debt.return_date_sms_sent_at) && (
                                                     <p className="text-[11px] text-gray-400 mt-0.5">{formatDateTime(debt.return_sms_sent_at || debt.return_date_sms_sent_at)}</p>
                                                 )}
@@ -311,7 +363,7 @@ export default function DebtDetailPage() {
                                         </>
                                     )
                                 }
-                                if (smsStatus === 'limit_exceeded') {
+                                if (smsStatus === 'limit_exceeded' || smsStatus === 'skipped_limit') {
                                     return (
                                         <>
                                             <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
@@ -319,22 +371,12 @@ export default function DebtDetailPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-amber-600 dark:text-amber-300">⚠️ SMS limiti tugagan</p>
-                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">SMS yuborib bo'lmadi. Paketni sotib oling va qayta jo'nating.</p>
-                                            </div>
-                                        </>
-                                    )
-                                }
-                                if (smsStatus === 'skipped_limit') {
-                                    return (
-                                        <>
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/40 flex items-center justify-center shrink-0">
-                                                <BellOff size={16} className="text-gray-500 dark:text-gray-400" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-gray-600 dark:text-gray-300">O'tkazildi</p>
-                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">{debt.return_date_sms_error || debt.return_sms_error || 'Mijoz telefon raqami belgilanmagan'}</p>
+                                                <p className="text-[13px] font-bold text-amber-600 dark:text-amber-300">SMS limiti tugagan</p>
+                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">
+                                                    {(debt.return_date_sms_error || debt.return_sms_error) === 'customer_phone_missing'
+                                                        ? 'Mijoz telefon raqami belgilanmagan'
+                                                        : 'SMS yuborib bo\'lmadi. Paketni sotib oling va qayta jo\'nating.'}
+                                                </p>
                                             </div>
                                         </>
                                     )
@@ -347,7 +389,7 @@ export default function DebtDetailPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Yuborilmadi ❌</p>
+                                                <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Xato</p>
                                                 <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">{debt.return_date_sms_error || debt.return_sms_error || 'Qayta urinib ko\'ring'}</p>
                                             </div>
                                         </>
@@ -361,16 +403,14 @@ export default function DebtDetailPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-blue-600 dark:text-blue-400">Kutilmoqda ⏳</p>
-                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">Belgilangan kunda yuboriladi</p>
+                                                <p className="text-[13px] font-bold text-blue-600 dark:text-blue-400">Kutilmoqda</p>
+                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">Qaytarish kuni soat 09:00 da yuboriladi</p>
                                             </div>
                                         </>
                                     )
                                 }
                                 // smsStatus === null bo'lganda — return_date ga qaraymiz
-                                const today0 = new Date(); today0.setHours(0,0,0,0)
-                                const rd0 = new Date(rd); rd0.setHours(0,0,0,0)
-                                const rdPassedOrDue = rd0.getTime() <= today0.getTime()
+                                const rdPassedOrDue = toYmd(rd) <= todayYmd()
                                 if (rdPassedOrDue) {
                                     // return_date kelib o'tgan lekin status null → hech qanday SMS jo'natilmagan / backend statusi yozilmagan
                                     return (
@@ -411,6 +451,16 @@ export default function DebtDetailPage() {
                     </div>
                     {!isStaff && (
                         <div className="flex gap-2">
+                            {debt.status === 'open' && (
+                                <button
+                                    onClick={openEditDrawer}
+                                    disabled={submitting}
+                                    aria-label="Tahrirlash"
+                                    className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-blue-500 active:scale-95 transition-transform"
+                                >
+                                    <Edit2 size={18} />
+                                </button>
+                            )}
                             {debt.status === 'open' && (
                                 <button
                                     onClick={handleCloseDebt}
@@ -545,6 +595,97 @@ export default function DebtDetailPage() {
                     </div>
                 </div>
             )}
+            {/* Edit Debt Drawer */}
+            <Drawer.Root open={showEditDrawer} onOpenChange={setShowEditDrawer} repositionInputs={false}>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
+                        <div className="p-4">
+                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+                            <div className="flex items-center justify-between mb-4">
+                                <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
+                                    Nasiyani tahrirlash
+                                </Drawer.Title>
+                                <button onClick={() => setShowEditDrawer(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                    <X size={18} className="text-gray-500" />
+                                </button>
+                            </div>
+                            <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-4 pb-8">
+                                <form onSubmit={handleUpdateDebt} className="space-y-4">
+                                    <div>
+                                        <label className="label">Summa</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            className={`input ${editErrors.total_amount ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                                            value={editForm.amount}
+                                            onChange={(e) => {
+                                                const digits = e.target.value.replace(/\D/g, '')
+                                                setEditForm({ ...editForm, amount: digits ? formatCurrency(digits) : '' })
+                                                if (editErrors.total_amount) setEditErrors({ ...editErrors, total_amount: null })
+                                            }}
+                                            required
+                                        />
+                                        {editErrors.total_amount && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{editErrors.total_amount[0]}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="label">Izoh (ixtiyoriy)</label>
+                                        <textarea
+                                            className={`input min-h-[80px] resize-none ${editErrors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                                            maxLength={500}
+                                            value={editForm.description}
+                                            onChange={(e) => {
+                                                setEditForm({ ...editForm, description: e.target.value })
+                                                if (editErrors.description) setEditErrors({ ...editErrors, description: null })
+                                            }}
+                                        />
+                                        {editErrors.description && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{editErrors.description[0]}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="label flex items-center gap-1">
+                                            <CalendarDays size={12} className="text-indigo-500" />
+                                            Qaytarish sanasi (ixtiyoriy)
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="date"
+                                                className={`input flex-1 border-indigo-100 dark:border-indigo-900/40 focus:border-indigo-500 focus:ring-indigo-500/20 ${editErrors.return_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+                                                value={editForm.return_date}
+                                                // Eski (o'tgan) sanaga tegilmagan bo'lsa min qo'ymaymiz, aks holda forma submit bo'lmaydi
+                                                min={editForm.returnDateTouched || !editForm.return_date || editForm.return_date >= todayYmd() ? todayYmd() : undefined}
+                                                onChange={(e) => {
+                                                    setEditForm({ ...editForm, return_date: e.target.value, returnDateTouched: true })
+                                                    if (editErrors.return_date) setEditErrors({ ...editErrors, return_date: null })
+                                                }}
+                                            />
+                                            {editForm.return_date && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditForm({ ...editForm, return_date: '', returnDateTouched: true })
+                                                        if (editErrors.return_date) setEditErrors({ ...editErrors, return_date: null })
+                                                    }}
+                                                    className="px-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-[13px] font-semibold text-gray-600 dark:text-gray-300"
+                                                >
+                                                    Tozalash
+                                                </button>
+                                            )}
+                                        </div>
+                                        {editErrors.return_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{editErrors.return_date[0]}</p>}
+                                        <p className="text-[11px] text-gray-400 mt-1">
+                                            Shu kuni soat 09:00 da mijozga SMS eslatma boriladi
+                                        </p>
+                                    </div>
+                                    <button type="submit" className="btn btn-primary w-full" disabled={submitting}>
+                                        {submitting ? <LoadingSpinner size="sm" /> : 'Saqlash'}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
+
             {/* Blocked Action Drawer */}
             <Drawer.Root open={showBlockedDrawer} onOpenChange={setShowBlockedDrawer}>
                 <Drawer.Portal>

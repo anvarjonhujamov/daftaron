@@ -16,7 +16,10 @@ import {
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { useSubscription } from '../contexts/SubscriptionContext'
 import { CustomerDetailSkeleton } from '../components/Skeleton'
+import { todayYmd, addMonthsYmd } from '../utils/date'
 import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
+
+const emptyDebtForm = () => ({ amount: '', description: '', debt_date: todayYmd(), return_date: '', send_sms: false })
 
 const pickAnyNum = (obj, keyGroups, fallback = null) => {
     if (!obj || typeof obj !== 'object') return fallback
@@ -47,13 +50,7 @@ export default function CustomerDetailPage() {
     const [showOptionsDrawer, setShowOptionsDrawer] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [submitting, setSubmitting] = useState(false)
-    const [debtForm, setDebtForm] = useState({
-        amount: '',
-        description: '',
-        debt_date: '',
-        return_date: '',
-        send_sms: false
-    })
+    const [debtForm, setDebtForm] = useState(emptyDebtForm)
     const [debtErrors, setDebtErrors] = useState({})
     // Umumiy to'lov (tegirmaki yashil tugma)
     const [genericPaymentForm, setGenericPaymentForm] = useState({ amount: '', description: '', paid_at: '', send_sms: false })
@@ -165,12 +162,16 @@ export default function CustomerDetailPage() {
         if (!numericAmount) return
         const prevBalance = customerBalance
 
-        // Qaytarish sanasi validatsiyasi
+        // Qaytarish sanasi validatsiyasi ("YYYY-MM-DD" satrlari to'g'ridan-to'g'ri solishtiriladi)
         if (debtForm.return_date) {
-            const effectiveDebtDate = debtForm.debt_date
-                ? new Date(debtForm.debt_date)
-                : new Date()
-            if (new Date(debtForm.return_date) < effectiveDebtDate) {
+            const effectiveDebtDate = debtForm.debt_date || todayYmd()
+            if (debtForm.return_date < todayYmd()) {
+                setDebtErrors({
+                    return_date: ['Qaytarish sanasi bugundan oldin bo\'lishi mumkin emas']
+                })
+                return
+            }
+            if (debtForm.return_date < effectiveDebtDate) {
                 setDebtErrors({
                     return_date: ['Qaytarish sanasi nasiya sanasidan oldin bo\'lishi mumkin emas']
                 })
@@ -198,7 +199,7 @@ export default function CustomerDetailPage() {
                 return_date: debtForm.return_date || null,
                 send_sms: debtForm.send_sms
             })
-            setDebtForm({ amount: '', description: '', debt_date: '', return_date: '', send_sms: false })
+            setDebtForm(emptyDebtForm())
             setDebtErrors({})
             setShowDebtDrawer(false)
             await loadData()
@@ -892,7 +893,7 @@ export default function CustomerDetailPage() {
                 setShowDebtDrawer(open)
                 if (!open) {
                     setTimeout(() => {
-                        setDebtForm({ amount: '', description: '', debt_date: '', return_date: '', send_sms: false })
+                        setDebtForm(emptyDebtForm())
                         setDebtErrors({})
                     }, 300)
                 }
@@ -974,8 +975,8 @@ export default function CustomerDetailPage() {
                                                 type="date"
                                                 className={`input ${debtErrors.debt_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                                 value={debtForm.debt_date}
-                                                min={new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                                                max={new Date().toISOString().split('T')[0]}
+                                                min={addMonthsYmd(todayYmd(), -1)}
+                                                max={todayYmd()}
                                                 onChange={(e) => {
                                                     setDebtForm({ ...debtForm, debt_date: e.target.value })
                                                     if (debtErrors.debt_date) setDebtErrors({ ...debtErrors, debt_date: null })
@@ -989,14 +990,13 @@ export default function CustomerDetailPage() {
                                         <div>
                                             <label className="label flex items-center gap-1">
                                                 <CalendarDays size={12} className="text-indigo-500" />
-                                                Qaytarish sanasi
+                                                Qaytarish sanasi (ixtiyoriy)
                                             </label>
                                             <input
                                                 type="date"
                                                 className={`input border-indigo-100 dark:border-indigo-900/40 focus:border-indigo-500 focus:ring-indigo-500/20 ${debtErrors.return_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                                 value={debtForm.return_date}
-                                                min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                                                max={new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                                min={todayYmd()}
                                                 onChange={(e) => {
                                                     setDebtForm({ ...debtForm, return_date: e.target.value })
                                                     if (debtErrors.return_date) setDebtErrors({ ...debtErrors, return_date: null })
@@ -1004,7 +1004,7 @@ export default function CustomerDetailPage() {
                                             />
                                             {debtErrors.return_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.return_date[0]}</p>}
                                             <p className="text-[11px] text-gray-400 mt-1">
-                                                Shu kunda mijozga SMS yuboriladi
+                                                Shu kuni soat 09:00 da mijozga SMS eslatma boriladi
                                             </p>
                                         </div>
                                     </div>
@@ -1201,7 +1201,7 @@ export default function CustomerDetailPage() {
                                             type="date"
                                             className={`input ${genericPaymentErrors.paid_at ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                             value={genericPaymentForm.paid_at}
-                                            max={new Date().toISOString().split('T')[0]}
+                                            max={todayYmd()}
                                             onChange={(e) => {
                                                 setGenericPaymentForm({ ...genericPaymentForm, paid_at: e.target.value })
                                                 if (genericPaymentErrors.paid_at) setGenericPaymentErrors({ ...genericPaymentErrors, paid_at: null })
@@ -1362,7 +1362,7 @@ export default function CustomerDetailPage() {
                                             type="date"
                                             className={`input ${debtPaymentErrors.paid_at ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                             value={debtPaymentForm.paid_at}
-                                            max={new Date().toISOString().split('T')[0]}
+                                            max={todayYmd()}
                                             onChange={(e) => {
                                                 setDebtPaymentForm({ ...debtPaymentForm, paid_at: e.target.value })
                                                 if (debtPaymentErrors.paid_at) setDebtPaymentErrors({ ...debtPaymentErrors, paid_at: null })

@@ -39,7 +39,22 @@ export const debtsApi = {
     },
 
     updateDebt: async (id, data) => {
-        const response = await api.put(`/debts/${id}`, data)
+        const payload = {
+            customer_id: data.customer_id,
+            total_amount: data.total_amount
+        }
+        if ('description' in data) {
+            payload.description = data.description || null
+        }
+        if (data.debt_date) {
+            payload.debt_date = data.debt_date
+        }
+        // return_date: kalit yo'q -> sana o'zgarmaydi, null -> o'chiriladi, "YYYY-MM-DD" -> yangi sana
+        if ('return_date' in data) {
+            payload.return_date = data.return_date || null
+        }
+
+        const response = await api.put(`/debts/${id}`, payload)
         return response.data
     },
 
