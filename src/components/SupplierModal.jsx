@@ -143,7 +143,7 @@ export default function SupplierModal({ isOpen, onClose, onSave, supplier }) {
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-[11px] text-gray-400 ml-1">
+                                    <p className="text-[12px] text-gray-400 ml-1">
                                         Qo'ng'iroq qilish uchun asosiy raqam.
                                     </p>
                                 </div>

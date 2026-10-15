@@ -561,16 +561,16 @@ export default function SupplierDetailPage() {
                             <div className="flex-1 min-w-0 pt-0.5 text-left">
                                 <h1 className="text-[16.5px] font-bold text-gray-900 dark:text-white mb-0.5 leading-tight truncate">{supplier.name}</h1>
                                 {supplier.company_name && supplier.company_name !== supplier.name && (
-                                    <p className="text-gray-400 dark:text-gray-500 text-[11px] font-medium mb-0.5 truncate">{supplier.company_name}</p>
+                                    <p className="text-gray-400 dark:text-gray-500 text-[12px] font-medium mb-0.5 truncate">{supplier.company_name}</p>
                                 )}
-                                <p className="text-gray-400 dark:text-gray-500 text-[11.5px] font-semibold">{supplier.phone ? formatPhone(supplier.phone) : ''}</p>
+                                <p className="text-gray-400 dark:text-gray-500 text-[12px] font-semibold">{supplier.phone ? formatPhone(supplier.phone) : ''}</p>
                             </div>
                         </div>
                         <div className="col-span-2 flex flex-col items-end justify-center text-right min-w-0">
                             <div className={`text-[20px] font-extrabold tracking-tight leading-none mb-1 ${
                                 hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-600 dark:text-gray-300'
                             }`}>
-                                {formatCurrency(absBalance)}<span className="text-[10px] font-bold opacity-70 ml-0.5">so'm</span>
+                                {formatCurrency(absBalance)}<span className="text-[11px] font-bold opacity-70 ml-0.5">so'm</span>
                             </div>
                             <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap ${
                                 hasDebt
@@ -591,8 +591,8 @@ export default function SupplierDetailPage() {
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0"><User size={12} className="text-gray-500" /></div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Mas'ul</p>
-                                            <p className="text-[11.5px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{supplier.contact_person}</p>
+                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Mas'ul</p>
+                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{supplier.contact_person}</p>
                                         </div>
                                     </div>
                                 )}
@@ -600,8 +600,8 @@ export default function SupplierDetailPage() {
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0"><Hash size={12} className="text-gray-500" /></div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">INN</p>
-                                            <p className="text-[11.5px] font-semibold text-gray-900 dark:text-white leading-tight font-mono truncate">{supplier.inn}</p>
+                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">INN</p>
+                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight font-mono truncate">{supplier.inn}</p>
                                         </div>
                                     </div>
                                 )}
@@ -609,8 +609,8 @@ export default function SupplierDetailPage() {
                                     <div className="flex items-center gap-1.5 min-w-0">
                                         <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0"><RefreshCw size={12} className="text-gray-500" /></div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Sana</p>
-                                            <p className="text-[11px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{formatDateShort(supplier.created_at)}</p>
+                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Sana</p>
+                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{formatDateShort(supplier.created_at)}</p>
                                         </div>
                                     </div>
                                 )}
@@ -618,8 +618,8 @@ export default function SupplierDetailPage() {
                                     <div className="flex items-start gap-1.5 min-w-0 sm:col-span-2">
                                         <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0 mt-0.5"><MapPin size={12} className="text-gray-500" /></div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Manzil</p>
-                                            <p className="text-[11.5px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.address}</p>
+                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Manzil</p>
+                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.address}</p>
                                         </div>
                                     </div>
                                 )}
@@ -627,8 +627,8 @@ export default function SupplierDetailPage() {
                                     <div className={`flex items-start gap-1.5 min-w-0 ${supplier.address ? 'sm:col-span-1' : 'col-span-2 sm:col-span-3'}`}>
                                         <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0 mt-0.5"><FileText size={12} className="text-gray-500" /></div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Izoh</p>
-                                            <p className="text-[11.5px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.note}</p>
+                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Izoh</p>
+                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.note}</p>
                                         </div>
                                     </div>
                                 )}
@@ -702,20 +702,20 @@ export default function SupplierDetailPage() {
             <div className="px-4 mt-3.5">
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">Operatsiyalar tarixi</h2>
-                    <span className="text-[11px] text-gray-400">
+                    <span className="text-[12px] text-gray-400">
                         {historyTab === 'all' ? `${allMovements.length} ta`
                             : historyTab === 'purchases' ? `${purchases.length} ta xarid`
                                 : `${payments.length} ta to'lov`}
                     </span>
                 </div>
                 <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-3">
-                    <button type="button" onClick={() => setHistoryTab('all')} className={`py-1.5 rounded-xl text-[11.5px] font-bold transition-all ${
+                    <button type="button" onClick={() => setHistoryTab('all')} className={`py-1.5 rounded-xl text-[12px] font-bold transition-all ${
                         historyTab === 'all' ? 'bg-white dark:bg-gray-900 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
                     }`}><ArrowRightLeft size={11} className="inline mr-1 -mt-0.5" />Hammasi</button>
-                    <button type="button" onClick={() => setHistoryTab('purchases')} className={`py-1.5 rounded-xl text-[11.5px] font-bold transition-all ${
+                    <button type="button" onClick={() => setHistoryTab('purchases')} className={`py-1.5 rounded-xl text-[12px] font-bold transition-all ${
                         historyTab === 'purchases' ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
                     }`}><ShoppingCart size={11} className="inline mr-1 -mt-0.5" />Xaridlar</button>
-                    <button type="button" onClick={() => setHistoryTab('payments')} className={`py-1.5 rounded-xl text-[11.5px] font-bold transition-all ${
+                    <button type="button" onClick={() => setHistoryTab('payments')} className={`py-1.5 rounded-xl text-[12px] font-bold transition-all ${
                         historyTab === 'payments' ? 'bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
                     }`}><CreditCard size={11} className="inline mr-1 -mt-0.5" />To'lovlar</button>
                 </div>
@@ -742,15 +742,15 @@ export default function SupplierDetailPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
                                                         isPurchase
                                                             ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100/60 dark:border-blue-900/30'
                                                             : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
                                                     }`}>{isPurchase ? 'Xarid' : "To'lov"}</span>
-                                                    {mov.reference && <span className="text-[10px] text-gray-400">• {mov.reference}</span>}
+                                                    {mov.reference && <span className="text-[11px] text-gray-400">• {mov.reference}</span>}
                                                 </div>
                                                 {mov.description && <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">{mov.description}</p>}
-                                                <p className="text-[11px] text-gray-400">
+                                                <p className="text-[12px] text-gray-400">
                                                     {formatDateShort(mov.created_at)}
                                                     {mov.items_count && ` • ${mov.items_count} ta tovar`}
                                                     {mov.payment_method && ` • ${paymentMethodLabel(mov.payment_method)}`}
@@ -760,7 +760,7 @@ export default function SupplierDetailPage() {
                                                 <p className={`text-[15px] font-extrabold leading-none mb-0.5 ${isPurchase ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                                     {isPurchase ? '+' : '-'}{formatCurrency(amt)}
                                                 </p>
-                                                <p className="text-[11px] text-gray-400 font-normal">so'm</p>
+                                                <p className="text-[12px] text-gray-400 font-normal">so'm</p>
                                             </div>
                                             <button onClick={() => { setSelectedMovement({ ...mov, _kind: isPurchase ? 'purchase' : 'payment' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform ml-1">
                                                 <MoreVertical size={16} className="text-gray-500" />
@@ -789,14 +789,14 @@ export default function SupplierDetailPage() {
                                         <div key={pur.id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
                                             <div className="flex items-start justify-between mb-3">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100/60 dark:border-blue-900/30">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[12px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100/60 dark:border-blue-900/30">
                                                         Xarid
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
                                                     <div className="text-right mr-1">
-                                                        <div className="text-[11px] text-gray-400">{formatDate(pur.created_at)}</div>
-                                                        {pur.reference && <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 font-mono">{pur.reference}</div>}
+                                                        <div className="text-[12px] text-gray-400">{formatDate(pur.created_at)}</div>
+                                                        {pur.reference && <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 font-mono">{pur.reference}</div>}
                                                     </div>
                                                     <button onClick={() => { setSelectedMovement({ ...pur, _kind: 'purchase' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform">
                                                         <MoreVertical size={15} className="text-gray-500" />
@@ -804,7 +804,7 @@ export default function SupplierDetailPage() {
                                                 </div>
                                             </div>
                                             <div className="mb-3">
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Summasi</p>
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider mb-1">Summasi</p>
                                                 <p className="text-[18px] font-black text-blue-600 dark:text-blue-400">
                                                     +{formatCurrency(amt)} <span className="text-[12px] font-normal opacity-60">so'm</span>
                                                 </p>
@@ -842,17 +842,17 @@ export default function SupplierDetailPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30">
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30">
                                                         To'lov
                                                     </span>
-                                                    {pay.payment_method && <span className="text-[10px] text-gray-400">• {paymentMethodLabel(pay.payment_method)}</span>}
+                                                    {pay.payment_method && <span className="text-[11px] text-gray-400">• {paymentMethodLabel(pay.payment_method)}</span>}
                                                 </div>
                                                 {pay.description && <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">{pay.description}</p>}
-                                                <p className="text-[11px] text-gray-400">{formatDate(pay.created_at)}</p>
+                                                <p className="text-[12px] text-gray-400">{formatDate(pay.created_at)}</p>
                                             </div>
                                             <div className="text-right flex-shrink-0 pl-1">
                                                 <p className="text-[15px] font-extrabold text-emerald-600 dark:text-emerald-400 leading-none mb-0.5">-{formatCurrency(amt)}</p>
-                                                <p className="text-[11px] text-gray-400 font-normal">so'm</p>
+                                                <p className="text-[12px] text-gray-400 font-normal">so'm</p>
                                             </div>
                                             <button onClick={() => { setSelectedMovement({ ...pay, _kind: 'payment' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform ml-1">
                                                 <MoreVertical size={16} className="text-gray-500" />
@@ -946,7 +946,7 @@ export default function SupplierDetailPage() {
                             </div>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Summa <span className="text-red-400">*</span></label>
+                                    <label className="block text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Summa <span className="text-red-400">*</span></label>
                                     <div className={`relative flex items-center rounded-2xl border transition-colors ${
                                         purchaseForm.errors.amount ? 'border-red-400 bg-red-50/50 dark:bg-red-900/10' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 focus-within:border-blue-400'
                                     }`}>
@@ -964,11 +964,11 @@ export default function SupplierDetailPage() {
                                         />
                                         <span className="mr-3.5 text-[12px] font-bold text-gray-400">so'm</span>
                                     </div>
-                                    {purchaseForm.errors.amount && <p className="text-[11px] text-red-500 mt-1.5 px-0.5">{purchaseForm.errors.amount}</p>}
+                                    {purchaseForm.errors.amount && <p className="text-[12px] text-red-500 mt-1.5 px-0.5">{purchaseForm.errors.amount}</p>}
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Sana <span className="text-red-400">*</span></label>
+                                        <label className="block text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Sana <span className="text-red-400">*</span></label>
                                         <div className={`flex items-center rounded-2xl border transition-colors ${
                                             purchaseForm.errors.date ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 focus-within:border-blue-400'
                                         }`}>
@@ -979,10 +979,10 @@ export default function SupplierDetailPage() {
                                                 onChange={(e) => setPurchaseForm(p => ({ ...p, date: e.target.value, errors: { ...p.errors, date: undefined } }))}
                                             />
                                         </div>
-                                        {purchaseForm.errors.date && <p className="text-[11px] text-red-500 mt-1.5 px-0.5">{purchaseForm.errors.date}</p>}
+                                        {purchaseForm.errors.date && <p className="text-[12px] text-red-500 mt-1.5 px-0.5">{purchaseForm.errors.date}</p>}
                                     </div>
                                     <div>
-                                        <label className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">INV / Hujjat raqami</label>
+                                        <label className="block text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">INV / Hujjat raqami</label>
                                         <div className="flex items-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 focus-within:border-blue-400 transition-colors">
                                             <FileText size={17} className="ml-3.5 text-gray-400" />
                                             <input type="text" className="flex-1 bg-transparent outline-none py-3.5 px-3 text-[14px] font-semibold text-gray-900 dark:text-white placeholder-gray-400"
@@ -994,7 +994,7 @@ export default function SupplierDetailPage() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Izoh</label>
+                                    <label className="block text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Izoh</label>
                                     <textarea rows={3} className="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 focus-within:border-blue-400 transition-colors outline-none py-3 px-3.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 resize-none"
                                         placeholder="Maxsulotlar tavsifi, qisqa izoh..."
                                         value={purchaseForm.description}
@@ -1038,10 +1038,10 @@ export default function SupplierDetailPage() {
                             <div className="space-y-4">
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                        <label className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Summa <span className="text-red-400">*</span></label>
+                                        <label className="text-[12px] text-gray-400 uppercase font-bold tracking-wider">Summa <span className="text-red-400">*</span></label>
                                         {!paymentEditId && computedBalance > 0 && (
                                             <button type="button" onClick={() => setPaymentForm(p => ({ ...p, amountDisplay: formatCurrency(computedBalance), errors: { ...p.errors, amount: undefined } }))}
-                                                className="text-[10.5px] font-bold text-emerald-500 uppercase tracking-wider active:scale-95 transition-transform"
+                                                className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider active:scale-95 transition-transform"
                                             >• To'liq ({formatCurrency(Math.ceil(computedBalance))} so'm)</button>
                                         )}
                                     </div>
@@ -1062,16 +1062,16 @@ export default function SupplierDetailPage() {
                                         />
                                         <span className="mr-3.5 text-[12px] font-bold text-gray-400">so'm</span>
                                     </div>
-                                    {paymentForm.errors.amount && <p className="text-[11px] text-red-500 mt-1.5 px-0.5">{paymentForm.errors.amount}</p>}
+                                    {paymentForm.errors.amount && <p className="text-[12px] text-red-500 mt-1.5 px-0.5">{paymentForm.errors.amount}</p>}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">To'lov turi</label>
+                                        <label className="block text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">To'lov turi</label>
                                         <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-gray-100 dark:bg-gray-700/50">
                                             {PAYMENT_METHODS.map(m => (
                                                 <button key={m.key} type="button" onClick={() => setPaymentForm(p => ({ ...p, payment_method: m.key }))}
-                                                    className={`py-2 rounded-xl text-[11.5px] font-bold transition-all ${
+                                                    className={`py-2 rounded-xl text-[12px] font-bold transition-all ${
                                                         paymentForm.payment_method === m.key
                                                             ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                                                             : 'text-gray-500 dark:text-gray-400'
@@ -1081,7 +1081,7 @@ export default function SupplierDetailPage() {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Sana <span className="text-red-400">*</span></label>
+                                        <label className="block text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Sana <span className="text-red-400">*</span></label>
                                         <div className={`flex items-center rounded-2xl border transition-colors ${
                                             paymentForm.errors.paid_at ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 focus-within:border-emerald-400'
                                         }`}>
@@ -1092,14 +1092,14 @@ export default function SupplierDetailPage() {
                                                 onChange={(e) => setPaymentForm(p => ({ ...p, paid_at: e.target.value, errors: { ...p.errors, paid_at: undefined } }))}
                                             />
                                         </div>
-                                        {paymentForm.errors.paid_at && <p className="text-[11px] text-red-500 mt-1.5 px-0.5">{paymentForm.errors.paid_at}</p>}
+                                        {paymentForm.errors.paid_at && <p className="text-[12px] text-red-500 mt-1.5 px-0.5">{paymentForm.errors.paid_at}</p>}
                                     </div>
                                 </div>
 
                                 {/* ALLOCATION PREVIEW */}
                                 {allocationPreview && allocationPreview.length > 0 && !paymentEditId && (
                                     <div className="rounded-2xl border border-gray-100 dark:border-gray-700/60 bg-gray-50/70 dark:bg-gray-700/20 p-3.5">
-                                        <h4 className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-2.5 px-0.5 flex items-center gap-1.5"><ArrowRightLeft size={12} />Taqsimlanishi</h4>
+                                        <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5 px-0.5 flex items-center gap-1.5"><ArrowRightLeft size={12} />Taqsimlanishi</h4>
                                         <div className="space-y-2">
                                             {allocationPreview.map((row, i) => (
                                                 <div key={row.id + '-' + i} className="flex items-center justify-between gap-3 py-1">
@@ -1122,7 +1122,7 @@ export default function SupplierDetailPage() {
                                 )}
 
                                 <div>
-                                    <label className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Izoh</label>
+                                    <label className="block text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1.5 px-0.5">Izoh</label>
                                     <textarea rows={2} className="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 focus-within:border-emerald-400 transition-colors outline-none py-3 px-3.5 text-[14px] text-gray-900 dark:text-white placeholder-gray-400 resize-none"
                                         placeholder="To'lov haqida qisqacha ma'lumot..."
                                         value={paymentForm.description}

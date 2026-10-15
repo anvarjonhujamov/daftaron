@@ -357,7 +357,7 @@ export default function ProfilePage() {
                                                     currentPlan?.sms_limit === 0 ? 'Cheksiz' : (currentPlan?.sms_limit || '0')
                                                 )}
                                             </span>
-                                            <span className="text-[11px] text-orange-700/70 dark:text-orange-400/70 leading-tight">SMS qoldig'i</span>
+                                            <span className="text-[12px] text-orange-700/70 dark:text-orange-400/70 leading-tight">SMS qoldig'i</span>
                                         </div>
                                     </div>
 
@@ -371,7 +371,7 @@ export default function ProfilePage() {
                                                     usage ? (usage.debt_remaining !== undefined ? usage.debt_remaining : Math.max(0, usage.debt_limit - usage.debt_used)) : (currentPlan?.debt_limit || '0')
                                                 )}
                                             </span>
-                                            <span className="text-[11px] text-orange-700/70 dark:text-orange-400/70 leading-tight">Nasiya qoldig'i</span>
+                                            <span className="text-[12px] text-orange-700/70 dark:text-orange-400/70 leading-tight">Nasiya qoldig'i</span>
                                         </div>
                                     </div>
                                 </div>

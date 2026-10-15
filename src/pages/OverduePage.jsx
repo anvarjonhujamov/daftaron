@@ -243,7 +243,7 @@ export default function OverduePage() {
                                                     <p className="text-[16px] font-bold text-red-500">
                                                         {formatCurrency(item.total_remaining)}
                                                     </p>
-                                                    <p className="text-[11px] text-gray-400">so'm</p>
+                                                    <p className="text-[12px] text-gray-400">so'm</p>
                                                 </div>
                                             </div>
 
@@ -266,7 +266,7 @@ export default function OverduePage() {
                                                         <span className="text-[12px] text-gray-500 dark:text-gray-400">
                                                             {item.overdue_sms_count} ta
                                                             {item.overdue_sms_last_sent_at && (
-                                                                <span className="ml-1 text-[11px]">
+                                                                <span className="ml-1 text-[12px]">
                                                                     ({formatDateTime(item.overdue_sms_last_sent_at)})
                                                                 </span>
                                                             )}

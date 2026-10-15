@@ -298,7 +298,7 @@ export default function DebtDetailPage() {
                                 <CalendarDays size={16} className="text-indigo-600 dark:text-indigo-400" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish sanasi</p>
+                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish sanasi</p>
                                 {(() => {
                                     const rd = debt.return_date || debt.due_date || null
                                     if (!rd) {
@@ -341,7 +341,7 @@ export default function DebtDetailPage() {
                                                 <X size={16} className="text-gray-400" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">SMS xolat</p>
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">SMS xolat</p>
                                                 <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Sana belgilanmagan</p>
                                             </div>
                                         </>
@@ -354,10 +354,10 @@ export default function DebtDetailPage() {
                                                 <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                                 <p className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">Yuborildi</p>
                                                 {(debt.return_sms_sent_at || debt.return_date_sms_sent_at) && (
-                                                    <p className="text-[11px] text-gray-400 mt-0.5">{formatDateTime(debt.return_sms_sent_at || debt.return_date_sms_sent_at)}</p>
+                                                    <p className="text-[12px] text-gray-400 mt-0.5">{formatDateTime(debt.return_sms_sent_at || debt.return_date_sms_sent_at)}</p>
                                                 )}
                                             </div>
                                         </>
@@ -370,9 +370,9 @@ export default function DebtDetailPage() {
                                                 <BellOff size={16} className="text-amber-600 dark:text-amber-400" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                                 <p className="text-[13px] font-bold text-amber-600 dark:text-amber-300">SMS limiti tugagan</p>
-                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">
+                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">
                                                     {(debt.return_date_sms_error || debt.return_sms_error) === 'customer_phone_missing'
                                                         ? 'Mijoz telefon raqami belgilanmagan'
                                                         : 'SMS yuborib bo\'lmadi. Paketni sotib oling va qayta jo\'nating.'}
@@ -388,9 +388,9 @@ export default function DebtDetailPage() {
                                                 <X size={16} className="text-red-500" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                                 <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Xato</p>
-                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">{debt.return_date_sms_error || debt.return_sms_error || 'Qayta urinib ko\'ring'}</p>
+                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">{debt.return_date_sms_error || debt.return_sms_error || 'Qayta urinib ko\'ring'}</p>
                                             </div>
                                         </>
                                     )
@@ -402,9 +402,9 @@ export default function DebtDetailPage() {
                                                 <Clock size={16} className="text-blue-500 animate-pulse" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                                 <p className="text-[13px] font-bold text-blue-600 dark:text-blue-400">Kutilmoqda</p>
-                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">Qaytarish kuni soat 09:00 da yuboriladi</p>
+                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Qaytarish kuni soat 09:00 da yuboriladi</p>
                                             </div>
                                         </>
                                     )
@@ -419,9 +419,9 @@ export default function DebtDetailPage() {
                                                 <AlertTriangle size={16} className="text-red-500" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                                 <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Yuborilmagan</p>
-                                                <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasi o'tib ketgan, SMS holati backenddan yuklanmadi.</p>
+                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasi o'tib ketgan, SMS holati backenddan yuklanmadi.</p>
                                             </div>
                                         </>
                                     )
@@ -433,9 +433,9 @@ export default function DebtDetailPage() {
                                             <CalendarClock size={16} className="text-gray-400" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[11px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                            <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                             <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Hali vaqti kelmagan</p>
-                                            <p className="text-[11px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasida avtomatik jo'natiladi</p>
+                                            <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasida avtomatik jo'natiladi</p>
                                         </div>
                                     </>
                                 )
@@ -499,19 +499,19 @@ export default function DebtDetailPage() {
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-3 gap-2 border-t border-gray-100 dark:border-gray-700 pt-6">
                     <div className="text-center">
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Jami</p>
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Jami</p>
                         <p className="text-[15px] font-bold text-gray-900 dark:text-white">
                             {formatCurrency(debt.total_amount)}
                         </p>
                     </div>
                     <div className="text-center">
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">To'landi</p>
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">To'landi</p>
                         <p className="text-[15px] font-bold text-green-500">
                             {formatCurrency(paidAmount)}
                         </p>
                     </div>
                     <div className="text-center">
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Qoldi</p>
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Qoldi</p>
                         <p className="text-[15px] font-bold text-red-500">
                             {formatCurrency(debt.remaining_amount)}
                         </p>
@@ -568,7 +568,7 @@ export default function DebtDetailPage() {
                                                 {formatCurrency(payment.amount)} <span className="text-[12px] font-normal text-gray-400">so'm</span>
                                             </p>
                                             <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
                                                     isBalance
                                                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
                                                         : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100/60 dark:border-green-900/30'
@@ -576,7 +576,7 @@ export default function DebtDetailPage() {
                                                     {isBalance ? <Wallet size={10} /> : <Tag size={10} />}
                                                     {isBalance ? 'Balansdan' : 'Qarz uchun'}
                                                 </span>
-                                                <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
+                                                <span className="inline-flex items-center gap-1 text-[12px] text-gray-400">
                                                     <Calendar size={12} />
                                                     {formatDateTime(payment.paid_at || payment.created_at)}
                                                 </span>
@@ -672,7 +672,7 @@ export default function DebtDetailPage() {
                                             )}
                                         </div>
                                         {editErrors.return_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{editErrors.return_date[0]}</p>}
-                                        <p className="text-[11px] text-gray-400 mt-1">
+                                        <p className="text-[12px] text-gray-400 mt-1">
                                             Shu kuni soat 09:00 da mijozga SMS eslatma boriladi
                                         </p>
                                     </div>

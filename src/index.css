@@ -5,12 +5,30 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    /* Android/iOS brauzer shriftlarni o'zicha kattalashtirib-kichraytirmasin */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Biror element (drawer, toast, uzun matn) ekrandan chiqsa, mobil brauzer butun sahifani
+     kichraytirib ko'rsatadi -> shriftlar "ba'zan kichik bo'lib qoladi". Gorizontal toshishni butunlay kesamiz. */
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  @supports (overflow: clip) {
+    html,
+    body {
+      overflow-x: clip;
+    }
   }
 
   body {
     @apply antialiased bg-gray-50 text-gray-900;
     @apply dark:bg-gray-900 dark:text-white;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   }
 }
 
@@ -313,15 +331,22 @@ input[type="date"] {
   color-scheme: dark;
 }
 
-/* Prevent horizontal overflow globally */
-#root {
+/* Prevent horizontal overflow globally.
+   clip scroll-konteyner yaratmaydi, shuning uchun sticky headerlar ishlaydi; eski brauzerlarda hidden */
+#root,
+.min-h-screen {
   overflow-x: hidden;
+}
+
+#root {
   width: 100%;
 }
 
-/* All pages: prevent overflow */
-.min-h-screen {
-  overflow-x: hidden;
+@supports (overflow: clip) {
+  #root,
+  .min-h-screen {
+    overflow-x: clip;
+  }
 }
 
 /* Fix grid overflow on very small screens */
@@ -358,7 +383,7 @@ input[type="date"] {
 /* Ensure proper sizing on mobile  */
 @media (max-width: 480px) {
   input[type="date"] {
-    font-size: 14px;
+    font-size: 16px;
     padding-left: 12px;
     padding-right: 12px;
   }
@@ -374,11 +399,6 @@ input[type="date"] {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-}
-
-/* Smooth scrolling for iOS */
-* {
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Fix for iOS input zoom (font-size < 16px causes zoom) */

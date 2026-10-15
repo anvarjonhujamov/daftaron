@@ -137,7 +137,7 @@ export default function StaffModal({ isOpen, onClose, onSave, staff }) {
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-[11px] text-gray-400 ml-1">
+                                    <p className="text-[12px] text-gray-400 ml-1">
                                         Xodim ushbu raqam orqali tizimga kira oladi.
                                     </p>
                                 </div>
@@ -158,7 +158,7 @@ export default function StaffModal({ isOpen, onClose, onSave, staff }) {
                                             onChange={(e) => setPassword(e.target.value)}
                                         />
                                     </div>
-                                    <p className="text-[11px] text-gray-400 ml-1">
+                                    <p className="text-[12px] text-gray-400 ml-1">
                                         {staff
                                             ? "Tahrirlashda parolni kiritmasangiz eski parol saqlanadi. Yangi parol kamida 6 ta belgi."
                                             : "Xodim tizimga kirishda shu paroldan foydalanadi."

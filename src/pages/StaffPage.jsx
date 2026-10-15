@@ -324,7 +324,7 @@ export default function StaffPage() {
                         <div className="flex items-end justify-between">
                             <div>
                                 <p className="text-[32px] font-black leading-none mb-1">{staff.length}</p>
-                                <p className="text-[11px] text-white/70 uppercase tracking-wider font-bold">Jami aktiv xodimlar</p>
+                                <p className="text-[12px] text-white/70 uppercase tracking-wider font-bold">Jami aktiv xodimlar</p>
                             </div>
                             {loading && <Loader2 size={20} className="animate-spin text-white/50 mb-1" />}
                         </div>
@@ -368,7 +368,7 @@ export default function StaffPage() {
                                                 <div className="flex items-center gap-2">
                                                     <p className="text-[13px] text-gray-400 font-medium">{s.phone}</p>
                                                     <div className="w-1 h-1 rounded-full bg-gray-300" />
-                                                    <span className="text-[11px] font-bold text-green-500 uppercase tracking-tight">Active</span>
+                                                    <span className="text-[12px] font-bold text-green-500 uppercase tracking-tight">Active</span>
                                                 </div>
                                                 {!isStaffUser && (() => {
                                                     const rawPwd = pickStaffPassword(s)
@@ -425,23 +425,23 @@ export default function StaffPage() {
 
                                 <div className="grid grid-cols-2 gap-2 bg-gray-50/50 dark:bg-gray-700/30 p-3 rounded-2xl">
                                     <div className="text-center p-1.5 rounded-xl">
-                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Nasiyalar</span>
+                                        <span className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1">Nasiyalar</span>
                                         <span className="text-[15px] font-bold text-gray-800 dark:text-white">{s.stats?.debt_count || 0}</span>
                                     </div>
                                     <div className="text-center p-1.5 rounded-xl">
-                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Berilgan</span>
+                                        <span className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1">Berilgan</span>
                                         <span className="text-[14px] font-bold text-gray-800 dark:text-white truncate block">
                                             {Intl.NumberFormat('uz-UZ').format(s.stats?.total_given || 0)}
                                         </span>
                                     </div>
                                     <div className="text-center p-1.5 rounded-xl">
-                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Tushum</span>
+                                        <span className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1">Tushum</span>
                                         <span className="text-[14px] font-bold text-blue-500 truncate block">
                                             {Intl.NumberFormat('uz-UZ').format(s.stats?.total_paid || 0)}
                                         </span>
                                     </div>
                                     <div className="text-center p-1.5 rounded-xl">
-                                        <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Qolgan</span>
+                                        <span className="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1">Qolgan</span>
                                         <span className="text-[14px] font-bold text-red-500 truncate block">
                                             {Intl.NumberFormat('uz-UZ').format(s.stats?.remaining_amount || 0)}
                                         </span>

@@ -2,7 +2,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { subscriptionApi } from '../api/subscription.api'
 import { authApi } from '../api/auth.api'
-import { SubscriptionContext } from '../contexts/SubscriptionContext'
+import { SubscriptionContext, readSubscriptionCache } from '../contexts/SubscriptionContext'
 import { useContext } from 'react'
 import { AppLoadingSkeleton } from './Skeleton'
 
@@ -11,32 +11,30 @@ export default function PrivateRoute({ children }) {
     const token = localStorage.getItem('token')
     const location = useLocation()
     const navigate = useNavigate()
-    const [checking, setChecking] = useState(!!token)
+    // Keshlangan obuna holati bo'lsa sahifani darhol ko'rsatamiz, tekshiruv fonda ketadi
+    const [checking, setChecking] = useState(() => !!token && !readSubscriptionCache())
     const hasChecked = useRef(false)
 
     const checkSubscription = useCallback(async () => {
         if (!token) return
         try {
-            // 1) Token ni tekshirish
-            try {
-                const meData = await authApi.me()
+            // Token va obuna holati parallel tekshiriladi (401 ni axios interceptor /login ga yo'naltiradi)
+            const [meRes, statusRes] = await Promise.allSettled([
+                authApi.me(),
+                subscriptionApi.getStatus()
+            ])
+
+            if (meRes.status === 'fulfilled') {
+                const meData = meRes.value
                 if (meData?.user || meData?.id || meData?.name) {
                     localStorage.setItem('user', JSON.stringify(meData.user || meData))
                 }
-            } catch (meErr) {
-                if (meErr.response?.status === 401) {
-                    localStorage.removeItem('token')
-                    localStorage.removeItem('user')
-                    window.location.href = '/login'
-                    return
-                }
+            } else if (meRes.reason?.response?.status === 401) {
+                return
             }
 
-            // 2) Subscription holatini tekshirish
-            const data = await subscriptionApi.getStatus()
-
-            if (updateSubscriptionData) {
-                updateSubscriptionData(data)
+            if (statusRes.status === 'fulfilled' && updateSubscriptionData) {
+                updateSubscriptionData(statusRes.value, { cache: true })
             }
         } catch (err) {
             console.error('Subscription check failed:', err)

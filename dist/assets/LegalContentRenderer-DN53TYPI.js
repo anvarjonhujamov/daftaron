@@ -1,0 +1,1 @@
+import{j as s}from"./react-Vv53-En5.js";function n({content:e=""}){const r=/<[^>]*>/.test(e);return s.jsx("div",{className:"prose dark:prose-invert max-w-none",children:r?s.jsx("div",{dangerouslySetInnerHTML:{__html:e},className:"space-y-4"}):s.jsx("div",{className:"whitespace-pre-wrap",children:e})})}export{n as L};

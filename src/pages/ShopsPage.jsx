@@ -999,7 +999,7 @@ export default function ShopsPage() {
                                 </button>
                             </div>
 
-                            <p className="mt-4 text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                            <p className="mt-4 text-[12px] text-gray-400 dark:text-gray-500 leading-relaxed">
                                 Test/dev muhitida default kod: <b>1234</b>. Maksimal urinish: <b>3 ta</b>.
                             </p>
                         </div>

@@ -292,7 +292,7 @@ export default function CustomersPage() {
                     <button
                         key={tab.value}
                         onClick={() => setFilter(tab.value)}
-                        className={`flex-1 py-2 rounded-full text-[11px] font-semibold transition-all text-center ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
+                        className={`flex-1 py-2 rounded-full text-[12px] font-semibold transition-all text-center ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
                     >
                         {tab.label}
                     </button>
@@ -348,7 +348,7 @@ export default function CustomersPage() {
                                             <p className="text-[14px] font-bold text-red-500">
                                                 {formatCurrency(item.total_remaining || item.remaining_amount || 0)}
                                             </p>
-                                            <p className="text-[11px] text-orange-500 font-medium">
+                                            <p className="text-[12px] text-orange-500 font-medium">
                                                 {item.days_overdue || item.overdue_days || '?'} kun
                                             </p>
                                         </div>
@@ -475,7 +475,7 @@ export default function CustomersPage() {
                                                             {formatCurrency(currentDebt)} so'm
                                                         </div>
                                                     )}
-                                                    <span className={`badge text-[10px] ${currentDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
+                                                    <span className={`badge text-[11px] ${currentDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
                                                         {currentDebt > 0 ? 'Qarzdor' : "To'langan"}
                                                     </span>
                                                 </>

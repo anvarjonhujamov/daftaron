@@ -35,7 +35,7 @@ export default function SubscriptionPage() {
         try {
             const data = await subscriptionApi.getStatus()
             setStatus(data)
-            updateSubscriptionData(data)
+            updateSubscriptionData(data, { cache: true })
             
             // Helpful logs to verify IDs and names from the backend
             console.log('Subscription Status:', data)
@@ -365,7 +365,7 @@ export default function SubscriptionPage() {
                                     )}
                                     {plan.is_popular && (
                                         <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
-                                            <span className={`${isPro ? 'bg-gradient-to-r from-blue-600 to-purple-600 shadow-blue-500/30' : 'bg-blue-600'} text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg`}>
+                                            <span className={`${isPro ? 'bg-gradient-to-r from-blue-600 to-purple-600 shadow-blue-500/30' : 'bg-blue-600'} text-white text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg`}>
                                                 Eng ommabob
                                             </span>
                                         </div>
@@ -390,7 +390,7 @@ export default function SubscriptionPage() {
                                                     {plan.name}
                                                 </p>
                                                 {isActivePlan && (
-                                                    <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                    <span className="bg-green-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
                                                         Faol
                                                     </span>
                                                 )}
@@ -540,7 +540,7 @@ export default function SubscriptionPage() {
                     <h2 className="text-[18px] font-semibold text-gray-900 dark:text-white">
                         Bir martalik to'plamlar
                     </h2>
-                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                         Paketlar
                     </span>
                 </div>
@@ -566,7 +566,7 @@ export default function SubscriptionPage() {
                             </div>
                             <div className="text-right flex flex-col items-end gap-1.5 ml-3">
                                 <p className="text-[16px] font-bold text-gray-900 dark:text-white whitespace-nowrap">
-                                    {formatCurrency(pkg.price)} <span className="text-[11px] font-normal text-gray-400">so'm</span>
+                                    {formatCurrency(pkg.price)} <span className="text-[12px] font-normal text-gray-400">so'm</span>
                                 </p>
                                 <button 
                                     onClick={async () => {
@@ -595,7 +595,7 @@ export default function SubscriptionPage() {
                                         }
                                     }}
                                     disabled={saving}
-                                    className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-bold rounded-lg transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50"
+                                    className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-[12px] font-bold rounded-lg transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50"
                                 >
                                     {saving ? '...' : 'Sotib olish'}
                                 </button>
@@ -606,7 +606,7 @@ export default function SubscriptionPage() {
                 
                 <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-2xl flex items-start gap-3">
                     <Clock size={16} className="text-gray-400 mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-normal">
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-normal">
                         Ushbu to'plamlar obunangiz holatidan qat'iy nazar jami limitingizga qo'shiladi va muddatsiz saqlanadi. Obuna tugasa ham bu limitlar saqlanib qoladi.
                     </p>
                 </div>

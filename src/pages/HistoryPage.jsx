@@ -120,7 +120,7 @@ export default function HistoryPage() {
     }
 
     // Header mode title helpers
-    const scopeLabel = scope === 'customers' ? 'Mijozlar' : "Ta'minotchilar"
+    const scopeLabel = scope === 'customers' ? 'Mijozlar' : "Ta'minotchi"
     const modeTitle = scope === 'customers'
         ? (mode === 'payments' ? "To'lovlar tarixi" : "Nasiyalar tarixi")
         : (mode === 'payments' ? "To'lovlar tarixi (Ta'minotchilarga)" : "Xaridlar tarixi (Ta'minotchilardan)")
@@ -330,7 +330,7 @@ export default function HistoryPage() {
                         }`}
                 >
                     <Package size={16} />
-                    Ta'minotchilar
+                    Ta'minotchi
                 </button>
             </div>
 
@@ -416,15 +416,15 @@ export default function HistoryPage() {
                                                     <div className="flex items-center justify-between mb-0.5">
                                                         <h3 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
                                                             {itemName}
-                                                            <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${itemBadgeBg} ${itemBadgeColor}`}>
+                                                            <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${itemBadgeBg} ${itemBadgeColor}`}>
                                                                 {itemBadgeLabel}
                                                             </span>
                                                         </h3>
                                                         <span className={`text-[15px] font-bold whitespace-nowrap ${amountColor}`}>
-                                                            {formatCurrency(itemAmount)} <small className="text-[10px]">so'm</small>
+                                                            {formatCurrency(itemAmount)} <small className="text-[11px]">so'm</small>
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center justify-between text-[11px] text-gray-400">
+                                                    <div className="flex items-center justify-between text-[12px] text-gray-400">
                                                         <div className="flex items-center gap-1">
                                                             <Clock size={12} />
                                                             {formatDate(itemDate)}
@@ -434,7 +434,7 @@ export default function HistoryPage() {
                                                         )}
                                                     </div>
                                                     {item.reference && (
-                                                        <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                                                        <div className="mt-1 text-[12px] text-gray-500 dark:text-gray-400 truncate">
                                                             {item.reference}
                                                         </div>
                                                     )}

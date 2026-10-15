@@ -153,7 +153,7 @@ export default function NotificationsPage() {
                                         <p className={`text-[14px] line-clamp-1 ${isUnread ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
                                             {n.data?.message || 'Bildirishnoma'}
                                         </p>
-                                        <p className="text-[11px] text-gray-400 mt-0.5">
+                                        <p className="text-[12px] text-gray-400 mt-0.5">
                                             {formatRelativeTime(n.created_at)}
                                         </p>
                                     </div>
@@ -194,7 +194,7 @@ export default function NotificationsPage() {
                                             )}
                                         </div>
 
-                                        <p className="text-[11px] text-gray-400 mt-2">
+                                        <p className="text-[12px] text-gray-400 mt-2">
                                             {formatDate(n.created_at)}
                                         </p>
                                     </div>

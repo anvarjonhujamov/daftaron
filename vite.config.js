@@ -40,6 +40,14 @@ export default defineConfig({
                 globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
                 runtimeCaching: [
                     {
+                        urlPattern: ({ request }) => request.destination === 'font',
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'fonts',
+                            expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 }
+                        }
+                    },
+                    {
                         urlPattern: ({ url }) => url.pathname.startsWith('/api'),
                         handler: 'NetworkFirst',
                         options: {
@@ -58,6 +66,20 @@ export default defineConfig({
             }
         })
     ],
+    build: {
+        rollupOptions: {
+            output: {
+                // Kutubxonalar alohida chunk: deploylar orasida o'zgarmaydi, brauzer keshidan olinadi.
+                // lucide ikonlari bitta faylga (aks holda o'nlab mayda so'rov bo'ladi)
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) return
+                    if (id.includes('lucide-react')) return 'icons'
+                    if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|cookie|set-cookie-parser)[\\/]/.test(id)) return 'react'
+                    return 'vendor'
+                }
+            }
+        }
+    },
     server: {
         port: 5173,
         host: true,

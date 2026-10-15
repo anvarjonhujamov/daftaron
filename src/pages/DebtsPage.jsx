@@ -472,7 +472,7 @@ export default function DebtsPage() {
         return <CustomersSkeleton />
     }
 
-    const scopeLabel = scope === 'suppliers' ? "Ta'minotchilar" : 'Mijozlar'
+    const scopeLabel = scope === 'suppliers' ? "Ta'minotchi" : 'Mijozlar'
     const debtLabel = scope === 'suppliers' ? 'Xaridlar summasi' : 'Berilgan nasiyalar'
     const debtSubtitle = scope === 'suppliers' ? "Ta'minotchilardan olingan" : 'Sizga qarzdor'
     const debtCountText = scope === 'suppliers' ? 'ta xarid' : 'ta nasiya'
@@ -509,13 +509,13 @@ export default function DebtsPage() {
                             ? 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-orange-500 shadow-sm'
                             : 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-medium text-gray-500 dark:text-gray-400'}
                     >
-                        <Package size={16} /> Ta'minotchilar
+                        <Package size={16} /> Ta'minotchi
                     </button>
                 </div>
 
                 {!isStaff && (
                     <div className="card p-3 h-full">
-                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Xodim bo'yicha</p>
+                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Xodim bo'yicha</p>
                         <div className="relative">
                             <select
                                 value={selectedStaffId}
@@ -540,7 +540,7 @@ export default function DebtsPage() {
                     <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
-                                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider whitespace-nowrap">Hisobot turi</p>
+                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider whitespace-nowrap">Hisobot turi</p>
                                 <p className="text-[16px] font-bold text-gray-900 dark:text-white truncate">{displayPeriod}</p>
                             </div>
                         </div>
@@ -555,7 +555,7 @@ export default function DebtsPage() {
                                 <button
                                     key={option.value}
                                     onClick={() => handlePeriodTypeSelect(option.value)}
-                                    className={`rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition shrink-0 ${periodType === option.value ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'}`}
+                                    className={`rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition shrink-0 ${periodType === option.value ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'}`}
                                 >
                                     {option.label}
                                 </button>
@@ -568,7 +568,7 @@ export default function DebtsPage() {
                     {periodType === 'yearly' && (
                         <div className="card p-3 h-full sm:col-span-2 flex items-center justify-between gap-2">
                             <div className="min-w-0">
-                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Yil</p>
+                                <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider">Yil</p>
                                 <p className="text-[17px] font-bold text-gray-900 dark:text-white truncate">{selectedDate} yil</p>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -599,7 +599,7 @@ export default function DebtsPage() {
 
                     {periodType === 'daily' && (
                         <div className="card p-3 h-full sm:col-span-2 overflow-hidden">
-                            <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">Kun</p>
+                            <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-2">Kun</p>
                             <input
                                 type="date"
                                 value={selectedDate}
@@ -622,7 +622,7 @@ export default function DebtsPage() {
                                     <Calendar size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Oy tanlandi</p>
+                                    <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider">Oy tanlandi</p>
                                     <p className="text-[17px] font-bold text-gray-900 dark:text-white">{displayPeriod}</p>
                                 </div>
                             </div>
@@ -713,7 +713,7 @@ export default function DebtsPage() {
                         </div>
                         <div className="text-right">
                             <p className={`text-[16px] font-bold ${debtAmountClass}`}>{formatCurrency(reportStats.debts)}</p>
-                            <p className="text-[11px] text-gray-400">so'm · {reportStats.debtCount} {debtCountText}</p>
+                            <p className="text-[12px] text-gray-400">so'm · {reportStats.debtCount} {debtCountText}</p>
                         </div>
                     </div>
                     <div className="flex items-start justify-between gap-3 pt-2.5">
@@ -726,12 +726,12 @@ export default function DebtsPage() {
                             </div>
                             <div className="min-w-0">
                                 <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{paymentLabel}</p>
-                                <p className="text-[11px] text-gray-400">{paymentSubtitle}</p>
+                                <p className="text-[12px] text-gray-400">{paymentSubtitle}</p>
                             </div>
                         </div>
                         <div className="text-right shrink-0">
                             <p className={`text-[16px] font-bold ${paymentAmountClass}`}>{formatCurrency(reportStats.payments)}</p>
-                            <p className="text-[11px] text-gray-400">so'm</p>
+                            <p className="text-[12px] text-gray-400">so'm</p>
                         </div>
                     </div>
                 </div>
@@ -806,7 +806,7 @@ export default function DebtsPage() {
                                     }
 
                                     rdBadge = (
-                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-semibold ${badgeCls}`}>
+                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${badgeCls}`}>
                                             <CalendarClock size={10.5} /> {badgeText}
                                         </span>
                                     )
@@ -854,7 +854,7 @@ export default function DebtsPage() {
 
                                     if (smsMeta) {
                                         smsBadge = (
-                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-semibold ${smsMeta.cls}`}>
+                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${smsMeta.cls}`}>
                                                 {smsMeta.icon} {smsMeta.label}
                                             </span>
                                         )
@@ -881,7 +881,7 @@ export default function DebtsPage() {
                                                 {smsBadge}
                                             </div>
                                         )}
-                                        <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                        <div className="flex items-center gap-1.5 text-[12px] text-gray-400">
                                             <Clock size={12} />
                                             {formatDate(dateVal)}
                                         </div>
@@ -890,7 +890,7 @@ export default function DebtsPage() {
                                         <p className={`text-[15px] font-bold ${amountClass}`}>
                                             {isPurchase ? '+' : ''}{formatCurrency(amountVal)}
                                         </p>
-                                        <p className="text-[10px] text-gray-400">so'm</p>
+                                        <p className="text-[11px] text-gray-400">so'm</p>
                                     </div>
                                     <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
                                 </Link>

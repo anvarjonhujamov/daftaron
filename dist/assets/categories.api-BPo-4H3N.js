@@ -1,0 +1,1 @@
+import{l as a}from"./index-BQpS1VA1.js";const s={async getCategories(){try{const r=(await a.get("/locations/categories")).data;return Array.isArray(r)?r:r&&Array.isArray(r.data)?r.data:[]}catch{return[]}}};export{s as c};

@@ -210,7 +210,7 @@ export default function CustomerDetailPage() {
                     <p className="font-bold">Nasiya qo'shildi</p>
                     <p className="text-sm">
                         {newDebt ? `${formatCurrency(newDebt.total_amount)} so'm • Qoldi: ${formatCurrency(newDebt.remaining_amount)} so'm` : ''}
-                        {prevBalance > 0 ? <span className="block text-[11px] text-emerald-600 mt-1">Balans {formatCurrency(prevBalance)} so'm avtomatik ayirildi</span> : ''}
+                        {prevBalance > 0 ? <span className="block text-[12px] text-emerald-600 mt-1">Balans {formatCurrency(prevBalance)} so'm avtomatik ayirildi</span> : ''}
                     </p>
                 </div>,
                 { duration: 5000 }
@@ -554,7 +554,7 @@ export default function CustomerDetailPage() {
                             {formatCurrency(totalDebt)} <span className="text-[14px] font-bold opacity-70">so'm</span>
                         </div>
 
-                        <div className={`inline-flex items-center px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        <div className={`inline-flex items-center px-4 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
                             totalDebt > 0 
                                 ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30' 
                                 : 'bg-green-50 dark:bg-green-900/20 text-green-500 border border-green-100 dark:border-green-900/30'
@@ -570,7 +570,7 @@ export default function CustomerDetailPage() {
                                             <Wallet size={17} className="text-emerald-600 dark:text-emerald-400" />
                                         </div>
                                         <div className="text-left">
-                                            <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase tracking-wider">Shaxsiy balans</p>
+                                            <p className="text-[12px] text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase tracking-wider">Shaxsiy balans</p>
                                             <p className="text-[15px] font-extrabold text-emerald-700 dark:text-emerald-300 leading-tight">
                                                 {formatCurrency(customerBalance)} <span className="text-[12px] opacity-70 font-bold">so'm</span>
                                             </p>
@@ -655,7 +655,7 @@ export default function CustomerDetailPage() {
                         <CreditCard size={13} className="inline mr-1 -mt-0.5" />
                         To'lovlar
                         {sumPaid > 0 && (
-                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                                 {formatCurrency(sumPaid)}
                             </span>
                         )}
@@ -713,11 +713,11 @@ export default function CustomerDetailPage() {
                                     <div key={debt.id} className="card !p-4 border-0 shadow-sm bg-white dark:bg-gray-800">
                                         <div className="flex items-center justify-between mb-4">
                                             <div className="flex flex-wrap items-center gap-1.5">
-                                                <span className={`badge px-2 py-0.5 rounded-lg text-[11px] ${debt.status === 'closed' ? 'badge-paid' : 'badge-debtor'}`}>
+                                                <span className={`badge px-2 py-0.5 rounded-lg text-[12px] ${debt.status === 'closed' ? 'badge-paid' : 'badge-debtor'}`}>
                                                     {debt.status === 'closed' ? 'Yopilgan' : 'Faol'}
                                                 </span>
                                                 {rd && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0 && (
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${
                                                         isOverdue
                                                             ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100/60 dark:border-red-800/30'
                                                             : isDueSoon
@@ -733,16 +733,16 @@ export default function CustomerDetailPage() {
                                                     </span>
                                                 )}
                                                 {smsMeta.label && (
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${smsMeta.cls}`}>
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold border ${smsMeta.cls}`}>
                                                         {smsMeta.icon}
                                                         {smsMeta.label}
                                                     </span>
                                                 )}
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-[11px] text-gray-400">{formatDate(debt.created_at)}</div>
+                                                <div className="text-[12px] text-gray-400">{formatDate(debt.created_at)}</div>
                                                 {getCreatorName(debt) && (
-                                                    <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                                    <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                                                         {getCreatorName(debt)}
                                                     </div>
                                                 )}
@@ -751,13 +751,13 @@ export default function CustomerDetailPage() {
 
                                         <div className="grid grid-cols-2 gap-4 mb-4">
                                             <div>
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Berildi</p>
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider mb-1">Berildi</p>
                                                 <p className="text-[16px] font-bold text-gray-900 dark:text-white">
                                                     {formatCurrency(debt.total_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Qoldi</p>
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider mb-1">Qoldi</p>
                                                 <p className={`text-[16px] font-bold ${debt.remaining_amount > 0 ? 'text-red-500' : 'text-green-500'}`}>
                                                     {formatCurrency(debt.remaining_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
                                                 </p>
@@ -844,7 +844,7 @@ export default function CustomerDetailPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
                                                         isBalance
                                                             ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
                                                             : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100/60 dark:border-green-900/30'
@@ -852,7 +852,7 @@ export default function CustomerDetailPage() {
                                                         {isBalance ? 'Balansga' : (dId ? `Qarz #${dId}` : 'To\'lov')}
                                                     </span>
                                                     {!isBalance && dId && (
-                                                        <span className="text-[10px] text-gray-400">
+                                                        <span className="text-[11px] text-gray-400">
                                                             • {formatDateShort(pay.created_at || pay.paid_at)}
                                                         </span>
                                                     )}
@@ -863,12 +863,12 @@ export default function CustomerDetailPage() {
                                                     </p>
                                                 )}
                                                 {getCreatorName(pay) && (
-                                                    <p className="text-[11px] text-gray-400 line-clamp-1">
+                                                    <p className="text-[12px] text-gray-400 line-clamp-1">
                                                         Qabul qilgan: <span className="font-semibold text-gray-500 dark:text-gray-300">{getCreatorName(pay)}</span>
                                                     </p>
                                                 )}
                                                 {!getCreatorName(pay) && !pay.description && (
-                                                    <p className="text-[11px] text-gray-400">
+                                                    <p className="text-[12px] text-gray-400">
                                                         {formatDate(pay.paid_at || pay.created_at)}
                                                     </p>
                                                 )}
@@ -877,7 +877,7 @@ export default function CustomerDetailPage() {
                                                 <p className="text-[15px] font-extrabold text-green-600 dark:text-green-400 leading-none mb-0.5">
                                                     +{formatCurrency(amt)}
                                                 </p>
-                                                <p className="text-[11px] text-gray-400 font-normal">so'm</p>
+                                                <p className="text-[12px] text-gray-400 font-normal">so'm</p>
                                             </div>
                                         </Link>
                                     )
@@ -924,7 +924,7 @@ export default function CustomerDetailPage() {
                                             <MessageSquareOff size={17} className="text-amber-500 dark:text-amber-300 shrink-0 mt-0.5" />
                                             <div>
                                                 <p className="font-bold mb-0.5">SMS limiti tugagan</p>
-                                                <p className="opacity-80 text-[11.5px]">SMS yuborish uchun yangi paket sotib oling</p>
+                                                <p className="opacity-80 text-[12px]">SMS yuborish uchun yangi paket sotib oling</p>
                                             </div>
                                         </div>
                                     )}
@@ -983,7 +983,7 @@ export default function CustomerDetailPage() {
                                                 }}
                                             />
                                             {debtErrors.debt_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.debt_date[0]}</p>}
-                                            <p className="text-[11px] text-gray-400 mt-1">
+                                            <p className="text-[12px] text-gray-400 mt-1">
                                                 Oxirgi 1 oy ichida
                                             </p>
                                         </div>
@@ -1003,7 +1003,7 @@ export default function CustomerDetailPage() {
                                                 }}
                                             />
                                             {debtErrors.return_date && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{debtErrors.return_date[0]}</p>}
-                                            <p className="text-[11px] text-gray-400 mt-1">
+                                            <p className="text-[12px] text-gray-400 mt-1">
                                                 Shu kuni soat 09:00 da mijozga SMS eslatma boriladi
                                             </p>
                                         </div>
@@ -1013,7 +1013,7 @@ export default function CustomerDetailPage() {
                                             <label htmlFor="customer_send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
                                                 Mijozga SMS yuborish
                                             </label>
-                                            <p className="text-[11px] text-gray-400 opacity-80">
+                                            <p className="text-[12px] text-gray-400 opacity-80">
                                                 {sms_remaining != null
                                                     ? (Number(sms_remaining) <= 0
                                                         ? <span className="text-amber-600 dark:text-amber-300 font-semibold">⚠️ SMS limiti tugagan</span>
@@ -1021,7 +1021,7 @@ export default function CustomerDetailPage() {
                                                     : 'Limitdan keyin balansdan yechiladi.'}
                                             </p>
                                             {debtErrors.send_sms && (
-                                                <p className="text-[11.5px] text-amber-600 dark:text-amber-300 font-semibold mt-1">
+                                                <p className="text-[12px] text-amber-600 dark:text-amber-300 font-semibold mt-1">
                                                     {debtErrors.send_sms[0]}
                                                 </p>
                                             )}
@@ -1042,13 +1042,13 @@ export default function CustomerDetailPage() {
                                     {/* Limits Info */}
                                     <div className="grid grid-cols-2 gap-3 mb-2">
                                         <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-900/20">
-                                            <p className="text-[11px] text-blue-500 uppercase font-bold tracking-wider mb-0.5">Nasiya Limiti</p>
+                                            <p className="text-[12px] text-blue-500 uppercase font-bold tracking-wider mb-0.5">Nasiya Limiti</p>
                                             <p className="text-[14px] font-bold text-blue-600 dark:text-blue-400">
                                                 {effectiveIsUnlimited ? 'Cheksiz' : `${effectiveRemaining ?? 0} ta qoldi`}
                                             </p>
                                         </div>
                                         <div className="p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
-                                            <p className="text-[11px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
+                                            <p className="text-[12px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
                                             <p className="text-[14px] font-bold text-emerald-600 dark:text-emerald-400">
                                                 {sms_remaining ?? 0} ta qoldi
                                             </p>
@@ -1101,7 +1101,7 @@ export default function CustomerDetailPage() {
                                                 <Wallet size={15} className="text-emerald-600 dark:text-emerald-400" />
                                             </div>
                                             <div className="text-left">
-                                                <p className="text-[11px] text-emerald-600/70 dark:text-emerald-400/80 font-bold uppercase tracking-wider">Hozirgi balans</p>
+                                                <p className="text-[12px] text-emerald-600/70 dark:text-emerald-400/80 font-bold uppercase tracking-wider">Hozirgi balans</p>
                                                 <p className="text-[14px] font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(customerBalance)} so'm</p>
                                             </div>
                                         </div>
@@ -1160,7 +1160,7 @@ export default function CustomerDetailPage() {
                                     {/* Allocation Preview */}
                                     {genericPaymentAllocationPreview && (
                                         <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/40 p-3 space-y-2">
-                                            <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Taqqoslash (avtomatik)</p>
+                                            <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider">Taqqoslash (avtomatik)</p>
                                             {genericPaymentAllocationPreview.lines.map((ln, idx) => (
                                                 <div key={idx} className="flex items-center justify-between text-[13px]">
                                                     <div className="flex items-center gap-2">
@@ -1214,7 +1214,7 @@ export default function CustomerDetailPage() {
                                             <label htmlFor="generic_payment_send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
                                                 Mijozga SMS yuborish
                                             </label>
-                                            <p className="text-[11px] text-gray-400 opacity-80">
+                                            <p className="text-[12px] text-gray-400 opacity-80">
                                                 {sms_remaining != null ? `Qolgan SMS: ${sms_remaining} ta` : 'Limitdan keyin balansdan yechiladi.'}
                                             </p>
                                         </div>
@@ -1231,7 +1231,7 @@ export default function CustomerDetailPage() {
                                         </button>
                                     </div>
                                     <div className="p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
-                                        <p className="text-[11px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
+                                        <p className="text-[12px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
                                         <p className="text-[14px] font-bold text-emerald-600 dark:text-emerald-400">
                                             {sms_remaining ?? 0} ta qoldi
                                         </p>
@@ -1285,15 +1285,15 @@ export default function CustomerDetailPage() {
                                                     </div>
                                                     <p className="text-[12px] text-blue-600/80 dark:text-blue-400/80 font-bold uppercase tracking-wider">Tanlangan nasiya</p>
                                                 </div>
-                                                <span className="text-[11px] text-gray-500 dark:text-gray-400">{formatDate(selectedDebtForPayment.created_at)}</span>
+                                                <span className="text-[12px] text-gray-500 dark:text-gray-400">{formatDate(selectedDebtForPayment.created_at)}</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div>
-                                                    <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Berildi</p>
+                                                    <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Berildi</p>
                                                     <p className="text-[15px] font-bold text-gray-800 dark:text-gray-200">{formatCurrency(selectedDebtForPayment.total_amount)} so'm</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-[11px] text-red-500 uppercase font-bold tracking-wider mb-0.5">Qoldi (maksimum)</p>
+                                                    <p className="text-[12px] text-red-500 uppercase font-bold tracking-wider mb-0.5">Qoldi (maksimum)</p>
                                                     <p className="text-[15px] font-extrabold text-red-600 dark:text-red-400">{formatCurrency(selectedDebtRemaining)} so'm</p>
                                                 </div>
                                             </div>
@@ -1345,11 +1345,11 @@ export default function CustomerDetailPage() {
                                                         })
                                                         if (debtPaymentErrors.amount) setDebtPaymentErrors({ ...debtPaymentErrors, amount: null })
                                                     }}
-                                                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 underline-offset-2 hover:underline"
+                                                    className="text-[12px] font-bold text-blue-600 dark:text-blue-400 underline-offset-2 hover:underline"
                                                 >
                                                     To'liq summani kirit ({formatCurrency(selectedDebtRemaining)})
                                                 </button>
-                                                <span className="text-[11px] text-gray-400">
+                                                <span className="text-[12px] text-gray-400">
                                                     Maks: <b className="text-gray-700 dark:text-gray-300">{formatCurrency(selectedDebtRemaining)} so'm</b>
                                                 </span>
                                             </div>
@@ -1375,7 +1375,7 @@ export default function CustomerDetailPage() {
                                             <label htmlFor="debt_payment_send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
                                                 Mijozga SMS yuborish
                                             </label>
-                                            <p className="text-[11px] text-gray-400 opacity-80">
+                                            <p className="text-[12px] text-gray-400 opacity-80">
                                                 {sms_remaining != null ? `Qolgan SMS: ${sms_remaining} ta` : 'Limitdan keyin balansdan yechiladi.'}
                                             </p>
                                         </div>
@@ -1392,7 +1392,7 @@ export default function CustomerDetailPage() {
                                         </button>
                                     </div>
                                     <div className="p-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
-                                        <p className="text-[11px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
+                                        <p className="text-[12px] text-emerald-500 uppercase font-bold tracking-wider mb-0.5">SMS Limiti</p>
                                         <p className="text-[14px] font-bold text-emerald-600 dark:text-emerald-400">
                                             {sms_remaining ?? 0} ta qoldi
                                         </p>

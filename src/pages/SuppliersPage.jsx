@@ -387,7 +387,7 @@ export default function SuppliersPage() {
                         <ArrowLeft size={22} className="text-gray-700 dark:text-gray-300" />
                     </button>
                     <h1 className="flex-1 text-[18px] font-extrabold text-gray-900 dark:text-white truncate">
-                        Ta'minotchilar
+                        Ta'minotchi
                     </h1>
                     <button
                         onClick={() => {
@@ -409,7 +409,7 @@ export default function SuppliersPage() {
                     <div className="relative z-10">
                         <div className="flex justify-between items-start mb-5">
                             <div>
-                                <h2 className="text-[20px] font-bold mb-1">Ta'minotchilar boshqaruvi</h2>
+                                <h2 className="text-[20px] font-bold mb-1">Ta'minotchi boshqaruvi</h2>
                                 <p className="text-[13px] text-white/80">
                                     Hamkorlaringiz va ular bilan qarzdorlikni kuzating
                                 </p>
@@ -425,14 +425,14 @@ export default function SuppliersPage() {
                                     : 'grid-cols-1'
                         }`}>
                             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
-                                <p className="text-[11px] text-white/70 uppercase font-bold tracking-wider mb-1">Jami</p>
+                                <p className="text-[12px] text-white/70 uppercase font-bold tracking-wider mb-1">Jami</p>
                                 <p className="text-[24px] font-black leading-none">{stats.total}</p>
                             </div>
                             {stats.totalDebt > 0 && (
                                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
                                     <div className="flex items-center gap-1 mb-1">
                                         <TrendingUp size={10} className="text-red-200" />
-                                        <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Qarz</p>
+                                        <p className="text-[11px] text-white/70 uppercase font-bold tracking-wider">Qarz</p>
                                     </div>
                                     <p className="text-[15px] font-black leading-none truncate text-red-50 dark:text-red-100">
                                         {formatCurrency(stats.totalDebt)}
@@ -443,7 +443,7 @@ export default function SuppliersPage() {
                                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
                                     <div className="flex items-center gap-1 mb-1">
                                         <TrendingDown size={10} className="text-green-200" />
-                                        <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider">Bizga qarz</p>
+                                        <p className="text-[11px] text-white/70 uppercase font-bold tracking-wider">Bizga qarz</p>
                                     </div>
                                     <p className="text-[15px] font-black leading-none truncate text-green-50 dark:text-green-100">
                                         {formatCurrency(stats.totalCredit)}
@@ -574,7 +574,7 @@ export default function SuppliersPage() {
                                                         ? <TrendingDown size={13} className="text-emerald-500" />
                                                         : <Package size={13} className="text-gray-400" />
                                                 }
-                                                <span className={`text-[11px] font-bold uppercase tracking-wider ${
+                                                <span className={`text-[12px] font-bold uppercase tracking-wider ${
                                                     hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-400'
                                                 }`}>
                                                     {hasDebt ? "QARZ" : hasCredit ? "BIZGA QARZ" : "BALANS NOL"}

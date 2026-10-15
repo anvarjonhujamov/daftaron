@@ -257,7 +257,7 @@ export default function DebtFormPage() {
                             <label htmlFor="send_sms" className="text-[14px] font-bold text-gray-700 dark:text-gray-200 block">
                                 Mijozga SMS yuborish
                             </label>
-                            <p className="text-[11px] text-gray-400 opacity-80">
+                            <p className="text-[12px] text-gray-400 opacity-80">
                                 {sms_remaining != null
                                     ? (isSmsLimitEmpty
                                         ? <span className="text-amber-600 dark:text-amber-300 font-semibold">⚠️ SMS limiti tugagan</span>
@@ -282,7 +282,7 @@ export default function DebtFormPage() {
                             ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200/50 dark:border-amber-800/30'
                             : 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100/50 dark:border-emerald-900/20'
                     }`}>
-                        <p className={`text-[11px] uppercase font-bold tracking-wider mb-0.5 ${
+                        <p className={`text-[12px] uppercase font-bold tracking-wider mb-0.5 ${
                             isSmsLimitEmpty ? 'text-amber-500' : 'text-emerald-500'
                         }`}>
                             SMS Limiti

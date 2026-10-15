@@ -528,7 +528,7 @@ export default function DashboardPage() {
                             >
                                 <Bell size={22} />
                                 {unreadNotifs > 0 && (
-                                    <span className="absolute top-1.5 right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-gray-800">
+                                    <span className="absolute top-1.5 right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-gray-800">
                                         {unreadNotifs > 99 ? '99+' : unreadNotifs}
                                     </span>
                                 )}
@@ -659,13 +659,13 @@ export default function DashboardPage() {
                                             <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
                                                 {customer.name}
                                             </h3>
-                                            <p className="text-[11px] text-gray-400 truncate">{customer.phone}</p>
+                                            <p className="text-[12px] text-gray-400 truncate">{customer.phone}</p>
                                         </div>
                                         <div className="text-right">
                                             <div className={`text-[13px] font-bold ${customer.computed_debt > 0 ? 'text-red-500' : 'text-green-500'}`}>
                                                 {formatCurrency(customer.computed_debt)}
                                             </div>
-                                            <span className="text-[10px] text-gray-400">so'm</span>
+                                            <span className="text-[11px] text-gray-400">so'm</span>
                                         </div>
                                         <ChevronRight size={16} className="text-gray-300 dark:text-gray-600" />
                                     </Link>
