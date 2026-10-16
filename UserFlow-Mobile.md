@@ -1,12 +1,14 @@
 # Daftaron — Mobile ilova uchun UserFlow
 
-> So'nggi yangilanish: 2026-09-18
+> So'nggi yangilanish: 2026-10-16
 
 Bu hujjat **mobil ilova dasturchisi** uchun yozilgan. Har bir ekran, API chaqiriq va xato holatlari batafsil tavsiflangan.
 
 **API base URL:** `https://<domen>/api/v1`
 **Autentifikatsiya:** Bearer token (Sanctum). Token olgach har bir so'rovga `Authorization: Bearer <token>` header qo'shiladi.
 **Telefon formati:** `+998901234567` yoki `998901234567` yoki 9 xonali `901234567` (avtomatik `998` qo'shiladi).
+**Sanalar:** sof sanalar `YYYY-MM-DD` (`debt_date`, `return_date`, `transaction_date`, `due_date`) — o'girish kerak emas; `paid_at` Toshkent offseti bilan (`2026-09-09T00:41:14+05:00`); `created_at`, `updated_at`, `*_sent_at` — UTC ISO (`...Z`). Vaqt zonasi `Asia/Tashkent` (UTC+5). Sanani yuborishda **mahalliy** sanadan formatlang: `date.toISOString().slice(0,10)` ertalab 00:00–05:00 da bir kun oldingi sanani beradi.
+**Yangilash:** `PUT` va `PATCH` bir xil ishlaydi. To'liq OpenAPI: `public/docs/openapi.yaml`.
 
 ---
 
@@ -32,6 +34,8 @@ Bu hujjat **mobil ilova dasturchisi** uchun yozilgan. Har bir ekran, API chaqiri
 18. [Xato kodlari va umumiy ishlov](#18-xato-kodlari-va-umumiy-ishlov)
 19. [Endpoint qisqa jadvali](#19-endpoint-qisqa-jadvali)
 20. [Lokatsiya Ma'lumotlari — Viloyat, Tuman, Ko'cha](#20-lokatsiya-malumotlari--viloyat-tuman-kocha)
+21. [Yetkazib beruvchilar (Suppliers) — Kreditorlik](#21-yetkazib-beruvchilar-suppliers--kreditorlik)
+22. [Yangilanishlar tarixi](#yangilanishlar-tarixi)
 
 ---
 
@@ -564,26 +568,34 @@ Ta'rif tanlash oldidan promocode ni tekshirish:
 
 ## 7. Dashboard
 
+Bosh sahifa **bitta so'rov** bilan ochiladi; "bugun", "shu oy" va eng katta qarzdorlarni telefonda hisoblash shart emas.
+
 | Metod | Endpoint | Auth | Javob |
 |-------|----------|------|-------|
 | GET | `/dashboard` | Bearer + trial | `200`: statistikalar |
 
-**Javob maydonlari:**
+**Javob maydonlari (yangi kod shulardan foydalansin):**
 
-| Maydon | Tavsif |
-|--------|--------|
-| `total_customers` | Jami mijozlar soni |
-| `total_debts` | Jami nasiyalar |
-| `remaining_debts` | Ochiq qarzlar summasi |
-| `total_payments` | Jami to'lovlar |
-| `payments_this_month` | Shu oydagi to'lovlar |
-| `payments_last_month` | O'tgan oydagi to'lovlar |
-| `average_debt` | O'rtacha nasiya summasi |
-| `expired_debts_count` | Muddati o'tgan nasiyalar |
-| `payments_count_this_month` | Shu oy to'lovlar soni |
-| `recent_customers` | Oxirgi 5 ta mijoz |
-| `recent_debts` | Oxirgi 5 ta nasiya |
-| `trial_days_left` | Trial qolgan kunlar |
+| Maydon | Tur | Tavsif |
+|--------|-----|--------|
+| `total_customers` | int | Mijozlar soni |
+| `total_debts` | number | Jami berilgan nasiya summasi |
+| `total_paid` | number | Jami qabul qilingan to'lov |
+| `remaining_debt` | number | Qolgan qarz |
+| `debts_count` | int | Nasiyalar soni |
+| `today_debts` | number | Bugun berilgan nasiya (`debt_date` = bugun) |
+| `today_payments` | number | Bugun qabul qilingan to'lov |
+| `today_supplier_payments` | number | Bugun ta'minotchilarga to'langan |
+| `debts_this_month` | number | Shu oy berilgan nasiya |
+| `payments_this_month` | number | Shu oy qabul qilingan to'lov |
+| `top_debtors` | array | Eng ko'p qarzdor 5 ta mijoz: `id`, `name`, `phone`, `remaining_amount` |
+| `unread_notifications` | int | O'qilmagan bildirishnomalar |
+| `suppliers` | object | Ta'minotchilar yig'masi (21-bo'lim) |
+| `trial_days_left` | int | Obuna tugashiga qolgan kun |
+
+Xodim (`shop_worker`) kirganda nasiya va to'lov raqamlari server tomonidan faqat o'sha xodim yaratgan yozuvlar bo'yicha hisoblanadi.
+
+Eski klientlar uchun saqlangan maydonlar: `remaining_debts`, `total_payments`, `payments_last_month`, `average_debt`, `expired_debts_count`, `payments_count_this_month`, `recent_customers`, `recent_debts`.
 
 ---
 
@@ -695,14 +707,12 @@ Bir userda bir nechta do'kon bo'lsa, ilova active do'konni tanlab ishlaydi. Tanl
 
 | Metod | Endpoint | Body / Param | Javob |
 |-------|----------|-------------|-------|
-| GET | `/debts` | `customer_id` (ixtiyoriy filter) | `200`: nasiyalar ro'yxati (har birida `return_date`, `return_date_sms_sent_at`, `return_date_sms_status` qo'shimcha maydonlari) |
-| POST | `/debts` | `customer_id`, `total_amount`, `debt_date` (ixtiyoriy, YYYY-MM-DD), **`return_date`** (ixtiyoriy, YYYY-MM-DD, bugundan kichik bo'lmasligi kerak), `description` (ixtiyoriy), `send_sms` (boolean, ixtiyoriy) | `201`: quyiga qarang |
+| GET | `/debts` | `customer_id`, `status` (`open`\|`closed`), `page`, `per_page` (≤100) — hammasi ixtiyoriy | `200`: `page` bilan `{"data": [...], "meta": {"current_page", "per_page", "total", "last_page"}}`, `page` siz — massiv. Har bir nasiyada `return_date`, `return_date_sms_sent_at`, `return_date_sms_status` |
+| POST | `/debts` | `customer_id`, `total_amount`, `debt_date` (ixtiyoriy, YYYY-MM-DD), **`return_date`** (ixtiyoriy, YYYY-MM-DD, bugundan va `debt_date` dan oldin bo'lmasin), `description` (ixtiyoriy), `send_sms` (boolean, ixtiyoriy) | `201`: quyiga qarang |
 | GET | `/debts/{id}` | — | `200`: bitta nasiya (+ `return_date`, `return_date_sms_sent_at`, `return_date_sms_status`) |
-| PUT | `/debts/{id}` | `customer_id`, `total_amount`, `debt_date`, **`return_date`** (nullable, YYYY-MM-DD), `description` | `200`: yangilangan; `return_date` o'zgartirilsa SMS status avtomat `pending` ga qaytariladi |
-| DELETE | `/debts/{id}` | — | `200/204`: o'chirildi |
+| PUT, PATCH | `/debts/{id}` | `customer_id`, `total_amount` (majburiy), `debt_date`, **`return_date`**, `description` | `200`: yangilangan. `return_date` kaliti yuborilmasa sana **o'zgarmaydi**, `null` yuborilsa tozalanadi, yangi sana bo'lsa SMS status `pending` ga qaytadi. Yopilgan nasiya → `422` |
+| DELETE | `/debts/{id}` | — | `200`: o'chirildi (server arxivida saqlanadi, admin tiklay oladi) |
 | PATCH | `/debts/{id}/close` | — | `200`: nasiya yopildi |
-| **POST** | **`/debts/{id}/send-return-sms`** | **—** | **200:** Qaytarish sanasi eslatma SMS ni qo'lda yuborish; 422: return_date belgilanmagan |
-| **GET** | **`/debts/{id}/sms-status`** | **—** | **200:** `{return_date, return_sms_status, return_sms_sent_at, return_sms_error, is_overdue, days_remaining}` — joriy return_date va SMS holatini aniq olish |
 
 ### 10.3. Nasiya yaratish javobi (201)
 
@@ -733,16 +743,14 @@ Bir userda bir nechta do'kon bo'lsa, ilova active do'konni tanlab ishlaydi. Tanl
 
 **SMS shablon:**
 ```
-Abdulaziz aka siz 22.03.2026 sanasida MTP Market dan 540 000 so'm
-qarzdor bo'ldingiz. Qarzni vaqtida qaytarishni unutmang !
-Do'kon raqami : +998901234567
+Abdulaziz siz 22.03.2026 sanasida MTP Market dan 540 000 so'm qarzdor bo'ldingiz. Qarzni vaqtida qaytarishni unutmang! Do'kon raqami: +998901234567
 ```
 
 **Narxlash:**
 | Holat | Narx |
 |-------|------|
 | Ta'rif + paket limiti ichida (Oddiy: 20 ta + sotib olingan SMS paketlari) | Bepul |
-| Limitdan keyin | `extra_sms_price` (190 so'm) balansdan yechiladi |
+| Limitdan keyin | Tarifning `extra_sms_price` (production: Oddiy 250, Pro 190 so'm) balansdan yechiladi |
 | Balans yetmasa | SMS yuborilmaydi, `sms_error` qaytadi, nasiya yaratiladi |
 
 ### 10.5. Sana qoidalari
@@ -753,80 +761,52 @@ Do'kon raqami : +998901234567
 | Minimal sana | 1 oy oldin (bugundan) |
 | Maksimal sana | Bugun |
 | Format | `YYYY-MM-DD` |
-| **`return_date` (Qaytarish sanasi)** | Ixtiyoriy (nullable). **Minimal: ertaga** (`after:today` — bugungi kunga va o'tkan kunlarga ruxsat yo'q). **Maksimal: bugundan +90 kun** (3 oy). Format: `YYYY-MM-DD`. |
-| **return_date ≥ debt_date** | Validatsiya: return_date berilgan bo'lsa, u nasiya sanasi (`debt_date`) dan kichik bo'lmasligi kerak. Aks holda 422: `"Qaytarish sanasi nasiya sanasidan oldin bo'lishi mumkin emas"`. |
-| Avtomatik eslatma | `return_date` ga teng bo'lgan kunda ertalab **09:00 (Asia/Tashkent)** mijozga SMS eslatma boradi. |
+| **`return_date` (Qaytarish sanasi)** | Ixtiyoriy (nullable), `YYYY-MM-DD`. Bugundan va `debt_date` dan oldin bo'lmaydi, yuqori chegara yo'q. Tahrirda o'zgarmagan (o'tib ketgan) sana qayta yuborilsa xato bermaydi. Xato: `422`, `errors.return_date` |
+| Javobdagi format | `debt_date` va `return_date` sof sana: `"2026-04-25"` — timezone o'girish kerak emas |
+| Avtomatik eslatma | `return_date` kuni ertalab **09:00 (Asia/Tashkent)** mijozga SMS eslatma boradi. Xato bo'lsa keyingi 3 kun qayta urinadi. |
 
 ### 10.6. Qaytarish sanasi va avtomatik SMS eslatma — Mobil UI tavsiya
 
 **Ro'yxat (`/debts`) kartasida:**
-- Har bir ochiq nasiya kartasida 2 ta badge ko'rsatiladi:
-
-**1) Qaytarish sanasi holati badge (rangli pill):**
-
-| Holat | Shart | Rang | Label namuna |
-|-------|-------|------|---------------|
-| To'langan | `status = 'closed'` yoki `remaining_amount <= 0` | 🟢 Yashil (emerald) | "To'langan • 22/04" |
-| Kechikkan | status ochiq VA `return_date < today` | 🔴 Qizil (red) | "Kechikkan 5 kun • 18/09" |
-| Bugun qaytarish | status ochiq VA `return_date = today` | 🟡 Sariq (amber) | "Bugun qaytarish • 20/09" |
-| 1–3 kun qoldi | status ochiq VA 0 < kunlar ≤ 3 | 🟡 Amber | "2 kun qoldi • 22/09" |
-| Oddiy kelajak | status ochiq VA 3 < kunlar | 🔵 Ko'k (indigo) | "Qaytish: 15/10" |
-| Belgilanmagan | `return_date = null` | — | badge ko'rsatilmaydi |
-
-**2) SMS status badge (rangli pill, icon + text):**
-
-| Qiymat (`return_date_sms_status`) | Rang | Icon | Label |
-|-----------------------------------|------|------|-------|
-| `pending` / `queued` | 🔵 Ko'k (blue) | ⏳ Clock (animate-pulse) | "Kutilmoqda" |
-| `sent` | 🟢 Yashil (emerald) | ✅ CheckCircle2 | "SMS yuborildi" (pastda `return_date_sms_sent_at` formatted) |
-| `failed` | 🔴 Qizil (red) | ❌ X | "Yuborilmadi" + hoverda `return_date_sms_error` |
-| `limit_exceeded` | ⚠️ **Sariq (amber)** | 🔕 BellOff | **"SMS limiti tugagan"** — user maxsus talab qilgan (qizildan farqli) |
-| `skipped_limit` | ⚪ Kulrang (gray) | ℹ️ Info | "O'tkazildi (telefon yo'q)" |
-| null + return_date mavjud | ⚪ Kulrang (gray) | 🕓 CalendarClock | "Hali vaqti kelmagan" |
-| null + return_date ham null | — | — | badge yo'q |
+- 2 ta qo'shimcha ma'lumot ko'rsatiladi:
+  - 📅 `Qaytarish sanasi: 2026-04-22` (null bo'lsa → ko'rsatilmaydi yoki "Qaytarish sanasi belgilanmagan")
+  - SMS status badge:
+    - **Sariq / Kutilmoqda** (`pending`) — sana kelmagan / hali yuborilmagan
+    - **Yashil / Yuborildi** (`sent`) — `return_date_sms_sent_at` ni ko'rsatish (masalan, "09:00 da yuborildi")
+    - **Qizil / Xato** (`failed`)
+    - **Kulrang / SMS limiti tugagan** (`skipped_limit`) — "SMS limiti tugagan va balans yetarli emas. Eslatma yuborilmadi."
+    - **Kulrang / Telefon yo'q** (`skipped_no_phone`) — "Mijozning telefon raqami yo'q. Eslatma yuborilmadi."
+    - Boshqa qiymat kelmaydi (`limit_exceeded`, `queued`, `return_date_sms_error` yo'q).
 
 **Yaratish / Tahrirlash ekranida:**
-- `Sana (debt_date)` dan keyin alohida input (ikkita input bir qatorda):
+- `Sana (debt_date)` dan keyin alohida input:
   - Label: `Qaytarish sanasi (ixtiyoriy)`
-  - UI: Datepicker, **`minimumDate = tomorrow`** (bugungi va o'tkan sanani tanlash mumkin emas), `maximumDate = today + 90 kun`
-  - Tanlanmasa → `null` jo'natiladi
-  - Pastda kichik helper matn: "Ushbu sanada ertalab 09:00 da mijozga avtomatik eslatma SMS yuboriladi. 1-90 kun oralig'ida."
-  - Validatsiya: `return_date < debt_date` bo'lsa → inline error: "Qaytarish sanasi nasiya sanasidan oldin bo'lishi mumkin emas"
+  - UI: Datepicker, `minimumDate = max(today, debt_date)`
+  - Yaratishda tanlanmasa → maydon yuborilmaydi yoki `null`. Tahrirda foydalanuvchi tozalasa → `null`, tegmasa → avvalgi qiymat
+  - Pastda kichik helper matn: "Ushbu sanada ertalab 09:00 da mijozga avtomatik eslatma SMS yuboriladi."
 
 **Detail (show) ekranida:**
 - Yuqoridagi badgelar va `return_date_sms_sent_at` formatlangan ko'rsatiladi.
-- 2 ta alohida kichik karta (grid 2-column): Qaytarish sanasi holati (chapda) + SMS status (o'ngda).
-- Agar `limit_exceeded` bo'lsa → ogohlantirish banner (sariq):
-  > "⚠️ Eslatma SMS yuborilmadi. SMS limiti tugagan. Sababni bilish uchun bildirishnomalarni ko'ring → `/notifications` ga navigatsiya tugmasi"
-
-**Debt list (CustomerDetail) va DebtsPage ro'yxatida:**
-- Har bir nasiya kartasida (name+date+amount ustiga, flex-wrap) ikkala badge ham ko'rsatiladi.
-
-### 10.6.1. Nasiya yaratishda SMS limiti tugaganda — Mobil 3-darajali xavfsizlik
-
-**Oldin tekshirish:** `/subscription/status` → `usage.sms_remaining <= 0` AND `usage.subscription_status = 'active'`.
-
-| # | Joy | O'zgarish |
-|---|-----|----------|
-| 1 | **FORM TEPASIDA BANNER** | 🟡 Amber/sariq banner, icon=MessageSquareOff, matn: *"SMS limiti tugagan. Yangi SMS paketini sotib oling → /subscription"*. Link tugmasi "SMS sotib olish" obuna sahifasiga o'tkazadi. |
-| 2 | **`SMS yuborish` SWITCH ostida** | Toggle label rangi emerald → amber o'zgaradi. Switch uchun opacity 70% hint. Ostida: ⚠️ *"SMS limiti tugagan"*. |
-| 3 | **SAQLASH OLDIN UI DARAJASIDA BLOCK** | User "Saqlash" ni bossa → form validatsiyasidan o'tganda, agar `send_sms = true` AND `sms_remaining <= 0` → **submit BLOCKLANADI** (API chaqirilmaydi). Pastda qizil xato: *"❌ SMS limiti tugagan, 'SMS yuborish' ni o'chiring yoki yangi SMS paketini sotib oling."*. Va Drawer (BottomSheet) **YOPILMAYDI** — xato ko'rinib turadi.
+- Agar `skipped_limit` yoki `skipped_no_phone` bo'lsa → ogohlantirish banner: "⚠️ Eslatma SMS yuborilmadi. Sababni bilish uchun bildirishnomalarni ko'ring." → `/notifications` ga navigatsiya.
 
 ### 10.7. SMS limiti tugaganda Notification flow
 
 Qaytarish sanasi kelganda:
-1. 09:00 da backend avtomatik tekshiradi: mijoz telefon bor / SMS limit yetarlimi / balansda 190 so'm bor-yo'q.
-2. Holatga qarab status:
-   - **Agar telefon raqami YO'Q**: `return_date_sms_status = skipped_limit` va `return_date_sms_error = 'customer_phone_missing'`.
-   - **Agar SMS limiti tugAGAN + balansda pul yetarli bo'lmasa**: `return_date_sms_status = limit_exceeded` va `return_date_sms_error = 'sms_limit_exceeded'`.
+1. 09:00 da backend avtomatik tekshiradi: mijoz telefoni bormi / SMS limit yetarlimi / balansda SMS narxi bormi.
+2. Telefon yo'q → `return_date_sms_status = skipped_no_phone`; limit tugagan va balans yetmaydi → `skipped_limit`. Aks holda SMS yuboriladi (`sent`) yoki xato (`failed`).
 3. Shunda do'kon egasiga (shop_owner) yangi database notification tushadi: `type = return_date_reminder_sms_skipped`.
 4. Mobil ilova `/notifications` sahifasida yangi turdagi bildirishnoma — **alohida icon/chala rang** (masalan, qizil/yashil emas — sariq/orange rang) bilan ajratiladi.
 
-Bildirishnoma matni namunasi:
-- Status = `limit_exceeded` / data.reason = sms_limit_exceeded`: *"⚠️ {customer_name} — {return_date} sanasidagi qaytarish eslatmasi yuborilmadi. SMS limiti tugagan va balans yetarli emas. Qayta aloqaga chiqing yoki balansni to'ldiring."*
-- Status = `skipped_limit / data.reason = customer_phone_missing`: *"ℹ️ {customer_name} — {return_date} qaytarish sanasi eslatmasi yuborilmadi. Mijoz telefon raqami belgilanmagan."*
+Mijozga boradigan eslatma SMS (Eskiz'da tasdiqlangan shablon):
+```
+Abdurahim ! 01.10.2026 sanasidagi MTP Market dan olgan 150 000 so'm qarzingizni qaytarish sanasi keldi : 09.10.2026 . Iltimos, qarzni vaqtida to'lang. Do'kon raqami: +998999990044
+```
 
-Click action: Notification bosilganda `/debts/{debt_id} screen ga o'tkaziladi.
+Bildirishnoma matni namunasi:
+- Reason = `sms_limit_exceeded`: *"⚠️ {customer_name} — {return_date} sanasidagi qaytarish eslatmasi yuborilmadi. SMS limiti tugagan va balans yetarli emas. Qayta aloqaga chiqing yoki balansni to'ldiring."*
+- Reason = `customer_phone_missing`: *"ℹ️ {customer_name} — {return_date} qaytarish sanasi eslatmasi yuborilmadi. Mijoz telefon raqami belgilanmagan."*
+
+Click action: Notification bosilganda `/debts/{debt_id}` screen ga o'tkaziladi.
 
 ### 10.8. Limit tekshiruvi
 
@@ -899,7 +879,7 @@ Nasiya yaratishda ta'rif limiti tekshiriladi:
 
 | Metod | Endpoint | Body / Param | Javob |
 |-------|----------|-------------|-------|
-| GET | `/payments` | `debt_id` (ixtiyoriy filter) | `200`: to'lovlar ro'yxati |
+| GET | `/payments` | `customer_id`, `debt_id`, `type` (`debt_specific`\|`general`), `page`, `per_page` (≤100) — ixtiyoriy | `200`: `page` bilan `{data, meta}`, `page` siz massiv; eng yangisi birinchi |
 | POST | `/payments` | `debt_id` (ixtiyoriy), `customer_id` (ixtiyoriy), `amount`, `paid_at` (ixtiyoriy, ISO8601), `send_sms` (boolean, ixtiyoriy) | `201`: yaratilgan to'lov — debt_id bo'lmasa customer_id talab qilinadi; tizim mijoz uchun avtomatik nasiya yozuvi yaratadi va mijozning balansi ijobiy bo'ladi. |
 
 ### 11.3. To'lov SMS (ixtiyoriy)
@@ -1465,6 +1445,14 @@ Har bir API javobda:
 | Bildirishnomalar | GET | `/notifications` |
 | Bitta bildirishnoma | GET | `/notifications/{id}` |
 | Do'kon qo'shish | POST | `/tenants` |
+| Ta'minotchilar | GET, POST | `/suppliers` |
+| Ta'minotchilar statistikasi | GET | `/suppliers/statistics` |
+| Ta'minotchi | GET, PUT, DELETE | `/suppliers/{id}` |
+| Ta'minotchi tranzaksiyalari | GET | `/suppliers/{id}/transactions?type=&from=&to=` |
+| Ta'minotchidan qarz olish | POST | `/suppliers/{id}/debt` |
+| Ta'minotchiga to'lov | POST | `/suppliers/{id}/payment` |
+| Barcha ta'minotchi tranzaksiyalari | GET | `/supplier-transactions?type=&from=&to=&supplier_id=` |
+| Tranzaksiyani bekor qilish | PATCH | `/supplier-transactions/{id}/cancel` |
 
 ---
 
@@ -1656,30 +1644,7 @@ Agar ma'lumot tarafdorlariga qo'l bilan yangilash kerak bo'lsa, quyidagi manbala
 
 ---
 
-*Hujjat TZ.md va kodga asosan tuzilgan. API o'zgarishi bo'lsa ushbu UserFlow ham yangilanadi.*
-*So'nggi yangilanish: 2026-04-23*
-
----
-
-## Yangilanishlar tarixi
-
-| Sana | Yangilanish | Tavsif |
-|------|-------------|--------|
-| 2026-04-23 | v1.1.0 | - Public Offer, Privacy Policy va aloqa ma'lumotlari admin panelda qo'shildi<br>- OpenAPI 3.0 spesifikatsiyasi yaratildi<br>- Tashkent mahalla seederini yangilandi (placeholder o'rniga haqiqiy nomlar)<br>- Admin sozlamalariga yangi maydonlar qo'shildi<br>- Public API endpointlari qo'shildi |
-| 2026-04-01 | v1.0.0 | - Dastlabki versiya<br>- Laravel 12, PHP 8.2+, MySQL<br>- Multi-tenant arxitektura<br>- Click va Payme to'lov tizimlari<br>- Eskiz SMS integratsiyasi<br>- AI SupportBot (Groq)<br>- Admin panel<br>- Mobil API<br>- Promocodlar tizimi |
-| 2026-03-26 | v0.9.0 | - Promocodlar tizimi qo'shildi<br>- Managerlar uchun chegirma boshqaruvi<br>- Promo usage tracking |
-| 2026-03-22 | v0.8.0 | - UserFlow-Mobile.md hujjati yaratildi<br>- Mobil ilova uchun batafsil flow<br>- API endpointlar dokumentatsiyasi |
-| 2026-03-15 | v0.7.0 | - Qo'shimcha paketlar tizimi<br>- Nasiya va SMS paketlari<br>- Limit boshqaruvi |
-| 2026-03-01 | v0.6.0 | - Trial va obuna tizimi<br>- Balans to'ldirish<br>- Ta'riflar boshqaruvi |
-| 2026-02-15 | v0.5.0 | - Mijozlar, nasiyalar, to'lovlar CRUD<br>- SMS bildirishnomalar<br>- Muddati o'tgan qarzdorlar |
-| 2026-02-01 | v0.4.0 | - Autentifikatsiya tizimi<br>- Sanctum Bearer token<br>- Telegram login |
-| 2026-01-15 | v0.3.0 | - Ma'lumotlar bazasi sxemasi<br>- Migrationlar<br>- Seedlar |
-| 2026-01-01 | v0.2.0 | - Laravel loyihasi yaratildi<br>- Asosiy arxitektura<br>- Routing va controllerlar |
-| 2025-12-15 | v0.1.0 | - TZ va UserFlow hujjatlari<br>- Loyiha rejalashtiruvi |
-
----
-
-## 21. Yetkazib beruvchilar (Suppliers / Postavchiklar) — KREDITORLIK
+## 21. Yetkazib beruvchilar (Suppliers) — Kreditorlik
 
 > **Muhim farq:**
 > - **Mijozlar Nasiya (Debts) → DEBITORLIK** = mijozlarning biznesga qarzi (biz uchun asset).
@@ -1698,15 +1663,16 @@ Agar ma'lumot tarafdorlariga qo'l bilan yangilash kerak bo'lsa, quyidagi manbala
 | Tranzaksiya bekor | Admin/shop_owner → status=canceled |
 | Statistika | Umumiy → total/qarzdor/overdue/total_debt/paid |
 
-### 21.2. Ta'rif LIMITLARI (faqat supplier soni, tranzaktsiyalar cheksiz)
+### 21.2. Ta'rif limitlari (faqat ta'minotchilar soni, tranzaksiyalar cheksiz)
 
-| Ta'rif | Supplier max | Tranzaktsiyalar |
-|--------|--------------|-----------------|
-| Oddiy (Basic) | 10 | Cheksiz |
-| Pro | 50 | Cheksiz |
-| Premium | Cheksiz (DB null) | Cheksiz |
+Limit tarifdagi `supplier_limit` dan olinadi va admin paneldan o'zgaradi. Joriy production qiymatlari (2026-10):
 
-**Qo'shimcha supplier paketlari:** Pro va Premium tariflarida yoqilgan (`allow_extra_supplier_packages`=1) bo'lsa, extra sotib olish mumkin. Oddiy: Premium/Pro ga o'tish tavsiya qilinadi.
+| Ta'rif | Ta'minotchilar | Tranzaksiyalar |
+|--------|----------------|----------------|
+| Oddiy | 1 | Cheksiz |
+| Pro | 10 | Cheksiz |
+
+Ilova limitni qat'iy yozib qo'ymasin: `GET /subscription/status` va 403 javobidagi `remaining_limit` dan foydalansin.
 
 ### 21.3. Supplier ro'yxat API
 
@@ -1796,7 +1762,11 @@ Qoidalar:
 
 ### 21.6. Tranzaktsiyalar ro'yxati + bekor qilish
 
-**GET** `/api/v1/suppliers/{id}/transactions`?type=`debt|payment`
+**GET** `/api/v1/suppliers/{id}/transactions`?type=`debt|payment`&from=`YYYY-MM-DD`&to=`YYYY-MM-DD`
+
+**GET** `/api/v1/supplier-transactions`?type=&from=&to=&supplier_id= — barcha ta'minotchilar bo'yicha bitta so'rov (Tarix va Hisobot ekranlari uchun). Har bir yozuvda `supplier` (`id`, `name`, `company_name`, `phone`) bor. Filtrlar `transaction_date` bo'yicha; `to < from` → `422`.
+
+> Endpoint nomlarini taxmin qilmang (`/purchases`, `/invoices`, `/ledger` yo'q) va tranzaksiyalarni localStorage'ga yozmang — ular serverga yetmaydi.
 
 Har bir transaction:
 ```json
@@ -1809,6 +1779,8 @@ Har bir transaction:
 ```
 
 **Bekor qilish (admin/shop_owner):** `PATCH /api/v1/supplier-transactions/{tx_id}/cancel`
+
+> Xaridni bekor qilish, agar unga to'langan pul qolgan xaridlardan oshib ketsa, `422` qaytaradi (`message` ni ko'rsating). Avval tegishli to'lovni bekor qilish kerak.
 
 Qayta hisoblash:
 - **Payment cancel bo'lsa:** to'lovni inkor et → qarz asl holiga qaytadi.
@@ -1874,15 +1846,25 @@ Har bir API so'rovda avtomatik:
 
 ---
 
-*Hujjat TZ.md va kodga asosan tuzilgan. API o'zgarishi bo'lsa ushbu UserFlow ham yangilanadi.*
-*So'nggi yangilanish: 2026-08-23*
-
----
-
-## Yangilanishlar tarixi (yangi)
+## Yangilanishlar tarixi
 
 | Sana | Yangilanish | Tavsif |
 |------|-------------|--------|
+| 2026-10-16 | v1.3.0 | - `/dashboard` yangi maydonlari (bitta so'rov bilan bosh sahifa)<br>- `/debts`: `customer_id`, `status`, `page`/`per_page`; `/payments` ham<br>- `debt_date` javobda `YYYY-MM-DD`<br>- `return_date` qoidalari, PUT da kalit yuborilmasa sana saqlanadi<br>- `skipped_no_phone` holati, yangi eslatma SMS shabloni<br>- Ta'minotchilar: `from`/`to`, `GET /supplier-transactions`, joriy limitlar |
 | 2026-08-23 | v1.2.0 | - **Yetkazib beruvchilar (Suppliers) moduli qo'shildi** (Kreditorlik, customer nasiya debitorlikdan ALOHIDA)<br>- CRUD + search/filter/pagination<br>- Moliyaviy: debt/payment/partial/overpayment block/due_date/overdue/cancel/FIFO allocation<br>- current_debt 100% server-side<br>- Permission supplier.* va supplier_transactions.* Spatie Permission orqali<br>- Supplier tarif limitlari: Basic(10) / Pro(50) / Premium(cheksiz) + server-side enforce<br>- Premium yangi plan qo'shildi (cheksiz hamma narsa + 200 SMS)<br>- `/api/v1/dashboard` supplier nested stats, existing customer stats SAQLANDI<br>- 103 ta PHPUnit test (513 assertion) PASS (old 90 + yangi 13 supplier regression testi)<br>- OpenAPI docs UserFlow-Mobile.md TZ.md yangilandi |
+| 2026-04-23 | v1.1.0 | - Public Offer, Privacy Policy va aloqa ma'lumotlari admin panelda qo'shildi<br>- OpenAPI 3.0 spesifikatsiyasi yaratildi<br>- Tashkent mahalla seederini yangilandi (placeholder o'rniga haqiqiy nomlar)<br>- Admin sozlamalariga yangi maydonlar qo'shildi<br>- Public API endpointlari qo'shildi |
+| 2026-04-01 | v1.0.0 | - Dastlabki versiya<br>- Laravel 12, PHP 8.2+, MySQL<br>- Multi-tenant arxitektura<br>- Click va Payme to'lov tizimlari<br>- Eskiz SMS integratsiyasi<br>- AI SupportBot (Groq)<br>- Admin panel<br>- Mobil API<br>- Promocodlar tizimi |
+| 2026-03-26 | v0.9.0 | - Promocodlar tizimi qo'shildi<br>- Managerlar uchun chegirma boshqaruvi<br>- Promo usage tracking |
+| 2026-03-22 | v0.8.0 | - UserFlow-Mobile.md hujjati yaratildi<br>- Mobil ilova uchun batafsil flow<br>- API endpointlar dokumentatsiyasi |
+| 2026-03-15 | v0.7.0 | - Qo'shimcha paketlar tizimi<br>- Nasiya va SMS paketlari<br>- Limit boshqaruvi |
+| 2026-03-01 | v0.6.0 | - Trial va obuna tizimi<br>- Balans to'ldirish<br>- Ta'riflar boshqaruvi |
+| 2026-02-15 | v0.5.0 | - Mijozlar, nasiyalar, to'lovlar CRUD<br>- SMS bildirishnomalar<br>- Muddati o'tgan qarzdorlar |
+| 2026-02-01 | v0.4.0 | - Autentifikatsiya tizimi<br>- Sanctum Bearer token<br>- Telegram login |
+| 2026-01-15 | v0.3.0 | - Ma'lumotlar bazasi sxemasi<br>- Migrationlar<br>- Seedlar |
+| 2026-01-01 | v0.2.0 | - Laravel loyihasi yaratildi<br>- Asosiy arxitektura<br>- Routing va controllerlar |
+| 2025-12-15 | v0.1.0 | - TZ va UserFlow hujjatlari<br>- Loyiha rejalashtiruvi |
 
-*So'nggi yangilanish: 2026-08-23* | **Muallif:** Daftaron Development Team
+---
+
+*Hujjat TZ.md va kodga asosan tuzilgan. API o'zgarishi bo'lsa ushbu UserFlow ham yangilanadi.*
+*So'nggi yangilanish: 2026-10-16* | **Muallif:** Daftaron Development Team

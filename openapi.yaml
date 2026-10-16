@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Daftaron API
-  version: 1.0.0
+  version: 1.3.0
   description: |
     **Daftaron** — Do'konlar uchun nasiya (qarz) boshqaruv tizimi REST API.
 
@@ -32,12 +32,19 @@ info:
     ## Obuna va balans tizimi
 
     - **Trial:** Ro'yxatdan o'tganda 15 kun (sozlanadi)
-    - **Ta'riflar:** Oddiy (29,000 so'm/oy), Pro, Premium
-    - **Limit:** Nasiya, SMS, do'kon, xodim
+    - **Ta'riflar (production, 2026-10):** Oddiy — 29 000 so'm/oy (70 nasiya, 20 SMS, 1 do'kon, 0 xodim, 1 ta'minotchi); Pro — 59 000 so'm/oy (cheksiz nasiya, 50 SMS, 3 do'kon, 3 xodim, 10 ta'minotchi). Qiymatlar admin paneldan o'zgaradi — ilova ularni `GET /subscription/status` dan olsin
+    - **Limit:** Nasiya, SMS, do'kon, xodim, ta'minotchi
     - **Qo'shimcha paketlar:** Extra nasiya, SMS, do'kon, xodim
     - **Promocodlar:** Manager tomonidan berilib, obuna sotib olishda chegirma
     - **Balans:** Foydalanuvchida saqlanadi, ta'rif va SMS uchun yechiladi
     - **Subscription status endpoint** — trial tugaganda ham ishlaydi (read-only)
+
+    ## Umumiy qoidalar
+
+    - **Sanalar:** sof sana maydonlari (`debt_date`, `return_date`, `transaction_date`, `due_date`) — `YYYY-MM-DD`; vaqtli maydonlar — ISO 8601. Vaqt zonasi `Asia/Tashkent`
+    - **Yangilash:** `apiResource` yo'llarida `PUT` va `PATCH` bir xil ishlaydi
+    - **Pagination:** `GET /debts` va `GET /payments` — `page` yuborilsa `{data, meta}`, aks holda massiv
+    - **Avtomatik SMS eslatma:** `return_date` kuni 09:00 da (Eskiz'da tasdiqlangan shablon bilan)
 
     ## To'lov tizimlari
 
@@ -121,6 +128,70 @@ components:
       description: Har bir varaqda necha satr
 
   schemas:
+    Supplier:
+      type: object
+      properties:
+        id: {type: integer}
+        tenant_id: {type: integer, description: "Multi-tenant: barcha supplierlar faqat o'z do'koni uchun ko'rinadi"}
+        manager_id: {type: integer, nullable: true}
+        created_by_user_id: {type: integer, nullable: true}
+        name: {type: string}
+        company_name: {type: string, nullable: true}
+        phone: {type: string, nullable: true}
+        address: {type: string, nullable: true}
+        note: {type: string, nullable: true}
+        status: {type: string, enum: [active, inactive]}
+        current_debt: {type: number, format: float, description: "SERVERDA HISOBLANADI: sum(debt not canceled) - sum(payment not canceled)"}
+        total_bought: {type: number, format: float, description: "Jami qarzga olinganlar summasi"}
+        total_paid: {type: number, format: float, description: "Jami to'langanlar summasi"}
+        is_overdue: {type: boolean, description: "Agar due_date muddati o'tgan va qoldiq qarz > 0"}
+        created_at: {type: string, format: date-time, nullable: true}
+        updated_at: {type: string, format: date-time, nullable: true}
+
+    SupplierTransaction:
+      type: object
+      properties:
+        id: {type: integer}
+        tenant_id: {type: integer}
+        supplier_id: {type: integer}
+        created_by_user_id: {type: integer, nullable: true}
+        type: {type: string, enum: [debt, payment], description: "debt = qarz olish; payment = to'lov qilish"}
+        amount: {type: number, format: float}
+        remaining_amount: {type: number, format: float, description: "Agar debt: amount - to'lgan qismi"}
+        is_overdue: {type: boolean, description: "due_date < today AND remaining_amount > 0 (faqat debt uchun)"}
+        transaction_date: {type: string, format: date, example: "2026-10-05", description: "Sof sana YYYY-MM-DD"}
+        due_date: {type: string, format: date, nullable: true, example: "2026-10-20", description: "Faqat debt uchun, sof sana YYYY-MM-DD"}
+        description: {type: string, nullable: true}
+        status: {type: string, enum: [open, closed, canceled], description: "open=jarayonda, closed=to'liq to'langan, canceled=bekor qilingan"}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    DashboardStats:
+      type: object
+      properties:
+        total_customers: {type: integer, description: "Mijozlar soni"}
+        total_debts: {type: number, description: "Jami berilgan nasiya summasi"}
+        total_paid: {type: number, description: "Jami qabul qilingan to'lov"}
+        remaining_debt: {type: number, description: "Qolgan qarz"}
+        debts_count: {type: integer, description: "Nasiyalar soni"}
+        today_debts: {type: number, description: "Bugun berilgan nasiya (debt_date = bugun)"}
+        today_payments: {type: number, description: "Bugun qabul qilingan to'lov"}
+        today_supplier_payments: {type: number, description: "Bugun ta'minotchilarga to'langan"}
+        debts_this_month: {type: number, description: "Shu oy berilgan nasiya"}
+        payments_this_month: {type: number, description: "Shu oy qabul qilingan to'lov"}
+        top_debtors:
+          type: array
+          description: "Eng ko'p qarzdor 5 ta mijoz (ochiq nasiyalar qoldig'i bo'yicha)"
+          items:
+            type: object
+            properties:
+              id: {type: integer}
+              name: {type: string}
+              phone: {type: string, nullable: true}
+              remaining_amount: {type: number}
+        unread_notifications: {type: integer, description: "O'qilmagan bildirishnomalar"}
+        suppliers: {type: object, description: "Ta'minotchilar yig'masi (total_bought, total_paid, total_debt, overdue_debt va h.k.)"}
+
     User:
       type: object
       description: Authenticated user
@@ -338,39 +409,36 @@ components:
         debt_date:
           type: string
           format: date
+          example: "2026-04-25"
+          description: Nasiya sanasi, sof sana (YYYY-MM-DD, Asia/Tashkent). Vaqt va timezone qo'shilmaydi.
         return_date:
           type: string
           format: date
           nullable: true
+          example: "2026-10-20"
           description: |
             Qaytarish sanasi (ixtiyoriy, YYYY-MM-DD). Ushbu sanada ertalab 09:00 (Asia/Tashkent) da
             avtomatik SMS eslatma yuboriladi. SMS statusi pastdagi maydonlarda kuzatiladi.
+            Qoidalar: bugundan oldin bo'lmaydi, debt_date dan oldin bo'lmaydi, yuqori chegara yo'q.
+            Tahrirlashda o'zgarmagan (o'tib ketgan) sana qayta yuborilsa xato bermaydi.
         return_date_sms_sent_at:
           type: string
           format: date-time
           nullable: true
           description: Qaytarish sanasi eslatma SMS qachon yuborilganligi.
-        return_date_sms_error:
-          type: string
-          nullable: true
-          description: |
-            Agar SMS yuborishda xato bo'lsa (`failed`, `limit_exceeded` yoki `skipped_limit`),
-            xato sababi bu yerda saqlanadi:
-            - `sms_limit_exceeded` — SMS limiti tugagan va balansda pul yetarli emas
-            - `customer_phone_missing` — mijoz telefon raqami belgilanmagan
         return_date_sms_status:
           type: string
           nullable: true
-          enum: [pending, queued, sent, failed, skipped_limit, limit_exceeded]
+          enum: [pending, sent, failed, skipped_limit, skipped_no_phone]
           description: |
             Avtomatik qaytarish sanasi eslatma SMS holati:
             - `pending` — SMS hali yuborilmagan (kutilmoqda)
-            - `queued` — SMS navbatga qo'yildi (tez orada yuboriladi)
-            - `sent` — SMS muvaffaqiyatli yuborildi
-            - `failed` — SMS yuborishda xato (provayder tomonidan xato)
-            - `skipped_limit` — Mijoz telefon raqami belgilanmaganligi sababli o'tkazildi
-            - `limit_exceeded` — SMS limiti tugagan yoki balans yetarli emasligi sababli o'tkazildi.
-              Bu holatda do'kon egasiga `return_date_reminder_sms_skipped` turidagi yangi bildirishnoma tushadi.
+            - `sent` — SMS muvaffaqiyatli yuborildi (`return_date_sms_sent_at` to'ladi)
+            - `failed` — SMS yuborishda xato (keyingi kunlarda, qaytarish sanasidan 3 kungacha qayta urinadi)
+            - `skipped_limit` — SMS limiti tugagan va balans SMS narxiga yetmaydi
+            - `skipped_no_phone` — mijozning telefon raqami yo'q
+            `skipped_*` holatlarida do'kon egasiga `return_date_reminder_sms_skipped` bildirishnomasi yuboriladi.
+            Boshqa qiymat (`limit_exceeded`, `queued` va h.k.) yo'q.
         status:
           type: string
           enum: [open, closed]
@@ -389,7 +457,7 @@ components:
 
     Payment:
       type: object
-      description: To'lov (2 turi bor: debt_specific va general/umumiy customer to'lovi)
+      description: "To'lov (2 turi bor: debt_specific va general/umumiy customer to'lovi)"
       properties:
         id:
           type: integer
@@ -413,6 +481,8 @@ components:
         paid_at:
           type: string
           format: date-time
+          example: "2026-09-09T00:41:14+05:00"
+          description: Doim Toshkent vaqti va offset bilan qaytadi.
         created_by:
           allOf:
             - $ref: "#/components/schemas/User"
@@ -748,6 +818,34 @@ paths:
         "200":
           description: Parol yangilandi
 
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Joriy foydalanuvchi, active do'kon va ruxsat etilgan do'konlar
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+                  active_tenant:
+                    type: object
+                    nullable: true
+                    description: "users.tenant_id ga mos do'kon (id, name, owner_id, manager_id, plan_id, status)"
+                  available_tenants:
+                    type: array
+                    description: "Foydalanuvchi egasi, menejeri yoki xodimi bo'lgan do'konlar (nom bo'yicha tartiblangan)"
+                    items: { type: object }
+        "401":
+          description: Token yo'q yoki eskirgan
+        "403":
+          description: Obuna tugagan va so'rov GET emas (bu endpoint GET, shuning uchun ishlaydi)
+
   /auth/logout:
     post:
       tags: [Auth]
@@ -1059,7 +1157,7 @@ paths:
   /tenants/{tenant}/purge-request:
     post:
       tags: [Tenants]
-      summary: Do'kon ma'lumotlarini tozalash uchun 1-bosqich: SMS tasdiqlash kodini so'rash
+      summary: "Do'kon ma'lumotlarini tozalash uchun 1-bosqich: SMS tasdiqlash kodini so'rash"
       description: |
         Faqat `shop_owner` va faqat o'ziga tegishli do'kon uchun.
         Foydalanuvchi telefoniga 4 xonali kod yuboriladi va cache 10 min uchun saqlanadi (max 3 ta kiritish urinishi).
@@ -1106,7 +1204,7 @@ paths:
   /tenants/{tenant}/purge-confirm:
     post:
       tags: [Tenants]
-      summary: Do'kon ma'lumotlarini tozalash uchun 2-bosqich: SMS kodni tasdiqlash va barcha ma'lumotlarni o'chirish
+      summary: "Do'kon ma'lumotlarini tozalash uchun 2-bosqich: SMS kodni tasdiqlash va barcha ma'lumotlarni o'chirish"
       description: |
         Faqat `shop_owner` va faqat o'ziga tegishli do'kon uchun.
         To'g'ri kiritilgandan keyin quyidagilar butunlay o'chiriladi, do'kon (Tenant) o'zi saqlanadi:
@@ -1298,6 +1396,9 @@ paths:
     get:
       tags: [Debts]
       summary: Nasiyalar ro'yxati
+      description: |
+        Eng yangisi birinchi. `page` yuborilsa javob `{data, meta}` ko'rinishida (paginator),
+        yuborilmasa — eski klientlar uchun barcha nasiyalar massivi.
       security:
         - bearerAuth: []
       parameters:
@@ -1310,9 +1411,24 @@ paths:
           in: query
           schema:
             type: string
+            enum: [open, closed]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: per_page
+          in: query
+          description: Faqat `page` bilan ishlaydi. Default 20, maksimal 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
       responses:
         "200":
-          description: Nasiyalar ro'yxati (balance, total_paid_amount bilan)
+          description: |
+            `page` bilan: {"data": [Debt...], "meta": {"current_page", "per_page", "total", "last_page"}}.
+            `page` siz: [Debt...]. Xuddi shu format `GET /payments` (customer_id, debt_id, type, page, per_page) uchun ham.
 
     post:
       tags: [Debts]
@@ -1352,7 +1468,7 @@ paths:
                   type: string
                 send_sms:
                   type: boolean
-                  description: Nasiya yaratishni darhol mijozga SMS xabari yuborish (true/false). Default: false.
+                  description: "Nasiya yaratishni darhol mijozga SMS xabari yuborish (true/false). Default: false."
       responses:
         "201":
           description: |
@@ -1472,98 +1588,6 @@ paths:
       responses:
         "200":
           description: O'chirildi
-
-  /debts/{id}/send-return-sms:
-    post:
-      tags: [Debts]
-      summary: |
-        Qaytarish sanasi eslatma SMS ni qo'lda yuborish
-        (masalan, return_date avtomatik yuborilganidan keyin qayta yuborish kerak bo'lganda).
-        Agar `return_date` belgilanmagan bo'lsa — 422 xato.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: SMS yuborildi (yoki avval yuborilgan)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  message:
-                    type: string
-                  sent_at:
-                    type: string
-                    format: date-time
-                    nullable: true
-                  sms_status:
-                    type: string
-                    enum: [pending, queued, sent, failed, skipped_limit, limit_exceeded]
-                    nullable: true
-        "422":
-          description: "return_date belgilanmagan yoki hali sana kelmagan"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: Nasiya topilmadi
-
-  /debts/{id}/sms-status:
-    get:
-      tags: [Debts]
-      summary: |
-        Joriy nasiyaning return_date va SMS status holatini aniq olish.
-        Response da qo'shimcha `is_overdue` (kechikkanmi) va `days_remaining` (necha kun qoldi)
-        hisoblangan holda qaytariladi.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Joriy return_date + SMS holati
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  return_date:
-                    type: string
-                    format: date
-                    nullable: true
-                  return_sms_status:
-                    type: string
-                    enum: [pending, queued, sent, failed, skipped_limit, limit_exceeded]
-                    nullable: true
-                  return_sms_sent_at:
-                    type: string
-                    format: date-time
-                    nullable: true
-                  return_sms_error:
-                    type: string
-                    nullable: true
-                  is_overdue:
-                    type: boolean
-                    description: "true → return_date kelib o'tgan va nasiyani to'lanmagan"
-                  days_remaining:
-                    type: integer
-                    nullable: true
-                    description: "return_date gacha necha kun qoldi (manfiy = kechikkan kun)"
-        "404":
-          description: Nasiya topilmadi
 
   /debts/{id}/close:
     patch:
@@ -1686,6 +1710,7 @@ paths:
                 paid_at:
                   type: string
                   format: date-time
+                  description: "Ixtiyoriy. Offset bilan yuborish mumkin (masalan ...Z yoki +05:00) — server Toshkent vaqtiga o'girib saqlaydi. Yuborilmasa hozirgi vaqt."
                 send_sms:
                   type: boolean
       responses:
@@ -1940,6 +1965,48 @@ paths:
         "200":
           description: Tozalandi
 
+  /public/districts/{regionId}:
+    servers:
+      - url: /api
+    get:
+      tags: [Locations]
+      summary: "Tumanlar (authsiz, ro'yxatdan o'tish sahifasi uchun). To'liq manzil: /api/public/districts/{regionId}"
+      parameters:
+        - {in: path, name: regionId, required: true, schema: {type: integer}}
+      responses:
+        "200":
+          description: "[{id, name}] nom bo'yicha tartiblangan"
+  /public/streets/{districtId}:
+    servers:
+      - url: /api
+    get:
+      tags: [Locations]
+      summary: "Ko'chalar (authsiz). To'liq manzil: /api/public/streets/{districtId}"
+      parameters:
+        - {in: path, name: districtId, required: true, schema: {type: integer}}
+      responses:
+        "200":
+          description: "[{id, name}] nom bo'yicha tartiblangan"
+  /public/settings:
+    servers:
+      - url: /api
+    get:
+      tags: [Locations]
+      summary: "Ommaviy sozlamalar (authsiz). To'liq manzil: /api/public/settings"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  public_offer: {type: string}
+                  privacy_policy: {type: string}
+                  contact_phone: {type: string}
+                  contact_telegram: {type: string}
+                  contact_group: {type: string}
+
   /locations/regions:
     get:
       tags: [Locations]
@@ -1994,6 +2061,9 @@ paths:
           description: Ko'chalar
 
   /payment/click/prepare:
+    servers:
+      - url: /
+        description: Web route (api/v1 prefiksisiz)
     post:
       tags: [Webhooks]
       summary: Click callback — Prepare (formatsiz)
@@ -2006,6 +2076,9 @@ paths:
           description: "Sign error yoki order error"
 
   /payment/click/complete:
+    servers:
+      - url: /
+        description: Web route (api/v1 prefiksisiz)
     post:
       tags: [Webhooks]
       summary: Click callback — Complete
@@ -2016,7 +2089,10 @@ paths:
         "400":
           description: "Sign error yoki order error"
 
-  /api/payme/merchant:
+  /payme/merchant:
+    servers:
+      - url: /api
+        description: "To'liq manzil: /api/payme/merchant"
     post:
       tags: [Webhooks]
       summary: Payme Merchant API (JSON-RPC 2.0)
@@ -2040,11 +2116,11 @@ paths:
         Query: `q` (name/company/phone/address search), `status` (active|inactive), `in_debt` (bool), `overdue` (bool), `per_page` (pagination, bo'lmasa list ko'rinishida).
         Mijozlarning nasiyasi (Debitorlik) dan **ALOHIDA** — bu biznesning supplierlarga qarzi (Kreditorlik).
       parameters:
-        - in: query; name: q; required: false; schema: {type: string}
-        - in: query; name: status; required: false; schema: {type: string, enum: [active, inactive]}
-        - in: query; name: in_debt; required: false; schema: {type: boolean}
-        - in: query; name: overdue; required: false; schema: {type: boolean}
-        - in: query; name: per_page; required: false; schema: {type: integer, minimum: 1, maximum: 200}
+        - {in: query, name: q, required: false, schema: {type: string}}
+        - {in: query, name: status, required: false, schema: {type: string, enum: [active, inactive]}}
+        - {in: query, name: in_debt, required: false, schema: {type: boolean}}
+        - {in: query, name: overdue, required: false, schema: {type: boolean}}
+        - {in: query, name: per_page, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
       responses:
         "200":
           description: Supplierlar ro'yxati
@@ -2130,7 +2206,7 @@ paths:
 
   /suppliers/{supplier}:
     parameters:
-      - in: path; name: supplier; required: true; schema: {type: integer}
+      - {in: path, name: supplier, required: true, schema: {type: integer}}
     get:
       tags: [Suppliers]
       summary: Supplier detali (+ virtual current_debt server-side)
@@ -2182,9 +2258,12 @@ paths:
       tags: [Suppliers]
       summary: Supplier tranzaktsiyalari tarixi (qarz + to'lovlar)
       security: [{ bearerAuth: [] }]
-      description: "**Ruxsat:** `view_supplier_transactions`. Query optional `type=debt` yoki `type=payment`."
+      description: "**Ruxsat:** `view_supplier_transactions`. Filtrlar ixtiyoriy; tartib: transaction_date bo'yicha eng yangisi birinchi."
       parameters:
-        - in: query; name: type; required: false; schema: {type: string, enum: [debt, payment]}
+        - {in: path, name: supplier, required: true, schema: {type: integer}}
+        - {in: query, name: type, required: false, schema: {type: string, enum: [debt, payment]}}
+        - {in: query, name: from, required: false, description: "transaction_date >= from (YYYY-MM-DD)", schema: {type: string, format: date}}
+        - {in: query, name: to, required: false, description: "transaction_date <= to (YYYY-MM-DD), from dan kichik bo'lmasin", schema: {type: string, format: date}}
       responses:
         "200":
           description: "Tranzaktsiyalar (type=debt | payment, status=open|closed|canceled)"
@@ -2267,6 +2346,46 @@ paths:
             }
             ```
 
+  /supplier-transactions:
+    get:
+      tags: [Suppliers]
+      summary: "Do'konning barcha ta'minotchilari bo'yicha tranzaksiyalar (Tarix va Hisobot uchun bitta so'rov)"
+      security: [{ bearerAuth: [] }]
+      description: "**Ruxsat:** `view_supplier_transactions`. Har bir yozuvda `supplier` (id, name, company_name, phone) bor."
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - {in: query, name: type, required: false, schema: {type: string, enum: [debt, payment]}}
+        - {in: query, name: from, required: false, schema: {type: string, format: date}}
+        - {in: query, name: to, required: false, schema: {type: string, format: date}}
+        - {in: query, name: supplier_id, required: false, schema: {type: integer}}
+      responses:
+        "200":
+          description: "Tranzaksiyalar, eng yangisi birinchi"
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SupplierTransaction' }
+        "422":
+          description: "Noto'g'ri filtr (masalan to < from)"
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: "Bosh sahifa statistikasi (bitta so'rov)"
+      description: |
+        Do'kon egasi uchun do'kon bo'yicha, xodim (shop_worker) uchun faqat o'zi yaratgan nasiya va to'lovlar bo'yicha.
+        "Bugun" va "shu oy" Asia/Tashkent vaqti bo'yicha; nasiyalar `debt_date`, to'lovlar `paid_at` bo'yicha hisoblanadi.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Statistika
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardStats' }
+
   /supplier-transactions/{supplierTransaction}/cancel:
     patch:
       tags: [Suppliers]
@@ -2281,45 +2400,7 @@ paths:
       responses:
         "200":
           description: "Bekor qilindi, yangi qarzdorlik bilan"
+        "422":
+          description: "Xaridni bekor qilish rad etildi: unga to'langan pul qolgan xaridlardan oshib ketadi. Avval tegishli to'lovni bekor qiling."
         "403":
           description: "Cancel permission yo'q (shop_worker)"
-
-components:
-  schemas:
-    Supplier:
-      type: object
-      properties:
-        id: {type: integer}
-        tenant_id: {type: integer, description: "Multi-tenant: barcha supplierlar faqat o'z do'koni uchun ko'rinadi"}
-        manager_id: {type: integer, nullable: true}
-        created_by_user_id: {type: integer, nullable: true}
-        name: {type: string}
-        company_name: {type: string, nullable: true}
-        phone: {type: string, nullable: true}
-        address: {type: string, nullable: true}
-        note: {type: string, nullable: true}
-        status: {type: string, enum: [active, inactive]}
-        current_debt: {type: number, format: float, description: "SERVERDA HISOBLANADI: sum(debt not canceled) - sum(payment not canceled)"}
-        total_bought: {type: number, format: float, description: "Jami qarzga olinganlar summasi"}
-        total_paid: {type: number, format: float, description: "Jami to'langanlar summasi"}
-        is_overdue: {type: boolean, description: "Agar due_date muddati o'tgan va qoldiq qarz > 0"}
-        created_at: {type: string, format: date-time, nullable: true}
-        updated_at: {type: string, format: date-time, nullable: true}
-
-    SupplierTransaction:
-      type: object
-      properties:
-        id: {type: integer}
-        tenant_id: {type: integer}
-        supplier_id: {type: integer}
-        created_by_user_id: {type: integer, nullable: true}
-        type: {type: string, enum: [debt, payment], description: "debt = qarz olish; payment = to'lov qilish"}
-        amount: {type: number, format: float}
-        remaining_amount: {type: number, format: float, description: "Agar debt: amount - to'lgan qismi"}
-        is_overdue: {type: boolean, description: "due_date < today AND remaining_amount > 0 (faqat debt uchun)"}
-        transaction_date: {type: string, format: date}
-        due_date: {type: string, format: date, nullable: true, description: "Faqat debt uchun"}
-        description: {type: string, nullable: true}
-        status: {type: string, enum: [open, closed, canceled], description: "open=jarayonda, closed=to'liq to'langan, canceled=bekor qilingan"}
-        created_at: {type: string, format: date-time}
-        updated_at: {type: string, format: date-time}
