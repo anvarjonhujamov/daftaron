@@ -1,462 +1,221 @@
 import api from './axios'
+import { todayYmd, toYmd } from '../utils/date'
 
-const ENDPOINT_CANDIDATES = [
-    '/suppliers',
-    '/partners',
-    '/providers',
-    '/deliverers',
-    '/vendors',
-    '/supplier',
-    '/partner'
-]
+// Ta'minotchilar API (OpenAPI v1.3.0). Faqat hujjatlashtirilgan endpointlar:
+//   /suppliers, /suppliers/{id}, /suppliers/{id}/transactions, /suppliers/{id}/debt,
+//   /suppliers/{id}/payment, /supplier-transactions, /supplier-transactions/{id}/cancel
 
-let detectedEndpoint = null
+const unwrapList = (data) => (Array.isArray(data) ? data : (data?.data || []))
+const unwrapSupplier = (data) => data?.supplier || data?.data || data
 
-const getEndpoint = async (suffix = '') => {
-    const base = detectedEndpoint || ENDPOINT_CANDIDATES[0]
-    return `${base}${suffix}`
-}
-
-const tryEndpoints = async (method, idSuffix, data, params) => {
-    return new Promise(async (resolve, reject) => {
-        let lastErr = null
-        for (let i = 0; i < ENDPOINT_CANDIDATES.length; i++) {
-            const endpointBase = ENDPOINT_CANDIDATES[i]
-            try {
-                const url = `${endpointBase}${idSuffix}`
-                let res
-                if (method === 'get') {
-                    res = await api.get(url, { params })
-                } else if (method === 'post') {
-                    res = await api.post(url, data, { params })
-                } else if (method === 'put') {
-                    res = await api.put(url, data)
-                } else if (method === 'patch') {
-                    res = await api.patch(url, data)
-                } else if (method === 'delete') {
-                    res = await api.delete(url)
-                }
-                if (!detectedEndpoint && i > 0) {
-                    console.info(`[suppliersApi] auto-detected endpoint: ${endpointBase}`)
-                    detectedEndpoint = endpointBase
-                } else if (!detectedEndpoint) {
-                    detectedEndpoint = endpointBase
-                }
-                return resolve(res)
-            } catch (err) {
-                const status = err?.response?.status
-                if (status === 403 || status === 401 || status === 422 || status === 200) {
-                    if (!detectedEndpoint) detectedEndpoint = endpointBase
-                    return reject(err)
-                }
-                lastErr = err
-            }
-        }
-        reject(lastErr)
+const cleanParams = (params = {}) => {
+    const out = {}
+    Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') out[k] = v
     })
-}
-
-const unwrapSupplier = (responseData) => {
-    if (!responseData || typeof responseData !== 'object') return responseData
-    return responseData.supplier || responseData.partner || responseData.provider || responseData.vendor || responseData.deliverer || responseData.data || responseData
-}
-const unwrapSupplierList = (responseData) => {
-    if (!responseData || typeof responseData !== 'object') return []
-    const list = responseData.suppliers || responseData.partners || responseData.providers || responseData.vendors || responseData.deliverers || responseData.data || responseData
-    return Array.isArray(list) ? list : []
+    return out
 }
 
 export const suppliersApi = {
     getSuppliers: async (params = {}) => {
-        const cleanParams = { ...params }
-        if (cleanParams.per_page !== undefined && cleanParams.per_page !== null) {
-            delete cleanParams.per_page
-        }
-        const res = await tryEndpoints('get', '', null, cleanParams)
-        const data = res.data || {}
-        const list = unwrapSupplierList(data)
-        if (Array.isArray(data?.data) || Array.isArray(data)) {
-            return {
-                data: list,
-                meta: data.meta || data.pagination || null,
-                total: data.total ?? list.length
-            }
-        }
-        return data
+        const res = await api.get('/suppliers', { params: cleanParams(params) })
+        const list = unwrapList(res.data)
+        return { data: list, meta: res.data?.meta || null, total: res.data?.meta?.total ?? list.length }
     },
 
     getSupplier: async (id) => {
-        const res = await tryEndpoints('get', `/${id}`)
+        const res = await api.get(`/suppliers/${id}`)
         return unwrapSupplier(res.data)
     },
 
-    getSupplierPurchases: async (id, params = {}) => {
-        const subEndpoints = [
-            `/${id}/purchases`, `/${id}/invoices`, `/${id}/orders`,
-            `/${id}/bought`, `/${id}/buyings`, `/${id}/purchase-history`,
-            `/${id}/products`, `/purchases`, `/invoices`
-        ]
-        for (const sub of subEndpoints) {
-            try {
-                const url = `${detectedEndpoint || ENDPOINT_CANDIDATES[0]}${sub}`
-                const res = await api.get(url, { params })
-                const d = res?.data
-                const arr = Array.isArray(d) ? d
-                    : d?.purchases || d?.invoices || d?.orders || d?.data || d?.items || []
-                if (Array.isArray(arr)) return { data: arr, raw: d }
-            } catch (err) {
-                const status = err?.response?.status
-                if (status === 401 || status === 403 || status === 422) break
-            }
-        }
-        return { data: [], raw: null }
-    },
-
-    getSupplierPayments: async (id, params = {}) => {
-        const subEndpoints = [
-            `/${id}/payments`, `/${id}/transactions`, `/${id}/history`,
-            `/${id}/paid`, `/${id}/payment-history`, `/${id}/movements`,
-            `/${id}/ledger`, `/payments`
-        ]
-        for (const sub of subEndpoints) {
-            try {
-                const url = `${detectedEndpoint || ENDPOINT_CANDIDATES[0]}${sub}`
-                const res = await api.get(url, { params })
-                const d = res?.data
-                const arr = Array.isArray(d) ? d
-                    : d?.payments || d?.transactions || d?.movements || d?.history || d?.data || d?.items || []
-                if (Array.isArray(arr)) return { data: arr, raw: d }
-            } catch (err) {
-                const status = err?.response?.status
-                if (status === 401 || status === 403 || status === 422) break
-            }
-        }
-        return { data: [], raw: null }
-    },
-
-    getSupplierLedger: async (id, params = {}) => {
-        const subEndpoints = [
-            `/${id}/ledger`, `/${id}/movements`, `/${id}/operations`,
-            `/${id}/history`, `/${id}/transactions`, `/${id}/journal`
-        ]
-        for (const sub of subEndpoints) {
-            try {
-                const url = `${detectedEndpoint || ENDPOINT_CANDIDATES[0]}${sub}`
-                const res = await api.get(url, { params })
-                const d = res?.data
-                const arr = Array.isArray(d) ? d
-                    : d?.ledger || d?.movements || d?.operations || d?.history || d?.transactions || d?.data || d?.items || []
-                if (Array.isArray(arr)) return { data: arr, raw: d }
-            } catch (err) {
-                const status = err?.response?.status
-                if (status === 401 || status === 403 || status === 422) break
-            }
-        }
-        return { data: [], raw: null }
+    getStatistics: async () => {
+        const res = await api.get('/suppliers/statistics')
+        return res.data
     },
 
     createSupplier: async (data) => {
-        const payload = {
+        const res = await api.post('/suppliers', {
             name: data.name,
-            company_name: data.company_name || data.name || null,
-            phone: data.phone,
-            contact_person: data.contact_person || null,
-            contact: data.contact || data.contact_person || null,
-            manager_name: data.manager_name || data.contact_person || null,
-            responsible: data.responsible || data.contact_person || null,
+            company_name: data.company_name || null,
+            phone: data.phone || null,
             address: data.address || null,
-            inn: data.inn || data.stir || data.tin || null,
-            stir: data.stir || data.inn || data.tin || null,
-            tin: data.tin || data.inn || data.stir || null,
-            note: data.note || null
-        }
-        if (data.balance !== undefined) payload.balance = data.balance || 0
-        if (data.current_debt !== undefined) payload.current_debt = data.current_debt || 0
-
-        const res = await tryEndpoints('post', '', payload)
+            note: data.note || null,
+            ...(data.status ? { status: data.status } : {})
+        })
         return unwrapSupplier(res.data)
     },
 
     updateSupplier: async (id, data) => {
-        const payload = {
+        const res = await api.put(`/suppliers/${id}`, {
             name: data.name,
-            company_name: data.company_name || data.name || null,
-            phone: data.phone,
-            contact_person: data.contact_person || null,
-            contact: data.contact || data.contact_person || null,
-            manager_name: data.manager_name || data.contact_person || null,
-            responsible: data.responsible || data.contact_person || null,
+            company_name: data.company_name || null,
+            phone: data.phone || null,
             address: data.address || null,
-            inn: data.inn || data.stir || data.tin || null,
-            stir: data.stir || data.inn || data.tin || null,
-            tin: data.tin || data.inn || data.stir || null,
-            note: data.note || null
-        }
-        if (data.balance !== undefined) payload.balance = data.balance || 0
-        if (data.current_debt !== undefined) payload.current_debt = data.current_debt || 0
-
-        const sendRequest = async (method) => {
-            const suffix = `/${id}`
-            if (method === 'put') return tryEndpoints('put', suffix, payload)
-            return tryEndpoints('patch', suffix, payload)
-        }
-
-        try {
-            const result = await sendRequest('put')
-            return unwrapSupplier(result.data)
-        } catch (err) {
-            const status = err?.response?.status
-            if (status === 405 || status === 404) {
-                console.warn(`[suppliersApi.updateSupplier] PUT ${status}, retry with PATCH`)
-                const r = await sendRequest('patch')
-                return unwrapSupplier(r.data)
-            }
-            throw err
-        }
+            note: data.note || null,
+            ...(data.status ? { status: data.status } : {})
+        })
+        return unwrapSupplier(res.data)
     },
 
     deleteSupplier: async (id) => {
-        const sendRequest = async (method) => {
-            const suffix = `/${id}`
-            if (method === 'delete') return tryEndpoints('delete', suffix)
-            return tryEndpoints('post', suffix, { _method: 'delete' })
-        }
-
-        try {
-            const r = await sendRequest('delete')
-            return r.data
-        } catch (err) {
-            const status = err?.response?.status
-            if (status === 405 || status === 404) {
-                console.warn(`[suppliersApi.deleteSupplier] DELETE ${status}, retry POST/_method=delete`)
-                const r = await sendRequest('fallback')
-                return r.data
-            }
-            throw err
-        }
+        const res = await api.delete(`/suppliers/${id}`)
+        return res.data
     },
 
-    _resetDetection: () => { detectedEndpoint = null }
+    // type: 'debt' | 'payment'; from/to: 'YYYY-MM-DD'
+    getTransactions: async (supplierId, { type, from, to } = {}) => {
+        const res = await api.get(`/suppliers/${supplierId}/transactions`, { params: cleanParams({ type, from, to }) })
+        return unwrapList(res.data)
+    },
+
+    // Barcha ta'minotchilar bo'yicha bitta so'rov (har yozuvda supplier: {id, name, company_name, phone})
+    getAllTransactions: async ({ type, from, to, supplier_id } = {}) => {
+        const res = await api.get('/supplier-transactions', { params: cleanParams({ type, from, to, supplier_id }) })
+        return unwrapList(res.data)
+    },
+
+    // Qarzga xarid (kreditorlik oshadi)
+    createDebt: async (supplierId, { amount, transaction_date, due_date, description }) => {
+        const res = await api.post(`/suppliers/${supplierId}/debt`, cleanParams({
+            amount,
+            transaction_date,
+            due_date,
+            description: description || undefined
+        }))
+        return res.data
+    },
+
+    // To'lov: server FIFO taqsimlaydi, ortiqcha to'lov 422 qaytaradi
+    createPayment: async (supplierId, { amount, transaction_date, description }) => {
+        const res = await api.post(`/suppliers/${supplierId}/payment`, cleanParams({
+            amount,
+            transaction_date,
+            description: description || undefined
+        }))
+        return res.data
+    },
+
+    cancelTransaction: async (transactionId) => {
+        const res = await api.patch(`/supplier-transactions/${transactionId}/cancel`)
+        return res.data
+    }
 }
 
 /* =====================================================================
-   PURCHASE + PAYMENT CRUD (localStorage fallback agar backend 404/405)
+   Eski versiyadan qolgan, faqat telefonda saqlangan xarid/to'lovlarni
+   bir marta serverga yuborish (supplier_{id}_purchases / _payments)
    ===================================================================== */
 
-const LS = {
-    p: (sid) => `supplier_${sid}_purchases`,
-    y: (sid) => `supplier_${sid}_payments`,
-    read: (k) => {
-        try { return JSON.parse(localStorage.getItem(k) || '[]') } catch { return [] }
-    },
-    write: (k, arr) => {
-        try { localStorage.setItem(k, JSON.stringify(arr)) } catch {}
-    }
+const LEGACY_KEY_RE = /^supplier_(\d+)_(purchases|payments)$/
+const FAILED_KEY = 'supplier_unsynced_v1'
+export const SUPPLIER_MIGRATION_EVENT = 'supplier-migration-done'
+const LEGACY_CACHE_KEYS = ['suppliers_page_balances_cache_v1', 'suppliers_page_list_v1']
+
+const readJson = (key, fallback) => {
+    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback } catch { return fallback }
 }
 
-const tryWriteEndpoints = async (method, suffixArr, payload, idForLsRead, lsKeyReadFn) => {
-    // 1) Try remote endpoints one by one; stop on 401/403/422; continue on 404/405
-    const base = detectedEndpoint || ENDPOINT_CANDIDATES[0]
-    for (const suffix of suffixArr) {
-        try {
-            const url = `${base}${suffix}`
-            let res
-            if (method === 'post') res = await api.post(url, payload)
-            else if (method === 'put') res = await api.put(url, payload)
-            else if (method === 'patch') res = await api.patch(url, payload)
-            else if (method === 'delete') res = await api.delete(url)
-            const d = res?.data
-            return d?.purchase || d?.payment || d?.invoice || d?.transaction || d?.data || d || payload
-        } catch (err) {
-            const st = err?.response?.status
-            if (st === 401 || st === 403 || st === 422) throw err
-            // else try next
-        }
-    }
-    // 2) All endpoints failed — localStorage fallback
-    const lsKey = lsKeyReadFn(idForLsRead)
-    const arr = LS.read(lsKey)
-    if (method === 'post') {
-        const row = { id: payload.id || `ls_${Date.now()}_${Math.floor(Math.random() * 10000)}`, ...payload, _local: true }
-        arr.unshift(row)
-        LS.write(lsKey, arr)
-        return row
-    }
-    if (method === 'put' || method === 'patch') {
-        const idx = arr.findIndex(r => String(r.id) === String(payload.id))
-        if (idx >= 0) { arr[idx] = { ...arr[idx], ...payload, _local: true }; LS.write(lsKey, arr); return arr[idx] }
-        return payload
-    }
-    if (method === 'delete') {
-        const idx = arr.findIndex(r => String(r.id) === String(idForLsRead))
-        if (idx >= 0) { const removed = arr.splice(idx, 1)[0]; LS.write(lsKey, arr); return removed }
-        return { id: idForLsRead }
-    }
-    return payload
+const legacyDate = (row, kind) => {
+    const raw = kind === 'purchases'
+        ? (row.purchase_date || row.date || row.created_at)
+        : (row.paid_at || row.date || row.created_at)
+    const ymd = toYmd(raw)
+    const today = todayYmd()
+    return !ymd || ymd > today ? today : ymd
 }
 
-/* ---------- PURCHASE write helpers ---------- */
-
-suppliersApi.createSupplierPurchase = async (supplierId, data) => {
-    const payload = {
-        supplier_id: supplierId,
-        tenant_id: data.tenant_id ?? undefined,
-        amount: Number(data.amount) || 0,
-        total_amount: Number(data.total_amount ?? data.amount) || 0,
-        description: data.description || data.note || null,
-        note: data.note || data.description || null,
-        reference: data.reference || data.invoice_number || data.order_number || null,
-        invoice_number: data.invoice_number || data.reference || null,
-        order_number: data.order_number || data.reference || null,
-        purchase_date: data.purchase_date || data.date || new Date().toISOString().slice(0,10),
-        date: data.date || data.purchase_date || new Date().toISOString().slice(0,10),
-        status: data.status || 'unpaid',
-        debt_type: 'supplier',
-        type: 'supplier_purchase'
-    }
-    const suffixes = [
-        `/${supplierId}/purchases`, `/${supplierId}/invoices`, `/${supplierId}/orders`,
-        `/purchases`, `/invoices`, `/supplier_invoices`, `/debts`, `/${supplierId}/debts`
-    ]
-    return tryWriteEndpoints('post', suffixes, payload, supplierId, LS.p)
+const legacyDescription = (row) => {
+    const parts = []
+    const ref = row.reference || row.invoice_number
+    if (ref) parts.push(`INV ${ref}`)
+    const desc = row.description || row.note
+    if (desc) parts.push(desc)
+    return parts.join(' · ').slice(0, 500) || null
 }
 
-suppliersApi.updateSupplierPurchase = async (purchaseId, data) => {
-    const payload = { id: purchaseId, ...data }
-    const suffixes = [
-        `/purchases/${purchaseId}`, `/invoices/${purchaseId}`, `/orders/${purchaseId}`,
-        `/supplier_invoices/${purchaseId}`, `/debts/${purchaseId}`
-    ]
-    // For LS: find which supplier owns this purchase by checking all LS buckets
-    const findSid = () => {
+export const getUnsyncedSupplierRecords = () => readJson(FAILED_KEY, [])
+
+export const clearUnsyncedSupplierRecords = () => {
+    try { localStorage.removeItem(FAILED_KEY) } catch { /* ignore */ }
+}
+
+// Qaytaradi: { synced, failed } — failed yozuvlar FAILED_KEY da foydalanuvchiga ko'rsatish uchun qoladi
+export const migrateLegacySupplierRecords = async () => {
+    let keys = []
+    try {
         for (let i = 0; i < localStorage.length; i++) {
             const k = localStorage.key(i)
-            if (k && k.startsWith('supplier_') && k.endsWith('_purchases')) {
-                const arr = LS.read(k)
-                if (arr.some(r => String(r.id) === String(purchaseId))) {
-                    return k.replace('supplier_','').replace('_purchases','')
+            if (k && LEGACY_KEY_RE.test(k)) keys.push(k)
+        }
+    } catch {
+        return { synced: 0, failed: 0 }
+    }
+    LEGACY_CACHE_KEYS.forEach((k) => { try { localStorage.removeItem(k) } catch { /* ignore */ } })
+    if (keys.length === 0) return { synced: 0, failed: 0 }
+
+    // Faqat shu do'konning ta'minotchilari (boshqa akkaunt yozuvlariga tegmaymiz)
+    let ownIds
+    try {
+        const { data } = await suppliersApi.getSuppliers()
+        ownIds = new Map(data.map((s) => [String(s.id), s.name]))
+    } catch {
+        return { synced: 0, failed: 0 }
+    }
+
+    // Avval xaridlar (qarz), keyin to'lovlar: aks holda to'lov "ortiqcha" bo'lib qoladi
+    keys = keys
+        .filter((k) => ownIds.has(k.match(LEGACY_KEY_RE)[1]))
+        .sort((a, b) => (a.endsWith('_purchases') === b.endsWith('_purchases') ? 0 : a.endsWith('_purchases') ? -1 : 1))
+
+    const failed = getUnsyncedSupplierRecords()
+    let synced = 0
+
+    for (const key of keys) {
+        const [, supplierId, kind] = key.match(LEGACY_KEY_RE)
+        const rows = readJson(key, [])
+        const ordered = [...(Array.isArray(rows) ? rows : [])]
+            .sort((a, b) => legacyDate(a, kind).localeCompare(legacyDate(b, kind)))
+        const remaining = [...ordered]
+
+        for (const row of ordered) {
+            const amount = Number(row.amount ?? row.total_amount) || 0
+            const transaction_date = legacyDate(row, kind)
+            const description = legacyDescription(row)
+            try {
+                if (amount > 0) {
+                    if (kind === 'purchases') await suppliersApi.createDebt(supplierId, { amount, transaction_date, description })
+                    else await suppliersApi.createPayment(supplierId, { amount, transaction_date, description })
+                    synced++
                 }
+            } catch (err) {
+                const status = err?.response?.status
+                // Tarmoq xatosi: yozuv joyida qoladi, keyingi ochilishda qayta urinamiz
+                if (!status) break
+                failed.push({
+                    supplier_id: Number(supplierId),
+                    supplier_name: ownIds.get(supplierId) || null,
+                    kind: kind === 'purchases' ? 'debt' : 'payment',
+                    amount,
+                    transaction_date,
+                    description,
+                    reason: err?.response?.data?.message || `Xato ${status}`
+                })
             }
-        }
-        return purchaseId
-    }
-    return tryWriteEndpoints('put', suffixes, payload, findSid(), LS.p)
-}
-
-suppliersApi.deleteSupplierPurchase = async (purchaseId) => {
-    const suffixes = [
-        `/purchases/${purchaseId}`, `/invoices/${purchaseId}`, `/orders/${purchaseId}`,
-        `/supplier_invoices/${purchaseId}`, `/debts/${purchaseId}`
-    ]
-    // find LS supplier owner
-    let sid = purchaseId
-    for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i)
-        if (k && k.startsWith('supplier_') && k.endsWith('_purchases')) {
-            const arr = LS.read(k)
-            if (arr.some(r => String(r.id) === String(purchaseId))) {
-                sid = k.replace('supplier_','').replace('_purchases','')
-                break
-            }
+            // Har bir yozuv alohida o'chiriladi: yarim yo'lda uzilsa, takror yuborilmaydi
+            remaining.shift()
+            try {
+                if (remaining.length) localStorage.setItem(key, JSON.stringify(remaining))
+                else localStorage.removeItem(key)
+            } catch { /* ignore */ }
         }
     }
-    return tryWriteEndpoints('delete', suffixes, { id: purchaseId }, sid, LS.p)
-}
 
-/* ---------- PAYMENT write helpers ---------- */
-
-suppliersApi.createSupplierPayment = async (supplierId, data) => {
-    const payload = {
-        supplier_id: supplierId,
-        tenant_id: data.tenant_id ?? undefined,
-        purchase_id: data.purchase_id || data.invoice_id || data.debt_id || null,
-        invoice_id: data.invoice_id || data.purchase_id || null,
-        debt_id: data.debt_id || data.purchase_id || null,
-        amount: Number(data.amount) || 0,
-        total_amount: Number(data.total_amount ?? data.amount) || 0,
-        description: data.description || data.note || null,
-        note: data.note || data.description || null,
-        paid_at: data.paid_at || data.date || new Date().toISOString().slice(0,10),
-        date: data.date || data.paid_at || new Date().toISOString().slice(0,10),
-        payment_method: data.payment_method || data.method || 'cash',
-        method: data.method || data.payment_method || 'cash',
-        payment_type: data.payment_type || (data.purchase_id ? 'purchase_payment' : 'supplier_balance'),
-        type: 'supplier_payment'
-    }
-    const suffixes = [
-        `/${supplierId}/payments`, `/${supplierId}/supplier_payments`,
-        `/supplier_payments`, `/payments`, `/transactions`, `/${supplierId}/movements`,
-        `/${supplierId}/ledger`
-    ]
-    return tryWriteEndpoints('post', suffixes, payload, supplierId, LS.y)
-}
-
-suppliersApi.updateSupplierPayment = async (paymentId, data) => {
-    const payload = { id: paymentId, ...data }
-    const suffixes = [
-        `/payments/${paymentId}`, `/supplier_payments/${paymentId}`,
-        `/transactions/${paymentId}`, `/movements/${paymentId}`
-    ]
-    let sid = paymentId
-    for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i)
-        if (k && k.startsWith('supplier_') && k.endsWith('_payments')) {
-            const arr = LS.read(k)
-            if (arr.some(r => String(r.id) === String(paymentId))) {
-                sid = k.replace('supplier_','').replace('_payments','')
-                break
-            }
-        }
-    }
-    return tryWriteEndpoints('put', suffixes, payload, sid, LS.y)
-}
-
-suppliersApi.deleteSupplierPayment = async (paymentId) => {
-    const suffixes = [
-        `/payments/${paymentId}`, `/supplier_payments/${paymentId}`,
-        `/transactions/${paymentId}`, `/movements/${paymentId}`
-    ]
-    let sid = paymentId
-    for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i)
-        if (k && k.startsWith('supplier_') && k.endsWith('_payments')) {
-            const arr = LS.read(k)
-            if (arr.some(r => String(r.id) === String(paymentId))) {
-                sid = k.replace('supplier_','').replace('_payments','')
-                break
-            }
-        }
-    }
-    return tryWriteEndpoints('delete', suffixes, { id: paymentId }, sid, LS.y)
-}
-
-/* ---------- Merge API data with LS fallback (so UI shows both) ---------- */
-suppliersApi.getSupplierPurchasesMerged = async (supplierId, params = {}) => {
-    const remote = await suppliersApi.getSupplierPurchases(supplierId, params)
-    const ls = LS.read(LS.p(supplierId))
-    // Dedup by id, prefer remote (if remote has id matching LS id, remote wins)
-    const remoteIds = new Set((remote?.data || []).map(r => String(r.id)))
-    const combined = [...(remote?.data || [])]
-    for (const row of ls) if (!remoteIds.has(String(row.id))) combined.push(row)
-    combined.sort((a,b) => {
-        const da = new Date(a.purchase_date || a.date || a.created_at || 0)
-        const db = new Date(b.purchase_date || b.date || b.created_at || 0)
-        return db - da
-    })
-    return { data: combined, raw: remote?.raw || null }
-}
-suppliersApi.getSupplierPaymentsMerged = async (supplierId, params = {}) => {
-    const remote = await suppliersApi.getSupplierPayments(supplierId, params)
-    const ls = LS.read(LS.y(supplierId))
-    const remoteIds = new Set((remote?.data || []).map(r => String(r.id)))
-    const combined = [...(remote?.data || [])]
-    for (const row of ls) if (!remoteIds.has(String(row.id))) combined.push(row)
-    combined.sort((a,b) => {
-        const da = new Date(a.paid_at || a.date || a.created_at || 0)
-        const db = new Date(b.paid_at || b.date || b.created_at || 0)
-        return db - da
-    })
-    return { data: combined, raw: remote?.raw || null }
+    try {
+        if (failed.length) localStorage.setItem(FAILED_KEY, JSON.stringify(failed))
+    } catch { /* ignore */ }
+    // Ochiq sahifalar (Ta'minotchilar) yangi qarzdorlik va yuborilmaganlar ro'yxatini qayta o'qisin
+    if (synced || failed.length) window.dispatchEvent(new Event(SUPPLIER_MIGRATION_EVENT))
+    return { synced, failed: failed.length }
 }
 
 export default suppliersApi

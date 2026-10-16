@@ -6,7 +6,7 @@ import { ArrowLeft, CalendarDays, AlertTriangle, MessageSquareOff } from 'lucide
 import LoadingSpinner from '../components/LoadingSpinner'
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { useSubscription } from '../contexts/SubscriptionContext'
-import { todayYmd, addMonthsYmd } from '../utils/date'
+import { todayYmd, addMonthsYmd, maxYmd } from '../utils/date'
 
 export default function DebtFormPage() {
     const navigate = useNavigate()
@@ -239,7 +239,7 @@ export default function DebtFormPage() {
                                 type="date"
                                 className={`input border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500/20 ${fieldErrors.return_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                                 value={form.return_date}
-                                min={todayYmd()}
+                                min={maxYmd(todayYmd(), form.debt_date)}
                                 onChange={(e) => {
                                     setForm({ ...form, return_date: e.target.value })
                                     if (fieldErrors.return_date) setFieldErrors({ ...fieldErrors, return_date: null })

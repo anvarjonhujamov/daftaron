@@ -29,7 +29,7 @@ export const addMonthsYmd = (ymd, months) => {
 }
 
 // API qiymati -> "YYYY-MM-DD".
-// "2026-10-20" o'zicha qaytadi; "2026-09-07T19:00:00.000000Z" kabi UTC ISO Toshkentga o'tkaziladi (-> 2026-09-08)
+// Sof sana ("2026-10-20") o'zicha qaytadi; vaqtli qiymat (created_at kabi) Toshkent sanasiga o'tkaziladi
 export const toYmd = (value) => {
     if (!value) return ''
     const str = String(value)
@@ -37,6 +37,9 @@ export const toYmd = (value) => {
     const dt = new Date(str)
     return isNaN(dt.getTime()) ? '' : toTashkentYmd(dt)
 }
+
+// Eng kechki sana ("YYYY-MM-DD" satrlar leksikografik solishtiriladi), bo'shlar e'tiborsiz
+export const maxYmd = (...dates) => dates.filter(Boolean).sort().pop() || ''
 
 // a - b kunlarda ("YYYY-MM-DD" lar)
 export const diffDaysYmd = (a, b) => {

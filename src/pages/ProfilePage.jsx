@@ -528,6 +528,9 @@ export default function ProfilePage() {
                 Chiqish
             </button>
 
+            {/* Build versiyasi: telefonda yangi build ochilganini tekshirish uchun */}
+            <p className="text-center text-[12px] text-gray-400 mt-3">Versiya {__APP_VERSION__}</p>
+
             {/* Edit Profile Drawer */}
             <Drawer.Root open={showEditDrawer} onOpenChange={setShowEditDrawer} shouldScaleBackground={false} repositionInputs={false}>
                 <Drawer.Portal>

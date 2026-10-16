@@ -29,10 +29,6 @@ export const debtsApi = {
         if (typeof data.send_sms === 'boolean') {
             payload.send_sms = data.send_sms
         }
-        // Eski mijozlarga yo'naltirilgan moslik
-        if (data.due_date && !data.return_date) {
-            payload.return_date = data.due_date
-        }
 
         const response = await api.post('/debts', payload)
         return response.data

@@ -137,89 +137,53 @@ export default function DebtsPage() {
         try {
             setLoading(true)
 
-            // Stage 1: sync restore LS for customers
+            // Stage 1: sync restore LS for customers (kesh akkauntga bog'langan)
+            let cacheSuffix = ''
+            try { cacheSuffix = String(JSON.parse(localStorage.getItem('user') || '{}')?.id || '') } catch {}
+            const debtsCacheKey = `debts_page_debts_v2_${cacheSuffix}`
+            const paymentsCacheKey = `debts_page_payments_v2_${cacheSuffix}`
+            try {
+                localStorage.removeItem('debts_page_debts_v1')
+                localStorage.removeItem('debts_page_payments_v1')
+            } catch {}
             let seedDebts = []
             let seedPayments = []
             try {
-                const r1 = localStorage.getItem('debts_page_debts_v1')
+                const r1 = localStorage.getItem(debtsCacheKey)
                 if (r1) seedDebts = JSON.parse(r1) || []
-                const r2 = localStorage.getItem('debts_page_payments_v1')
+                const r2 = localStorage.getItem(paymentsCacheKey)
                 if (r2) seedPayments = JSON.parse(r2) || []
             } catch {}
             setAllDebts(seedDebts)
             setAllPayments(seedPayments)
 
-            // Stage 1: sync restore LS for suppliers (per-bucket aggregate)
-            let seedSuppliers = []
-            let seedPurchases = []
-            let seedPaymentsS = []
-            try {
-                const rs = localStorage.getItem('suppliers_page_list_v1')
-                if (rs) seedSuppliers = JSON.parse(rs) || []
-            } catch {}
-            // Scan all supplier_*_purchases / *_payments buckets
-            try {
-                for (let i = 0; i < localStorage.length; i++) {
-                    const k = localStorage.key(i)
-                    if (!k) continue
-                    if (k.startsWith('supplier_') && k.endsWith('_purchases')) {
-                        try { seedPurchases = seedPurchases.concat(JSON.parse(localStorage.getItem(k) || '[]')) } catch {}
-                    }
-                    if (k.startsWith('supplier_') && k.endsWith('_payments')) {
-                        try { seedPaymentsS = seedPaymentsS.concat(JSON.parse(localStorage.getItem(k) || '[]')) } catch {}
-                    }
-                }
-            } catch {}
-            setSuppliersList(seedSuppliers)
-            setAllSupplierPurchases(seedPurchases)
-            setAllSupplierPayments(seedPaymentsS)
             setLoading(false)
 
             // Stage 2: background network merge
             setTimeout(async () => {
                 try {
                     const [debtsData, paymentsData] = await Promise.all([
-                        debtsApi.getDebts({ per_page: 500 }),
-                        paymentsApi.getPayments({ per_page: 500 })
+                        debtsApi.getDebts(),
+                        paymentsApi.getPayments()
                     ])
                     const debtsArr = Array.isArray(debtsData) ? debtsData : (debtsData.data || [])
                     const paymentsArr = Array.isArray(paymentsData) ? paymentsData : (paymentsData.data || [])
                     setAllDebts(debtsArr)
                     setAllPayments(paymentsArr)
-                    try { localStorage.setItem('debts_page_debts_v1', JSON.stringify(debtsArr)) } catch {}
-                    try { localStorage.setItem('debts_page_payments_v1', JSON.stringify(paymentsArr)) } catch {}
+                    try { localStorage.setItem(debtsCacheKey, JSON.stringify(debtsArr)) } catch {}
+                    try { localStorage.setItem(paymentsCacheKey, JSON.stringify(paymentsArr)) } catch {}
                 } catch (err) {
                     console.error('Failed to load customer report data:', err)
                 }
 
-                // Suppliers stage 2
+                // Ta'minotchilar: GET /supplier-transactions (bitta so'rov, har yozuvda supplier)
                 try {
-                    let sList = []
-                    try {
-                        const resp = await suppliersApi.getSuppliers()
-                        sList = Array.isArray(resp) ? resp : (resp?.data || [])
-                    } catch (e) {
-                        console.warn('suppliers list load failed, using LS', e)
-                        sList = seedSuppliers
-                    }
-                    setSuppliersList(sList)
-                    try { localStorage.setItem('suppliers_page_list_v1', JSON.stringify(sList)) } catch {}
-
-                    const purchasesResults = []
-                    const paymentsResults = []
-                    const sIds = Array.from(new Set(sList.map(s => String(s.id)).filter(Boolean)))
-                    await Promise.allSettled(sIds.map(async (sid) => {
-                        try {
-                            const pr = await suppliersApi.getSupplierPurchasesMerged(sid, {})
-                            const py = await suppliersApi.getSupplierPaymentsMerged(sid, {})
-                            purchasesResults.push(...(pr?.data || []))
-                            paymentsResults.push(...(py?.data || []))
-                        } catch (e) {
-                            // keep LS data which was already set
-                        }
-                    }))
-                    if (purchasesResults.length) setAllSupplierPurchases(purchasesResults)
-                    if (paymentsResults.length) setAllSupplierPayments(paymentsResults)
+                    const txs = (await suppliersApi.getAllTransactions()).filter(t => t.status !== 'canceled')
+                    const byId = new Map()
+                    txs.forEach(t => { if (t.supplier?.id) byId.set(String(t.supplier.id), t.supplier) })
+                    setSuppliersList(Array.from(byId.values()))
+                    setAllSupplierPurchases(txs.filter(t => t.type === 'debt').map(t => ({ ...t, purchase_date: t.transaction_date })))
+                    setAllSupplierPayments(txs.filter(t => t.type === 'payment').map(t => ({ ...t, paid_at: t.transaction_date })))
                 } catch (err) {
                     console.error('Failed to load supplier report data:', err)
                 }
@@ -241,6 +205,8 @@ export default function DebtsPage() {
     }
 
     const parseDate = (value) => {
+        // Sof sana ("2026-04-25") mahalliy yarim tun sifatida o'qiladi (UTC emas)
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) value = `${value}T00:00:00`
         const date = new Date(value || '')
         return Number.isNaN(date.getTime()) ? null : date
     }
@@ -761,7 +727,7 @@ export default function DebtsPage() {
                                 ? (isSupplier ? 'text-blue-500' : 'text-red-500')
                                 : (isSupplier ? 'text-amber-500' : 'text-green-500')
                             const nameText = isSupplier
-                                ? (getSupplierById(item.supplier_id)?.name || "Ta'minotchi")
+                                ? (item.supplier?.name || getSupplierById(item.supplier_id)?.name || "Ta'minotchi")
                                 : (item.customer?.name || item.debt?.customer?.name || 'Mijoz')
                             const amountVal = item.total_amount ?? item.amount ?? 0
                             const dateVal = isSupplier
@@ -775,7 +741,7 @@ export default function DebtsPage() {
                             let rdBadge = null
                             let smsBadge = null
                             if (isDebtRow) {
-                                const rd = item.return_date || item.due_date || null
+                                const rd = item.return_date || null
                                 const remainingRaw = item.remaining_amount
                                 const paidFully = (item.status === 'paid' || item.status === 'closed' || (remainingRaw != null && Number(remainingRaw) <= 0.001))
                                 if (rd) {
@@ -811,7 +777,7 @@ export default function DebtsPage() {
                                         </span>
                                     )
 
-                                    const smsStatus = item.return_date_sms_status || item.return_sms_status || item.sms_status || null
+                                    const smsStatus = item.return_date_sms_status || null
                                     const rdPassed = rd0.getTime() <= today0.getTime()
                                     let smsMeta = null
                                     if (smsStatus === 'sent') {
@@ -820,25 +786,25 @@ export default function DebtsPage() {
                                             cls: 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/40',
                                             icon: <CheckCircle2 size={10.5} />
                                         }
-                                    } else if (smsStatus === 'limit_exceeded') {
+                                    } else if (smsStatus === 'skipped_limit') {
                                         smsMeta = {
                                             label: 'SMS limiti tugagan',
                                             cls: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40',
                                             icon: <BellOff size={10.5} />
                                         }
-                                    } else if (smsStatus === 'skipped_limit') {
+                                    } else if (smsStatus === 'skipped_no_phone') {
                                         smsMeta = {
-                                            label: 'O\'tkazildi',
+                                            label: "Telefon yo'q",
                                             cls: 'bg-gray-50 text-gray-600 border border-gray-100 dark:bg-gray-700/40 dark:text-gray-300 dark:border-gray-600/40',
                                             icon: <BellOff size={10.5} />
                                         }
                                     } else if (smsStatus === 'failed') {
                                         smsMeta = {
-                                            label: 'Yuborilmadi',
+                                            label: 'Xato',
                                             cls: 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40',
                                             icon: <X size={10.5} />
                                         }
-                                    } else if (smsStatus === 'pending' || smsStatus === 'queued') {
+                                    } else if (smsStatus === 'pending') {
                                         smsMeta = {
                                             label: 'Kutilmoqda',
                                             cls: 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40',

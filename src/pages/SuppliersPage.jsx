@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { suppliersApi } from '../api/suppliers.api'
+import { suppliersApi, getUnsyncedSupplierRecords, clearUnsyncedSupplierRecords, SUPPLIER_MIGRATION_EVENT } from '../api/suppliers.api'
 import {
     Building2, UserPlus, ArrowLeft, MoreVertical,
     Trash2, Edit2, AlertCircle, Loader2, Search,
@@ -80,23 +80,34 @@ export default function SuppliersPage() {
         }
     }
 
+    const [unsynced, setUnsynced] = useState(getUnsyncedSupplierRecords)
+
     useEffect(() => {
         loadSuppliers()
+        const onMigrated = () => {
+            setUnsynced(getUnsyncedSupplierRecords())
+            loadSuppliers()
+        }
+        window.addEventListener(SUPPLIER_MIGRATION_EVENT, onMigrated)
+        return () => window.removeEventListener(SUPPLIER_MIGRATION_EVENT, onMigrated)
     }, [])
 
+    // Qarzdorlik har bir ta'minotchida serverdan keladi: current_debt, total_bought, total_paid
     const loadSuppliers = async () => {
         setLoading(true)
         setErrorState(null)
         try {
-            suppliersApi._resetDetection()
             const response = await suppliersApi.getSuppliers()
             const raw = Array.isArray(response) ? response : (response?.data || [])
-            const data = raw.map(normalizeSupplier)
-            setSuppliers(data)
-
-            if (data.length > 0) {
-                loadComputedBalances(data)
-            }
+            setSuppliers(raw.map((r) => {
+                const s = normalizeSupplier(r)
+                return {
+                    ...s,
+                    computed_total_bought: Number(r.total_bought) || 0,
+                    computed_total_paid: Number(r.total_paid) || 0,
+                    computed_balance: Number(r.current_debt) || 0
+                }
+            }))
         } catch (err) {
             console.error('Failed to load suppliers:', err)
             const status = err.response?.status || 0
@@ -106,160 +117,6 @@ export default function SuppliersPage() {
         } finally {
             setLoading(false)
         }
-    }
-
-    const loadComputedBalances = async (suppliersArray) => {
-        try {
-            // Step 0: Darhol (sync) cache restore o'qilishi — oldingi ochilishdagi balanslar darhol
-            try {
-                const cacheRaw = typeof window !== 'undefined' ? window.localStorage.getItem('suppliers_page_balances_cache_v1') : null
-                if (cacheRaw) {
-                    const cache = JSON.parse(cacheRaw) || {}
-                    const withInstant = suppliersArray.map(s => {
-                        const c = cache[String(s.id)]
-                        if (!c) return s
-                        return {
-                            ...s,
-                            computed_total_bought: c.computed_total_bought ?? s.computed_total_bought,
-                            computed_total_paid: c.computed_total_paid ?? s.computed_total_paid,
-                            computed_balance: c.computed_balance ?? s.computed_balance,
-                        }
-                    })
-                    setSuppliers(prev => {
-                        const map = new Map()
-                        prev.forEach(p => map.set(String(p.id), p))
-                        withInstant.forEach(w => {
-                            const sid = String(w.id)
-                            const existing = map.get(sid)
-                            if (existing) {
-                                map.set(sid, {
-                                    ...existing,
-                                    computed_total_bought: w.computed_total_bought ?? existing.computed_total_bought,
-                                    computed_total_paid: w.computed_total_paid ?? existing.computed_total_paid,
-                                    computed_balance: w.computed_balance ?? existing.computed_balance,
-                                })
-                            } else {
-                                map.set(sid, w)
-                            }
-                        })
-                        return Array.from(map.values())
-                    })
-                }
-            } catch (e) { /* ignore cache read */ }
-
-            // Step 1: Synchronous — faqat LS dan o'qish (200 supplier uchun ham 1ms)
-            const lsOnly = suppliersArray.map(s => {
-                let totalBought = 0
-                let totalPaid = 0
-                try {
-                    const pRaw = localStorage.getItem(`supplier_${s.id}_purchases`)
-                    const yRaw = localStorage.getItem(`supplier_${s.id}_payments`)
-                    const pl = pRaw ? JSON.parse(pRaw) : []
-                    const yl = yRaw ? JSON.parse(yRaw) : []
-                    totalBought = (Array.isArray(pl) ? pl : []).reduce((sum, r) => sum + (parseFloat(r?.amount || r?.total_amount) || 0), 0)
-                    totalPaid = (Array.isArray(yl) ? yl : []).reduce((sum, r) => sum + (parseFloat(r?.amount) || 0), 0)
-                } catch (e) { /* ignore parse */ }
-                const initialBalanceSign = parseFloat(s?.balance ?? s?.current_debt ?? 0) || 0
-                return {
-                    id: s.id,
-                    computed_total_bought: totalBought,
-                    computed_total_paid: totalPaid,
-                    computed_balance: (totalBought - totalPaid + initialBalanceSign)
-                }
-            })
-            // Apply synchronous LS-results immediately — NO user-visible 0 flash
-            if (lsOnly.some(x => (x.computed_total_bought || x.computed_total_paid))) {
-                setSuppliers(prev => {
-                    const map = new Map()
-                    prev.forEach(p => map.set(String(p.id), p))
-                    lsOnly.forEach(w => {
-                        const sid = String(w.id)
-                        const existing = map.get(sid)
-                        if (existing) {
-                            map.set(sid, {
-                                ...existing,
-                                computed_total_bought: w.computed_total_bought ?? existing.computed_total_bought,
-                                computed_total_paid: w.computed_total_paid ?? existing.computed_total_paid,
-                                computed_balance: w.computed_balance ?? existing.computed_balance,
-                            })
-                        }
-                    })
-                    return Array.from(map.values())
-                })
-                saveBalancesCache(lsOnly.map(x => ({ id: x.id, computed_total_bought: x.computed_total_bought, computed_total_paid: x.computed_total_paid, computed_balance: x.computed_balance })))
-            }
-
-            // Step 2: Async background — remote + LS merge; yangilash kerak bo'lsa UI ni o'zgartir
-            const withRemote = await Promise.all(
-                suppliersArray.map(async (s) => {
-                    let totalBought = 0
-                    let totalPaid = 0
-                    try {
-                        const [purRes, payRes] = await Promise.all([
-                            suppliersApi.getSupplierPurchasesMerged(s.id).catch(() => ({ data: [] })),
-                            suppliersApi.getSupplierPaymentsMerged(s.id).catch(() => ({ data: [] }))
-                        ])
-                        const purchases = Array.isArray(purRes) ? purRes : (purRes?.data || [])
-                        const payments = Array.isArray(payRes) ? payRes : (payRes?.data || [])
-                        totalBought = purchases.reduce((sum, p) => sum + (parseFloat(p?.amount || p?.total_amount) || 0), 0)
-                        totalPaid = payments.reduce((sum, p) => sum + (parseFloat(p?.amount) || 0), 0)
-                    } catch (e) {
-                        // fall back to lsOnly result
-                        const ls = lsOnly.find(x => String(x.id) === String(s.id)) || {}
-                        totalBought = ls.computed_total_bought ?? 0
-                        totalPaid = ls.computed_total_paid ?? 0
-                    }
-                    const initialBalanceSign = parseFloat(s?.balance ?? s?.current_debt ?? 0) || 0
-                    return {
-                        id: s.id,
-                        computed_total_bought: totalBought,
-                        computed_total_paid: totalPaid,
-                        computed_balance: (totalBought - totalPaid + initialBalanceSign)
-                    }
-                })
-            )
-            setSuppliers(prev => {
-                const map = new Map()
-                prev.forEach(p => map.set(String(p.id), p))
-                withRemote.forEach(w => {
-                    const sid = String(w.id)
-                    const existing = map.get(sid)
-                    if (existing) {
-                        // skip unnecessary rerender if identical
-                        if (
-                            Number(existing.computed_balance) === Number(w.computed_balance) &&
-                            Number(existing.computed_total_bought) === Number(w.computed_total_bought) &&
-                            Number(existing.computed_total_paid) === Number(w.computed_total_paid)
-                        ) return
-                        map.set(sid, {
-                            ...existing,
-                            computed_total_bought: w.computed_total_bought,
-                            computed_total_paid: w.computed_total_paid,
-                            computed_balance: w.computed_balance,
-                        })
-                    }
-                })
-                return Array.from(map.values())
-            })
-            saveBalancesCache(withRemote)
-        } catch (e) {
-            console.warn('loadComputedBalances failed:', e)
-        }
-    }
-
-    const saveBalancesCache = (rows) => {
-        try {
-            const cacheRaw = typeof window !== 'undefined' ? window.localStorage.getItem('suppliers_page_balances_cache_v1') : null
-            const cache = cacheRaw ? JSON.parse(cacheRaw) : {}
-            rows.forEach(r => {
-                cache[String(r.id)] = {
-                    computed_total_bought: r.computed_total_bought ?? 0,
-                    computed_total_paid: r.computed_total_paid ?? 0,
-                    computed_balance: r.computed_balance ?? 0,
-                }
-            })
-            window.localStorage.setItem('suppliers_page_balances_cache_v1', JSON.stringify(cache))
-        } catch (e) { /* ignore quota */ }
     }
 
     const pickSupplierField = (s, fields) => {
@@ -402,6 +259,28 @@ export default function SuppliersPage() {
             </div>
 
             <div className="p-4 flex-1 space-y-4">
+                {unsynced.length > 0 && (
+                    <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-900/15 dark:border-amber-800/40 text-amber-800 dark:text-amber-200">
+                        <p className="font-bold text-[14px] mb-1">{unsynced.length} ta yozuv serverga yuborilmadi</p>
+                        <p className="text-[12px] opacity-80 mb-2">Ular eski versiyada faqat shu telefonda saqlangan edi. Kerak bo'lsa qo'lda qayta kiriting.</p>
+                        <ul className="space-y-1.5 mb-3">
+                            {unsynced.map((r, i) => (
+                                <li key={i} className="text-[12px] leading-snug">
+                                    <b>{r.supplier_name || `#${r.supplier_id}`}</b> · {r.kind === 'debt' ? 'Xarid' : "To'lov"} · {formatCurrency(r.amount)} so'm · {r.transaction_date}
+                                    {r.description ? ` · ${r.description}` : ''}
+                                    <span className="block opacity-70">{r.reason}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <button
+                            type="button"
+                            onClick={() => { clearUnsyncedSupplierRecords(); setUnsynced([]) }}
+                            className="px-3 py-1.5 rounded-xl bg-amber-500 text-white text-[12px] font-bold"
+                        >
+                            Tushunarli, ro'yxatni yopish
+                        </button>
+                    </div>
+                )}
                 <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 p-6 rounded-[24px] text-white shadow-xl shadow-orange-500/20 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-amber-400/20 rounded-full -ml-12 -mb-12 blur-2xl" />
@@ -507,11 +386,11 @@ export default function SuppliersPage() {
                                 <div 
                                     key={s.id} 
                                     onClick={() => navigate(`/suppliers/${s.id}`)}
-                                    className="bg-white dark:bg-gray-800 p-5 rounded-[24px] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all animate-in fade-in slide-in-from-bottom-4 cursor-pointer active:scale-[0.99]"
+                                    className="min-w-0 bg-white dark:bg-gray-800 p-5 rounded-[24px] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all animate-in fade-in slide-in-from-bottom-4 cursor-pointer active:scale-[0.99]"
                                     style={{ animationDelay: `${index * 40}ms` }}
                                 >
                                     <div className="flex items-start gap-4 justify-between mb-4">
-                                        <div className="flex items-start gap-4">
+                                        <div className="flex items-start gap-4 min-w-0 flex-1">
                                             <div className="w-14 h-14 bg-gradient-to-tr from-orange-100 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center text-xl font-black shadow-inner shrink-0">
                                                 <Building2 size={22} />
                                             </div>

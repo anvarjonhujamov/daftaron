@@ -3,6 +3,12 @@ import api from './axios'
 const unwrapPayment = (resp) => resp?.payment || resp?.data || resp
 
 export const paymentsApi = {
+    // page bilan: { data, meta: { current_page, per_page, total, last_page } }
+    getPaymentsPage: async (params = {}) => {
+        const response = await api.get('/payments', { params })
+        return response.data
+    },
+
     getPayments: async (params = {}) => {
         const response = await api.get('/payments', { params })
         return Array.isArray(response.data) ? response.data : (response.data?.data || response.data || [])

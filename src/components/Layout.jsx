@@ -2,6 +2,8 @@ import { useEffect, Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import BottomNav from './BottomNav'
 import LoadingSpinner from './LoadingSpinner'
+import toast from 'react-hot-toast'
+import { migrateLegacySupplierRecords } from '../api/suppliers.api'
 
 export default function Layout() {
     useEffect(() => {
@@ -12,6 +14,16 @@ export default function Layout() {
         } else {
             document.documentElement.classList.remove('dark')
         }
+    }, [])
+
+    // Eski versiyada faqat telefonda qolgan ta'minotchi xarid/to'lovlarini bir marta serverga yuboramiz
+    useEffect(() => {
+        migrateLegacySupplierRecords()
+            .then(({ synced, failed }) => {
+                if (synced) toast.success(`${synced} ta ta'minotchi yozuvi serverga yuborildi`)
+                if (failed) toast.error(`${failed} ta ta'minotchi yozuvi yuborilmadi. Ta'minotchi sahifasida ko'ring`, { duration: 8000 })
+            })
+            .catch((err) => console.error('Supplier migration failed:', err))
     }, [])
 
     return (

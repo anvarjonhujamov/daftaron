@@ -134,8 +134,8 @@ export default function StaffPage() {
         try {
             const [staffResponse, debtsResponse, paymentsResponse] = await Promise.all([
                 staffApi.getStaff(),
-                debtsApi.getDebts({ per_page: 500 }),
-                paymentsApi.getPayments({ per_page: 500 })
+                debtsApi.getDebts(),
+                paymentsApi.getPayments()
             ])
 
             const staffData = Array.isArray(staffResponse) ? staffResponse : (staffResponse.data || [])

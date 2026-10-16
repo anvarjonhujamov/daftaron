@@ -18,9 +18,8 @@ export default function HistoryPage() {
     const [mode, setMode] = useState('payments') // customers: 'payments'|'debts' ; suppliers: 'payments'|'purchases'
     const [payments, setPayments] = useState([])
     const [debts, setDebts] = useState([])
-    const [suppliers, setSuppliers] = useState([])
-    // all supplier movements: { supplier_id: { purchases: [], payments: [] } }
-    const [supplierMovements, setSupplierMovements] = useState({})
+    // GET /supplier-transactions: barcha ta'minotchilar bo'yicha bitta so'rov
+    const [supplierTxs, setSupplierTxs] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
     const [displayLimit, setDisplayLimit] = useState(50)
@@ -32,11 +31,10 @@ export default function HistoryPage() {
     const loadData = async () => {
         try {
             setLoading(true)
-            suppliersApi._resetDetection()
-            const [paymentsData, debtsData, suppliersData] = await Promise.allSettled([
-                paymentsApi.getPayments({ per_page: 500 }),
-                debtsApi.getDebts({ per_page: 500 }),
-                suppliersApi.getSuppliers()
+            const [paymentsData, debtsData, supplierTxData] = await Promise.allSettled([
+                paymentsApi.getPayments(),
+                debtsApi.getDebts(),
+                suppliersApi.getAllTransactions()
             ])
 
             if (paymentsData.status === 'fulfilled') {
@@ -47,70 +45,8 @@ export default function HistoryPage() {
                 const d = debtsData.value
                 setDebts(Array.isArray(d) ? d : (d.data || []))
             }
-
-            let supList = []
-            if (suppliersData.status === 'fulfilled') {
-                const d = suppliersData.value
-                supList = Array.isArray(d) ? d : (d.data || [])
-                setSuppliers(supList)
-            }
-
-            // Stage 1: Sync LS — instant populate supplierMovements (0 flash)
-            try {
-                const next = {}
-                supList.forEach(s => {
-                    const sid = String(s.id)
-                    let pLs = []
-                    let yLs = []
-                    try {
-                        const pRaw = localStorage.getItem(`supplier_${s.id}_purchases`)
-                        const yRaw = localStorage.getItem(`supplier_${s.id}_payments`)
-                        if (pRaw) pLs = JSON.parse(pRaw) || []
-                        if (yRaw) yLs = JSON.parse(yRaw) || []
-                    } catch { /* ignore */ }
-                    next[sid] = {
-                        supplier: s,
-                        purchases: pLs,
-                        payments: yLs
-                    }
-                })
-                if (Object.keys(next).length > 0) setSupplierMovements(next)
-            } catch { /* ignore */ }
-
-            // Stage 2: async merged (remote + LS dedup) for each supplier in background
-            if (supList.length > 0) {
-                setTimeout(async () => {
-                    try {
-                        const merged = await Promise.allSettled(
-                            supList.map(s => Promise.allSettled([
-                                suppliersApi.getSupplierPurchasesMerged(s.id),
-                                suppliersApi.getSupplierPaymentsMerged(s.id)
-                            ]))
-                        )
-                        setSupplierMovements(prev => {
-                            const next = { ...prev }
-                            merged.forEach((r, i) => {
-                                const s = supList[i]
-                                const sid = String(s.id)
-                                const cur = next[sid] || { supplier: s, purchases: [], payments: [] }
-                                if (r.status === 'fulfilled') {
-                                    const [pur, pay] = r.value
-                                    if (pur.status === 'fulfilled') {
-                                        const list = Array.isArray(pur.value) ? pur.value : (pur.value?.data || [])
-                                        if (list.length > 0) cur.purchases = list
-                                    }
-                                    if (pay.status === 'fulfilled') {
-                                        const list = Array.isArray(pay.value) ? pay.value : (pay.value?.data || [])
-                                        if (list.length > 0) cur.payments = list
-                                    }
-                                }
-                                cur.supplier = s
-                                next[sid] = cur
-                            })
-                            return next
-                        })
-                    } catch { /* ignore */ }
-                }, 0)
+            if (supplierTxData.status === 'fulfilled') {
+                setSupplierTxs(supplierTxData.value.filter(t => t.status !== 'canceled'))
             }
         } catch (err) {
             console.error('Failed to load history data:', err)
@@ -140,54 +76,36 @@ export default function HistoryPage() {
         setDisplayLimit(50)
     }
 
-    // Supplier flattened rows (each movement with supplier info)
-    const supplierAllPurchases = useMemo(() => {
-        const out = []
-        Object.values(supplierMovements).forEach(b => {
-            const s = b.supplier
-            ;(b.purchases || []).forEach(p => {
-                out.push({
-                    id: `p-${s.id}-${p.id ?? p.created_at ?? Math.random()}`,
-                    _raw: p,
-                    supplier: s,
-                    name: s?.name || s?.company_name || "Ta'minotchi",
-                    phone: s?.phone || '',
-                    amount: parseFloat(p?.amount || p?.total_amount || 0),
-                    reference: p?.reference || p?.invoice || p?.description || '',
-                    dateStr: p?.created_at || p?.date || p?.purchase_date || '',
-                    type: 'purchase',
-                    scope: 'supplier'
-                })
-            })
-        })
-        return out
-    }, [supplierMovements])
-
-    const supplierAllPayments = useMemo(() => {
-        const out = []
-        Object.values(supplierMovements).forEach(b => {
-            const s = b.supplier
-            ;(b.payments || []).forEach(p => {
-                out.push({
-                    id: `y-${s.id}-${p.id ?? p.created_at ?? Math.random()}`,
-                    _raw: p,
-                    supplier: s,
-                    name: s?.name || s?.company_name || "Ta'minotchi",
-                    phone: s?.phone || '',
-                    amount: parseFloat(p?.amount || 0),
-                    reference: p?.description || p?.note || p?.reference || '',
-                    dateStr: p?.created_at || p?.paid_at || p?.payment_date || '',
-                    type: 'payment',
-                    scope: 'supplier',
-                    method: p?.payment_method || ''
-                })
-            })
-        })
-        return out
-    }, [supplierMovements])
+    // Ta'minotchi tranzaksiyalari: har yozuvda supplier {id, name, company_name, phone}
+    const toSupplierRow = (t) => ({
+        id: `${t.type}-${t.id}`,
+        _raw: t,
+        supplier: t.supplier,
+        name: t.supplier?.name || t.supplier?.company_name || "Ta'minotchi",
+        phone: t.supplier?.phone || '',
+        amount: Number(t.amount) || 0,
+        reference: t.description || '',
+        // transaction_date sof sana (YYYY-MM-DD): vaqtsiz ko'rsatiladi
+        dateStr: t.transaction_date || t.created_at || '',
+        type: t.type === 'payment' ? 'payment' : 'purchase',
+        scope: 'supplier'
+    })
+    const supplierAllPurchases = useMemo(
+        () => supplierTxs.filter(t => t.type === 'debt').map(toSupplierRow),
+        [supplierTxs]
+    )
+    const supplierAllPayments = useMemo(
+        () => supplierTxs.filter(t => t.type === 'payment').map(toSupplierRow),
+        [supplierTxs]
+    )
 
     const formatDate = (dateString) => {
         if (!dateString) return ''
+        // Sof sana (debt_date, transaction_date): vaqtsiz, siljimasdan
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+            const [y, m, d] = dateString.split('-')
+            return `${m}/${d}/${y}`
+        }
         const date = new Date(dateString)
 
         const mm = String(date.getMonth() + 1).padStart(2, '0')

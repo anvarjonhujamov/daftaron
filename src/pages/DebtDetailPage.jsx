@@ -11,7 +11,7 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner'
 import { CustomerDetailSkeleton } from '../components/Skeleton'
 import { formatCurrency, parseCurrency } from '../utils/format'
-import { todayYmd, toYmd, diffDaysYmd } from '../utils/date'
+import { todayYmd, toYmd, diffDaysYmd, maxYmd } from '../utils/date'
 import EmptyState from '../components/EmptyState'
 import toast from 'react-hot-toast'
 import { useSubscription } from '../contexts/SubscriptionContext'
@@ -122,9 +122,15 @@ export default function DebtDetailPage() {
         const numericAmount = parseCurrency(editForm.amount)
         if (!numericAmount) return
 
-        if (editForm.returnDateTouched && editForm.return_date && editForm.return_date < todayYmd()) {
-            setEditErrors({ return_date: ['Qaytarish sanasi bugundan oldin bo\'lishi mumkin emas'] })
-            return
+        if (editForm.returnDateTouched && editForm.return_date) {
+            if (editForm.return_date < todayYmd()) {
+                setEditErrors({ return_date: ['Qaytarish sanasi bugundan oldin bo\'lishi mumkin emas'] })
+                return
+            }
+            if (editForm.return_date < toYmd(debt.debt_date)) {
+                setEditErrors({ return_date: ['Qaytarish sanasi nasiya sanasidan oldin bo\'lishi mumkin emas'] })
+                return
+            }
         }
 
         const payload = {
@@ -177,7 +183,7 @@ export default function DebtDetailPage() {
         }
     }
 
-    // debt_date UTC ISO keladi ("2026-09-07T19:00:00Z" = Toshkentda 08.09) -> toYmd orqali Toshkentga o'tkaziladi
+    // debt_date sof sana (YYYY-MM-DD) keladi; created_at kabi vaqtli qiymatlar toYmd orqali Toshkent sanasiga
     const formatDate = (dateString) => {
         const ymd = toYmd(dateString)
         if (!ymd) return ''
@@ -300,7 +306,7 @@ export default function DebtDetailPage() {
                             <div className="flex-1 min-w-0">
                                 <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish sanasi</p>
                                 {(() => {
-                                    const rd = debt.return_date || debt.due_date || null
+                                    const rd = debt.return_date || null
                                     if (!rd) {
                                         return <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Belgilanmagan</p>
                                     }
@@ -332,8 +338,9 @@ export default function DebtDetailPage() {
                         {/* SMS Status Badge (Return Date SMS) */}
                         <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700/80 flex items-start gap-3">
                             {(() => {
-                                const rd = debt.return_date || debt.due_date || null
-                                const smsStatus = debt.return_date_sms_status || debt.return_sms_status || debt.sms_status || null
+                                const rd = debt.return_date || null
+                                // pending | sent | failed | skipped_limit | skipped_no_phone
+                                const smsStatus = debt.return_date_sms_status || null
                                 if (!rd) {
                                     return (
                                         <>
@@ -356,14 +363,14 @@ export default function DebtDetailPage() {
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                                 <p className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">Yuborildi</p>
-                                                {(debt.return_sms_sent_at || debt.return_date_sms_sent_at) && (
-                                                    <p className="text-[12px] text-gray-400 mt-0.5">{formatDateTime(debt.return_sms_sent_at || debt.return_date_sms_sent_at)}</p>
+                                                {debt.return_date_sms_sent_at && (
+                                                    <p className="text-[12px] text-gray-400 mt-0.5">{formatDateTime(debt.return_date_sms_sent_at)}</p>
                                                 )}
                                             </div>
                                         </>
                                     )
                                 }
-                                if (smsStatus === 'limit_exceeded' || smsStatus === 'skipped_limit') {
+                                if (smsStatus === 'skipped_limit') {
                                     return (
                                         <>
                                             <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
@@ -372,11 +379,21 @@ export default function DebtDetailPage() {
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                                 <p className="text-[13px] font-bold text-amber-600 dark:text-amber-300">SMS limiti tugagan</p>
-                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">
-                                                    {(debt.return_date_sms_error || debt.return_sms_error) === 'customer_phone_missing'
-                                                        ? 'Mijoz telefon raqami belgilanmagan'
-                                                        : 'SMS yuborib bo\'lmadi. Paketni sotib oling va qayta jo\'nating.'}
-                                                </p>
+                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">SMS yuborib bo'lmadi: limit va balans yetmadi. Paketni sotib oling.</p>
+                                            </div>
+                                        </>
+                                    )
+                                }
+                                if (smsStatus === 'skipped_no_phone') {
+                                    return (
+                                        <>
+                                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/40 flex items-center justify-center shrink-0">
+                                                <BellOff size={16} className="text-gray-500 dark:text-gray-400" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                <p className="text-[13px] font-bold text-gray-600 dark:text-gray-300">Telefon yo'q</p>
+                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Mijozning telefon raqami kiritilmagan</p>
                                             </div>
                                         </>
                                     )
@@ -390,12 +407,12 @@ export default function DebtDetailPage() {
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
                                                 <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Xato</p>
-                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">{debt.return_date_sms_error || debt.return_sms_error || 'Qayta urinib ko\'ring'}</p>
+                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Server keyingi kunlarda qayta urinadi</p>
                                             </div>
                                         </>
                                     )
                                 }
-                                if (smsStatus === 'pending' || smsStatus === 'queued') {
+                                if (smsStatus === 'pending') {
                                     return (
                                         <>
                                             <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
@@ -652,7 +669,7 @@ export default function DebtDetailPage() {
                                                 className={`input flex-1 border-indigo-100 dark:border-indigo-900/40 focus:border-indigo-500 focus:ring-indigo-500/20 ${editErrors.return_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
                                                 value={editForm.return_date}
                                                 // Eski (o'tgan) sanaga tegilmagan bo'lsa min qo'ymaymiz, aks holda forma submit bo'lmaydi
-                                                min={editForm.returnDateTouched || !editForm.return_date || editForm.return_date >= todayYmd() ? todayYmd() : undefined}
+                                                min={editForm.returnDateTouched || !editForm.return_date || editForm.return_date >= todayYmd() ? maxYmd(todayYmd(), toYmd(debt.debt_date)) : undefined}
                                                 onChange={(e) => {
                                                     setEditForm({ ...editForm, return_date: e.target.value, returnDateTouched: true })
                                                     if (editErrors.return_date) setEditErrors({ ...editErrors, return_date: null })

@@ -1,429 +1,98 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { dashboardApi } from '../api/dashboard.api'
 import { customersApi } from '../api/customers.api'
-import { debtsApi } from '../api/debts.api'
-import { notificationsApi } from '../api/notifications.api'
-import { paymentsApi } from '../api/payments.api'
 import { profileApi } from '../api/profile.api'
 import { staffApi } from '../api/staff.api'
-import { suppliersApi } from '../api/suppliers.api'
 import {
     TrendingUp, Users, ChevronRight,
-    UserPlus, Activity, CheckCircle2, History, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone, UserCog,
-    Building2, Wallet, Calculator
+    UserPlus, Activity, CheckCircle2, Bell, ArrowDown, ArrowUp, Search, ArrowLeft, X, Phone, UserCog,
+    Wallet
 } from 'lucide-react'
-import LoadingSpinner from '../components/LoadingSpinner'
-import Skeleton, { DashboardSkeleton } from '../components/Skeleton'
+import { DashboardSkeleton } from '../components/Skeleton'
 import { formatCurrency } from '../utils/format'
-import { useSubscription } from '../contexts/SubscriptionContext'
-import { isUserStaff } from '../utils/roleHelper'
+import { isUserStaff, isStaffFromUser } from '../utils/roleHelper'
+
+const num = (v) => Number(v) || 0
+
+const readStoredUser = () => {
+    try { return JSON.parse(localStorage.getItem('user') || 'null') } catch { return null }
+}
 
 export default function DashboardPage() {
     const location = useLocation()
+    // Bosh sahifa faqat GET /dashboard dan chiziladi (xodim filtri serverda)
     const [stats, setStats] = useState(null)
-    const [customers, setCustomers] = useState([])
-    const [allDebts, setAllDebts] = useState([])
-    const [allPayments, setAllPayments] = useState([])
-    const [suppliers, setSuppliers] = useState([])
-    // Each: { supplier_id: [...rows] }
-    const [supplierPurchasesMap, setSupplierPurchasesMap] = useState({})
-    const [supplierPaymentsMap, setSupplierPaymentsMap] = useState({})
-    const [unreadNotifs, setUnreadNotifs] = useState(0)
     const [loading, setLoading] = useState(true)
-    const [user, setUser] = useState(null)
-    const [isStaff, setIsStaff] = useState(false)
-    const [staffSelfId, setStaffSelfId] = useState(null)
+    const [user, setUser] = useState(readStoredUser)
+    const [isStaff, setIsStaff] = useState(() => isStaffFromUser(readStoredUser()) === true)
     const [searchQuery, setSearchQuery] = useState('')
     const [isSearchActive, setIsSearchActive] = useState(false)
-
-    const getUserRelationIds = (item) => {
-        if (!item) return []
-        const fields = [
-            item.worker_id,
-            item.staff_id,
-            item.employee_id,
-            item.user_id,
-            item.created_by,
-            item.created_by_id,
-            item.owner_id,
-            item.tenant_id,
-            item.worker?.id,
-            item.staff?.id,
-            item.employee?.id,
-            item.user?.id,
-            item.created_by?.id,
-            item.owner?.id,
-            item.tenant?.id
-        ]
-
-        if (item.debt) {
-            fields.push(
-                item.debt.worker_id,
-                item.debt.staff_id,
-                item.debt.employee_id,
-                item.debt.user_id,
-                item.debt.created_by,
-                item.debt.created_by_id,
-                item.debt.owner_id,
-                item.debt.tenant_id,
-                item.debt.worker?.id,
-                item.debt.staff?.id,
-                item.debt.employee?.id,
-                item.debt.user?.id,
-                item.debt.created_by?.id,
-                item.debt.owner?.id,
-                item.debt.tenant?.id
-            )
-        }
-
-        return fields
-    }
-
-    const isItemRelatedToUser = (item, userId) => {
-        if (!userId) return false
-        const id = Number(userId)
-        return getUserRelationIds(item).some((value) => Number(value) === id)
-    }
+    const [searchResults, setSearchResults] = useState([])
+    const searchSeq = useRef(0)
 
     useEffect(() => {
         loadStats()
+        resolveUser()
     }, [])
 
     const loadStats = async () => {
-        setLoading(true)
         try {
-            suppliersApi._resetDetection()
-            const [statsData, customersData, debtsData, notifsData, paymentsData, suppliersData] = await Promise.allSettled([
-                dashboardApi.getStats(),
-                customersApi.getCustomers(),
-                debtsApi.getDebts(),
-                notificationsApi.getNotifications(),
-                paymentsApi.getPayments(),
-                suppliersApi.getSuppliers()
-            ])
-
-            if (statsData.status === 'fulfilled') {
-                setStats(statsData.value)
-            }
-
-            if (customersData.status === 'fulfilled') {
-                const data = customersData.value
-                setCustomers(Array.isArray(data) ? data : (data.data || []))
-            }
-
-            if (debtsData.status === 'fulfilled') {
-                const data = debtsData.value
-                setAllDebts(Array.isArray(data) ? data : (data.data || []))
-            }
-
-            if (notifsData.status === 'fulfilled') {
-                const data = notifsData.value
-                const list = Array.isArray(data) ? data : (data.data || [])
-                setUnreadNotifs(list.filter(n => !n.read_at).length)
-            }
-
-            if (paymentsData.status === 'fulfilled') {
-                const data = paymentsData.value
-                setAllPayments(Array.isArray(data) ? data : (data.data || []))
-            }
-
-            let suppliersList = []
-            if (suppliersData.status === 'fulfilled') {
-                const data = suppliersData.value
-                suppliersList = Array.isArray(data) ? data : (data.data || [])
-                setSuppliers(suppliersList)
-            }
-
-            // Suppliers: Stage 1 — SYNC instant LS restore (0 flash) — darhol ko'rsatish
-            if (suppliersList.length > 0) {
-                try {
-                    const cacheRaw = typeof window !== 'undefined' ? window.localStorage.getItem('suppliers_page_balances_cache_v1') : null
-                    if (cacheRaw) {
-                        const cache = JSON.parse(cacheRaw) || {}
-                        const pMap = {}
-                        const yMap = {}
-                        suppliersList.forEach(s => {
-                            const sid = String(s.id)
-                            try {
-                                const pRaw = localStorage.getItem(`supplier_${s.id}_purchases`)
-                                const yRaw = localStorage.getItem(`supplier_${s.id}_payments`)
-                                if (pRaw) pMap[sid] = JSON.parse(pRaw)
-                                if (yRaw) yMap[sid] = JSON.parse(yRaw)
-                                else if (cache[sid]) {
-                                    // fallback: if no raw LS, cache has computed — at least init maps keys
-                                    if (!pMap[sid]) pMap[sid] = []
-                                    if (!yMap[sid]) yMap[sid] = []
-                                }
-                            } catch {}
-                        })
-                        if (Object.keys(pMap).length > 0) setSupplierPurchasesMap(pMap)
-                        if (Object.keys(yMap).length > 0) setSupplierPaymentsMap(yMap)
-                    }
-                } catch (e) { /* ignore cache read */ }
-
-                // Suppliers: Stage 2 — background async merged load (remote + LS dedup); updates map after network
-                setTimeout(async () => {
-                    try {
-                        const merged = await Promise.allSettled(
-                            suppliersList.map(s => Promise.allSettled([
-                                suppliersApi.getSupplierPurchasesMerged(s.id),
-                                suppliersApi.getSupplierPaymentsMerged(s.id)
-                            ]))
-                        )
-                        setSupplierPurchasesMap(prev => {
-                            const next = { ...prev }
-                            merged.forEach((r, i) => {
-                                if (r.status !== 'fulfilled') return
-                                const [pr] = r.value
-                                if (pr.status === 'fulfilled') {
-                                    const list = Array.isArray(pr.value) ? pr.value : (pr.value?.data || [])
-                                    if (list.length > 0 || prev[String(suppliersList[i].id)]) next[String(suppliersList[i].id)] = list
-                                }
-                            })
-                            return next
-                        })
-                        setSupplierPaymentsMap(prev => {
-                            const next = { ...prev }
-                            merged.forEach((r, i) => {
-                                if (r.status !== 'fulfilled') return
-                                const [, py] = r.value
-                                if (py.status === 'fulfilled') {
-                                    const list = Array.isArray(py.value) ? py.value : (py.value?.data || [])
-                                    if (list.length > 0 || prev[String(suppliersList[i].id)]) next[String(suppliersList[i].id)] = list
-                                }
-                            })
-                            return next
-                        })
-                    } catch (e) { /* ignore */ }
-                }, 0)
-            }
+            setStats(await dashboardApi.getStats())
         } catch (err) {
             console.error('Failed to load dashboard data:', err)
         } finally {
             setLoading(false)
         }
+    }
 
-        // Try to load user from localStorage
+    // Foydalanuvchi va rol localStorage'dan (PrivateRoute /auth/me bilan yangilaydi); yo'q bo'lsagina so'raladi
+    const resolveUser = async () => {
         try {
-            const stored = localStorage.getItem('user')
-            if (stored) {
-                setUser(JSON.parse(stored))
-            } else {
-                // If not in storage, fetch from API
+            let current = readStoredUser()
+            if (!current) {
                 const profileData = await profileApi.getProfile()
-                const userData = profileData.user || profileData.data || profileData
-                setUser(userData)
-                localStorage.setItem('user', JSON.stringify(userData))
+                current = profileData.user || profileData.data || profileData
+                localStorage.setItem('user', JSON.stringify(current))
+                setUser(current)
             }
-            
-            // Check if user is staff
-            const isStaffUser = await isUserStaff(staffApi)
-            setIsStaff(isStaffUser)
-
-            // For filtering stats reliably, also resolve staff record id (staff_id) if present
-            if (isStaffUser) {
-                try {
-                    const staffListResp = await staffApi.getStaff()
-                    const staffList = Array.isArray(staffListResp) ? staffListResp : (staffListResp.data || [])
-                    const myId = (JSON.parse(localStorage.getItem('user') || '{}')?.id) || null
-                    const staffRec = staffList.find(s => String(s.id) === String(myId) || String(s.user_id) === String(myId))
-                    setStaffSelfId(staffRec?.id ?? null)
-                } catch {
-                    setStaffSelfId(null)
-                }
-            } else {
-                setStaffSelfId(null)
-            }
+            const fromRoles = isStaffFromUser(current)
+            setIsStaff(fromRoles !== null ? fromRoles : await isUserStaff(staffApi))
         } catch (e) {
             console.error('Failed to load user info:', e)
         }
     }
 
-    const currentUserId = user?.id || user?.user_id
-    const staffMatchIds = [currentUserId, staffSelfId].filter(Boolean)
-    const debtsForStats = isStaff && staffMatchIds.length > 0
-        ? allDebts.filter((d) => staffMatchIds.some((id) => isItemRelatedToUser(d, id)))
-        : allDebts
-
-    const paymentsForStats = isStaff && staffMatchIds.length > 0
-        ? allPayments.filter((p) => staffMatchIds.some((id) => isItemRelatedToUser(p, id)))
-        : allPayments
-
-    const computedTotalGiven = debtsForStats.reduce((sum, d) => sum + parseFloat(d.total_amount ?? d.amount ?? d.price ?? 0), 0)
-    const computedTotalRemaining = debtsForStats.reduce((sum, d) => sum + parseFloat(d.remaining_amount ?? d.remaining_debts ?? 0), 0)
-    const computedTotalPaid = paymentsForStats.reduce((sum, p) => sum + parseFloat(p.amount ?? p.paid_amount ?? 0), 0)
-
-    // Robust field mapping based on user console output
-    const totalCustomers = stats?.total_customers ?? stats?.totalCustomers ?? stats?.customers_count ?? 0
-
-    // Qolgan qarz (Remaining Debt)
-    const totalDebt = isStaff
-        ? computedTotalRemaining
-        : parseFloat(
-            stats?.remaining_debts ?? stats?.remaining_debt ??
-            stats?.total_remaining ?? stats?.remaining_amount ??
-            stats?.total_debt ?? 0
-        )
-
-    // To'langan summa (Total Paid)
-    const totalPaid = isStaff
-        ? computedTotalPaid
-        : parseFloat(
-            stats?.total_payments ?? stats?.total_paid ?? stats?.total_paid_sum ??
-            stats?.paid_sum ?? 0
-        )
-
-    // Umumiy nasiya (Total Given) - total_debts represents the total loan amount
-    const totalGiven = isStaff
-        ? computedTotalGiven
-        : parseFloat(
-            stats?.total_debts ?? stats?.total_given ?? stats?.total_amount ??
-            (totalDebt + totalPaid)
-        )
-
-    // Monthly Progress
-    const monthlyPaid = parseFloat(
-        stats?.payments_this_month ?? stats?.monthly_payments ??
-        stats?.monthly_paid ?? stats?.paid_this_month ?? 0
-    )
-
-    // For the progress bar, if there's no explicit target, we can use a logical baseline
-    const monthlyTotal = parseFloat(
-        stats?.debts_this_month ?? stats?.monthly_debts ??
-        ((totalGiven / 12) || 1)
-    )
-
-    const monthlyPercent = Math.min(Math.round((monthlyPaid / (monthlyTotal || 1)) * 100), 100) || 0
-
-    // ============== SUPPLIERS AGGREGATE ==============
-    // Postavchiklar bo'yicha yig'indi:
-    //   Per supplier: computed_balance = totalBought - totalPaid + s.balance
-    //     > 0  → biz ularga to'lashimiz kerak → POSTAVCHIKLARGA QARZ (kreditorlik)
-    //     < 0  → ular bizga berishi kerak (abs)
-    const {
-        totalSupplierOurDebt,      // biz ularga qarzdor: sum over (computed_balance > 0 ? computed_balance : 0)
-        totalSupplierTheyOweUs,    // ular bizga qarzdor: sum over (computed_balance < 0 ? abs : 0)
-        todaySupplierPayments,     // bugun biz to'lgan supplier payments
-    } = useMemo(() => {
-        if (suppliers.length === 0) {
-            return { totalSupplierOurDebt: 0, totalSupplierTheyOweUs: 0, todaySupplierPayments: 0 }
+    // Qidiruv: yozilganda serverdan (debounce), oldindan hamma mijozni yuklamaymiz
+    useEffect(() => {
+        const q = searchQuery.trim()
+        if (!q) {
+            setSearchResults([])
+            return
         }
-        
-        let ourDebt = 0
-        let theyOwe = 0
-        let todayPay = 0
-        const todayRaw = new Date()
-        const todayStr = new Date(todayRaw - todayRaw.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+        const seq = ++searchSeq.current
+        const timer = setTimeout(async () => {
+            try {
+                const data = await customersApi.getCustomers({ q })
+                if (seq !== searchSeq.current) return
+                const list = Array.isArray(data) ? data : (data.data || [])
+                setSearchResults(list.slice(0, 5))
+            } catch {
+                if (seq === searchSeq.current) setSearchResults([])
+            }
+        }, 300)
+        return () => clearTimeout(timer)
+    }, [searchQuery])
 
-        suppliers.forEach(s => {
-            const sid = String(s.id)
-            const purList = Array.isArray(supplierPurchasesMap[sid]) ? supplierPurchasesMap[sid] : []
-            const payList = Array.isArray(supplierPaymentsMap[sid]) ? supplierPaymentsMap[sid] : []
-
-            const totalBought = purList.reduce((sum, p) => sum + (parseFloat(p?.amount || p?.total_amount) || 0), 0)
-            const totalPaid = payList.reduce((sum, p) => sum + (parseFloat(p?.amount) || 0), 0)
-            const initialSign = parseFloat(s?.balance ?? s?.current_debt ?? 0) || 0
-            const cb = totalBought - totalPaid + initialSign
-
-            if (cb > 0) ourDebt += cb
-            else if (cb < 0) theyOwe += Math.abs(cb)
-
-            // today supplier payments
-            payList.forEach(p => {
-                const dateStr = p?.created_at || p?.paid_at || p?.payment_date
-                if (!dateStr) return
-                try {
-                    const dt = new Date(dateStr)
-                    const localStr = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().split('T')[0]
-                    if (localStr === todayStr) todayPay += (parseFloat(p?.amount) || 0)
-                } catch { /* ignore */ }
-            })
-        })
-
-        return {
-            totalSupplierOurDebt: ourDebt,
-            totalSupplierTheyOweUs: theyOwe,
-            todaySupplierPayments: todayPay,
-        }
-    }, [suppliers, supplierPurchasesMap, supplierPaymentsMap])
-
-    // Qarzdorlik turlari:
-    //   MIJOZLARDAN OLINADI (debitorlik) = totalDebt (mijozlarning qolgan qarzi)
-    //   POSTAVCHIKLARGA QARZ (kreditorlik) = totalSupplierOurDebt
-    //   SOF MOLIYAVIY HOLAT = mijozlardan_olinadi - postavchiklarga_qarz
-    const debitorTotal = totalDebt || 0
-    const kreditorTotal = totalSupplierOurDebt || 0
-    const netFinancial = debitorTotal - kreditorTotal
-    const isNetPositive = netFinancial > 0
-    const isNetNegative = netFinancial < 0
-
-    // Today's stats — calculate from real debts and payments data in local time
-    const todayRaw = new Date();
-    const offset = todayRaw.getTimezoneOffset() * 60000;
-    const todayStr = new Date(todayRaw - offset).toISOString().split('T')[0];
-
-    // Bugun nasiya (Today's Debts — SUMMA TOTAL_AMOUNT (BERILGAN), remaining emas. Yopilgan (closed) larni ham hisoblaymiz.)
-    const todayDebts = (() => {
-        const val = stats?.today_debts ?? stats?.today_given ?? stats?.today_debt_amount ?? stats?.today_amount ?? stats?.today_nasiya;
-        if (!isStaff && val !== undefined && val !== null) {
-            return parseFloat(val) || 0;
-        }
-
-        // Fallback to client-side filtering
-        return debtsForStats
-            .filter(d => {
-                const dateStr = d.created_at || d.debt_date;
-                if (!dateStr) return false;
-                try {
-                    const dt = new Date(dateStr);
-                    const localStr = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                    return localStr === todayStr;
-                } catch (e) { return false; }
-            })
-            // BUGUN YARATILGAN BARCHA nasiyalarni (FAOL + YOPILGAN) UMUMIY BERILGAN SUMMASI (total_amount)
-            .reduce((sum, d) => sum + parseFloat(d.total_amount ?? d.amount ?? d.price ?? d.debt_amount ?? d.remaining_amount ?? 0), 0)
-    })()
-
-    // Bugun to'lov (Today's Payments)
-    const todayPayments = (() => {
-        const val = stats?.today_payments ?? stats?.today_paid ?? stats?.today_paid_amount ?? stats?.today_payment ?? stats?.today_tolov;
-        if (!isStaff && val !== undefined && val !== null) {
-            return parseFloat(val) || 0;
-        }
-
-        // Fallback to client-side filtering via allPayments
-        return paymentsForStats
-            .filter(p => {
-                const dateStr = p.created_at || p.paid_at || p.payment_date;
-                if (!dateStr) return false;
-                try {
-                    const dt = new Date(dateStr);
-                    const localStr = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                    return localStr === todayStr;
-                } catch (e) { return false; }
-            })
-            .reduce((sum, p) => sum + parseFloat(p.amount || p.paid_amount || 0), 0)
-    })()
-
-    // Debtors/Customers list source - prefer fetched customers for consistency
-    const debtorsSource = customers.length > 0
-        ? customers
-        : (stats?.recent_customers ?? stats?.top_debtors ?? stats?.debtors ?? [])
-
-    const topDebtors = debtorsSource
-        .map(customer => ({
-            ...customer,
-            computed_debt: parseFloat(customer.remaining_amount ?? customer.remaining_debts ?? customer.debt_sum ?? customer.total_debt ?? 0)
-        }))
-        .sort((a, b) => b.computed_debt - a.computed_debt) // Descending order
-
-    const searchResults = searchQuery.trim() === '' ? [] : debtorsSource.filter(c =>
-        (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (c.phone && c.phone.includes(searchQuery))
-    ).slice(0, 5)
-
-    const { remaining, status: subStatus } = useSubscription()
+    const debtsCount = num(stats?.debts_count)
+    const totalGiven = num(stats?.total_debts)
+    const totalDebt = num(stats?.remaining_debt)
+    const totalPaid = num(stats?.total_paid)
+    const todayDebts = num(stats?.today_debts)
+    const todayPayments = num(stats?.today_payments)
+    const todaySupplierPayments = num(stats?.today_supplier_payments)
+    const unreadNotifs = num(stats?.unread_notifications)
+    const topDebtors = (stats?.top_debtors || []).map((c) => ({ ...c, computed_debt: num(c.remaining_amount) }))
 
     if (loading) {
         return <DashboardSkeleton />
@@ -558,7 +227,7 @@ export default function DashboardPage() {
                                 <Users size={16} className="text-white" />
                             </div>
                         </div>
-                        <p className="text-[24px] font-bold leading-none">{debtsForStats.length}</p>
+                        <p className="text-[24px] font-bold leading-none">{debtsCount}</p>
                     </div>
                 </div>
 

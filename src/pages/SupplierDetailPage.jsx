@@ -11,6 +11,7 @@ import {
     ShoppingCart, ArrowRightLeft, Calendar, Receipt, BadgeDollarSign
 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '../utils/format'
+import { todayYmd, toYmd } from '../utils/date'
 import LoadingSpinner from '../components/LoadingSpinner'
 import SupplierModal from '../components/SupplierModal'
 
@@ -62,24 +63,19 @@ const normalizeSupplier = (raw) => {
     }
 }
 
-const normalizeMovement = (raw, defaultType = 'purchase') => {
-    if (!raw) return null
-    const amount = pickNum(raw, ['amount', 'sum', 'total', 'total_amount', 'price', 'paid_amount'])
-    const created = pickStr(raw, ['created_at', 'date', 'createdAt', 'created', 'transaction_date', 'paid_at', 'purchase_date']) || new Date().toISOString()
+// SupplierTransaction (type: debt | payment) -> sahifa ko'rinishi
+const normalizeMovement = (tx) => {
+    if (!tx) return null
+    // transaction_date serverdan sof sana (YYYY-MM-DD) keladi: o'girilmaydi
+    const ymd = tx.transaction_date || toYmd(tx.created_at)
     return {
-        ...raw,
-        id: raw.id ?? raw.uuid ?? raw._id ?? `${Date.now()}-${Math.random()}`,
-        type: pickStr(raw, ['type', 'operation_type', 'txn_type', 'kind'], defaultType),
-        amount,
-        total_amount: pickNum(raw, ['total_amount', 'total', 'amount', 'sum']) || amount,
-        remaining_amount: pickNum(raw, ['remaining_amount', 'remain', 'balance', 'owed']),
-        description: pickStr(raw, ['description', 'note', 'comment', 'reason', 'title']),
-        created_at: created,
-        date: new Date(created),
-        reference: pickStr(raw, ['reference', 'invoice_number', 'receipt_no', 'document', 'order_number']),
-        items_count: pickNum(raw, ['items_count', 'quantity', 'count']) || null,
-        payment_method: pickStr(raw, ['payment_method', 'method', 'pay_method'], null),
-        status: pickStr(raw, ['status', 'state'], 'completed')
+        ...tx,
+        amount: Number(tx.amount) || 0,
+        remaining_amount: Number(tx.remaining_amount) || 0,
+        transaction_date: ymd,
+        // Sof sana mahalliy yarim tun sifatida: bir kun siljimaydi
+        date: ymd ? new Date(`${ymd}T00:00:00`) : new Date(tx.created_at),
+        _kind: tx.type === 'payment' ? 'payment' : 'purchase'
     }
 }
 
@@ -108,11 +104,10 @@ export default function SupplierDetailPage() {
 
     // === NEW: Purchase Drawer state ===
     const [showPurchaseDrawer, setShowPurchaseDrawer] = useState(false)
-    const [purchaseEditId, setPurchaseEditId] = useState(null)
     const [purchaseSubmitting, setPurchaseSubmitting] = useState(false)
     const [purchaseForm, setPurchaseForm] = useState({
         amountDisplay: '',
-        date: new Date().toISOString().slice(0, 10),
+        date: todayYmd(),
         reference: '',
         description: '',
         errors: {}
@@ -120,11 +115,10 @@ export default function SupplierDetailPage() {
 
     // === NEW: Payment Drawer state ===
     const [showPaymentDrawer, setShowPaymentDrawer] = useState(false)
-    const [paymentEditId, setPaymentEditId] = useState(null)
     const [paymentSubmitting, setPaymentSubmitting] = useState(false)
     const [paymentForm, setPaymentForm] = useState({
         amountDisplay: '',
-        paid_at: new Date().toISOString().slice(0, 10),
+        paid_at: todayYmd(),
         payment_method: 'cash',
         description: '',
         errors: {}
@@ -135,51 +129,48 @@ export default function SupplierDetailPage() {
     const [showHistoryOptions, setShowHistoryOptions] = useState(false)
     const [showMovementDelete, setShowMovementDelete] = useState(false)
     const [movementDeleteSubmitting, setMovementDeleteSubmitting] = useState(false)
+    const [movementCancelError, setMovementCancelError] = useState(null)
 
     /* ==========================================================
-       DATA LOAD (real merged API + localStorage, NO MOCK)
+       DATA LOAD: ta'minotchi + uning tranzaksiyalari (GET /suppliers/{id}/transactions)
        ========================================================== */
     useEffect(() => { loadData() }, [id])
 
     const loadData = async () => {
         setLoading(true)
         try {
-            suppliersApi._resetDetection()
-            // Step 0: Sync darhol LS restore — 0 flash yo'qoladi, oldingi saqlangan xarid/to'lovlar chiqadi
-            try {
-                const pRaw = localStorage.getItem(`supplier_${sid}_purchases`)
-                const yRaw = localStorage.getItem(`supplier_${sid}_payments`)
-                if (pRaw || yRaw) {
-                    const pLs = pRaw ? JSON.parse(pRaw) : []
-                    const yLs = yRaw ? JSON.parse(yRaw) : []
-                    if (Array.isArray(pLs) && pLs.length > 0) {
-                        setPurchases(pLs.map(r => normalizeMovement(r, 'purchase')))
-                    }
-                    if (Array.isArray(yLs) && yLs.length > 0) {
-                        setPayments(yLs.map(r => normalizeMovement(r, 'payment')))
-                    }
-                }
-            } catch (e) { /* ignore */ }
-
-            // Step 1: Supplier GET — async (but LS already shown)
-            const supplierRaw = await suppliersApi.getSupplier(id)
-            const normalized = normalizeSupplier(supplierRaw)
-            setSupplier(normalized)
-
-            // Step 2: Merged remote+LS — background refresh, dedup by id overwrites LS-only if id same
-            const [purResp, payResp] = await Promise.all([
-                suppliersApi.getSupplierPurchasesMerged(sid),
-                suppliersApi.getSupplierPaymentsMerged(sid)
+            const [supplierRaw, txs] = await Promise.all([
+                suppliersApi.getSupplier(id),
+                suppliersApi.getTransactions(id)
             ])
-            const purList = Array.isArray(purResp?.data) ? purResp.data.map(r => normalizeMovement(r, 'purchase')) : []
-            const payList = Array.isArray(payResp?.data) ? payResp.data.map(r => normalizeMovement(r, 'payment')) : []
-            setPurchases(purList)
-            setPayments(payList)
+            setSupplier(normalizeSupplier(supplierRaw))
+            applyTransactions(txs)
         } catch (err) {
             console.error('Failed to load supplier:', err)
             if (err.response?.status === 404) navigate('/suppliers')
         } finally {
             setLoading(false)
+        }
+    }
+
+    // Bekor qilinganlar ro'yxatda ko'rsatilmaydi (server ham hisobga olmaydi)
+    const applyTransactions = (txs) => {
+        const active = (txs || []).filter(t => t.status !== 'canceled').map(normalizeMovement)
+        setPurchases(active.filter(t => t._kind === 'purchase'))
+        setPayments(active.filter(t => t._kind === 'payment'))
+    }
+
+    // Tranzaksiyadan keyin: server hisoblagan qarz va yangi ro'yxat
+    const refreshAfterChange = async () => {
+        try {
+            const [supplierRaw, txs] = await Promise.all([
+                suppliersApi.getSupplier(id),
+                suppliersApi.getTransactions(id)
+            ])
+            setSupplier(normalizeSupplier(supplierRaw))
+            applyTransactions(txs)
+        } catch (err) {
+            console.error('Refresh failed:', err)
         }
     }
 
@@ -218,87 +209,57 @@ export default function SupplierDetailPage() {
        PURCHASE FORM SUBMIT + VALIDATION
        ========================================================== */
     const openPurchaseCreate = () => {
-        setPurchaseEditId(null)
         setPurchaseForm({
             amountDisplay: '',
-            date: new Date().toISOString().slice(0, 10),
+            date: todayYmd(),
             reference: '',
             description: '',
             errors: {}
         })
         setShowPurchaseDrawer(true)
     }
-    const openPurchaseEdit = (movement) => {
-        setPurchaseEditId(movement.id)
-        setPurchaseForm({
-            amountDisplay: formatCurrency(movement.amount),
-            date: (movement.purchase_date || movement.date || new Date()).toISOString().slice(0, 10),
-            reference: movement.reference || '',
-            description: movement.description || '',
-            errors: {}
-        })
-        setShowPurchaseDrawer(true)
-    }
-
     const handleSubmitPurchase = async () => {
         const errors = {}
         const amount = parseCurrency(purchaseForm.amountDisplay)
         if (!amount || amount <= 0) errors.amount = 'Summa kiritilishi shart'
-        if (amount > 19999999999) errors.amount = 'Summa 19.999.999.999 dan oshmasligi kerak'
+        if (amount > 99999999999) errors.amount = 'Summa 99 999 999 999 dan oshmasligi kerak'
         if (!purchaseForm.date) errors.date = 'Sana kiritilishi shart'
         setPurchaseForm(p => ({ ...p, errors }))
         if (Object.keys(errors).length > 0) return
 
         setPurchaseSubmitting(true)
         try {
-            const payload = {
+            // Backendda INV raqami uchun alohida maydon yo'q: izohga qo'shiladi
+            const description = [
+                purchaseForm.reference.trim() ? `INV ${purchaseForm.reference.trim()}` : '',
+                purchaseForm.description.trim()
+            ].filter(Boolean).join(' · ')
+            await suppliersApi.createDebt(sid, {
                 amount,
-                purchase_date: purchaseForm.date,
-                date: purchaseForm.date,
-                reference: purchaseForm.reference || null,
-                invoice_number: purchaseForm.reference || null,
-                description: purchaseForm.description || null,
-                note: purchaseForm.description || null,
-                supplier_id: sid,
-                status: 'unpaid'
-            }
-            let saved
-            if (purchaseEditId) {
-                saved = await suppliersApi.updateSupplierPurchase(purchaseEditId, payload)
-            } else {
-                saved = await suppliersApi.createSupplierPurchase(sid, payload)
-            }
-            const normalized = normalizeMovement({ ...payload, ...saved }, 'purchase')
-            if (normalized?.id) {
-                setPurchases(prev => {
-                    if (purchaseEditId) {
-                        return prev.map(p => String(p.id) === String(purchaseEditId) ? normalized : p)
-                    }
-                    return [normalized, ...(prev || [])]
-                })
-            }
-            toast.success(purchaseEditId ? "Xarid tahrirlandi" : "Yangi xarid saqlandi")
+                transaction_date: purchaseForm.date,
+                description: description || null
+            })
+            toast.success("Yangi xarid saqlandi")
             setShowPurchaseDrawer(false)
-            try {
-                const ref = await suppliersApi.getSupplierPurchasesMerged(sid)
-                if (ref?.data) setPurchases(ref.data.map(r => normalizeMovement(r, 'purchase')))
-            } catch {}
+            await refreshAfterChange()
         } catch (err) {
-            const status = err?.response?.status
-            if (status === 422) {
+            if (err?.response?.status === 422) {
                 const srv = err?.response?.data?.errors || {}
+                const first = (v) => (Array.isArray(v) ? v[0] : v)
                 setPurchaseForm(p => ({
                     ...p,
                     errors: {
                         ...p.errors,
-                        ...(srv.amount ? { amount: srv.amount[0] || srv.amount } : {}),
-                        ...(srv.date ? { date: srv.date[0] || srv.date } : {}),
-                        ...(srv.description ? { description: srv.description[0] || srv.description } : {}),
+                        ...(srv.amount ? { amount: first(srv.amount) } : {}),
+                        ...(srv.transaction_date ? { date: first(srv.transaction_date) } : {}),
+                        ...(srv.description ? { description: first(srv.description) } : {}),
+                        ...(!Object.keys(srv).length && err.response.data?.message ? { amount: err.response.data.message } : {})
                     }
                 }))
+            } else {
+                toast.error(err?.response?.data?.message || 'Xatolik yuz berdi')
             }
             console.error('Purchase submit failed:', err)
-            throw err // prevent modal close on error
         } finally {
             setPurchaseSubmitting(false)
         }
@@ -307,74 +268,40 @@ export default function SupplierDetailPage() {
     /* ==========================================================
        PAYMENT FORM SUBMIT + VALIDATION + ALLOCATION PREVIEW
        ========================================================== */
-    const totalBought = useMemo(() =>
-        purchases.reduce((s, p) => s + (parseFloat(p.amount || p.total_amount) || 0), 0),
-    [purchases])
-    const totalPaid = useMemo(() =>
-        payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0),
-    [payments])
-    const initialBalanceSign = useMemo(() => parseFloat(supplier?.balance ?? supplier?.current_debt ?? 0), [supplier])
-    const computedBalance = useMemo(() => totalBought - totalPaid + initialBalanceSign, [totalBought, totalPaid, initialBalanceSign])
+    // Qarzdorlik serverda hisoblanadi (bekor qilinganlar hisobga kirmaydi)
+    const totalBought = Number(supplier?.total_bought) || 0
+    const totalPaid = Number(supplier?.total_paid) || 0
+    const computedBalance = Number(supplier?.current_debt) || 0
     const hasDebt = computedBalance > 0
     const hasCredit = computedBalance < 0
     const absBalance = Math.abs(computedBalance)
-    const maxAllowedPayment = useMemo(() => Math.max(0, totalBought + Math.max(0, initialBalanceSign) - totalPaid), [totalBought, initialBalanceSign, totalPaid])
 
     const openPaymentCreate = () => {
-        setPaymentEditId(null)
         setPaymentForm({
             amountDisplay: '',
-            paid_at: new Date().toISOString().slice(0, 10),
+            paid_at: todayYmd(),
             payment_method: 'cash',
             description: '',
             errors: {}
         })
         setShowPaymentDrawer(true)
     }
-    const openPaymentEdit = (movement) => {
-        setPaymentEditId(movement.id)
-        setPaymentForm({
-            amountDisplay: formatCurrency(movement.amount),
-            paid_at: (movement.paid_at || movement.date || new Date()).toISOString().slice(0, 10),
-            payment_method: movement.payment_method || 'cash',
-            description: movement.description || '',
-            errors: {}
-        })
-        setShowPaymentDrawer(true)
-    }
-
-    // Allocation preview (doim avtomatik taqsimlash)
+    // Taqsimlanish ko'rinishi: server kabi FIFO — eng eski ochiq xariddan boshlab
     const allocationPreview = useMemo(() => {
-        if (paymentEditId) return null
         const amount = parseCurrency(paymentForm.amountDisplay)
         if (amount <= 0) return []
+        const open = purchases
+            .filter(p => p.remaining_amount > 0)
+            .sort((a, b) => a.transaction_date.localeCompare(b.transaction_date) || (a.id - b.id))
         const rows = []
         let remain = amount
-        if (purchases.length > 0) {
-            const sorted = [...purchases].sort((a, b) => (new Date(b.created_at)) - (new Date(a.created_at)))
-            for (let i = 0; i < sorted.length && remain > 0; i++) {
-                const purch = sorted[i]
-                const remaining_purchase = parseFloat(purch.amount || purch.total_amount) || 0
-                const to_alloc = Math.min(remaining_purchase, remain)
-                if (to_alloc > 0) {
-                    rows.push({
-                        id: purch.id,
-                        purchase: purch,
-                        allocated: to_alloc,
-                        type: 'purchase'
-                    })
-                    remain -= to_alloc
-                }
-            }
+        for (const purch of open) {
+            if (remain <= 0) break
+            const allocated = Math.min(purch.remaining_amount, remain)
+            rows.push({ id: purch.id, purchase: purch, allocated, type: 'purchase' })
+            remain -= allocated
         }
-        if (remain > 0) {
-            rows.push({
-                id: 'balance',
-                purchase: null,
-                allocated: remain,
-                type: 'balance'
-            })
-        }
+        if (remain > 0) rows.push({ id: 'over', purchase: null, allocated: remain, type: 'over' })
         return rows
     }, [paymentForm.amountDisplay, purchases])
 
@@ -382,67 +309,44 @@ export default function SupplierDetailPage() {
         const errors = {}
         const amount = parseCurrency(paymentForm.amountDisplay)
         if (!amount || amount <= 0) errors.amount = 'Summa kiritilishi shart'
-        if (amount > 19999999999) errors.amount = 'Summa 19.999.999.999 dan oshmasligi kerak'
+        // Ortiqcha to'lovni server tekshiradi (422 xabari maydon ostida chiqadi): mahalliy balans eskirgan bo'lishi mumkin
         if (!paymentForm.paid_at) errors.paid_at = 'Sana kiritilishi shart'
         setPaymentForm(p => ({ ...p, errors }))
         if (Object.keys(errors).length > 0) return
 
         setPaymentSubmitting(true)
         try {
-            const common = {
-                paid_at: paymentForm.paid_at,
-                date: paymentForm.paid_at,
-                payment_method: paymentForm.payment_method,
-                method: paymentForm.payment_method,
-                description: paymentForm.description || null,
-                note: paymentForm.description || null,
-                supplier_id: sid,
-            }
-            if (paymentEditId) {
-                const saved = await suppliersApi.updateSupplierPayment(paymentEditId, { amount, ...common })
-                const n = normalizeMovement({ amount, ...common, ...saved }, 'payment')
-                setPayments(prev => prev.map(p => String(p.id) === String(paymentEditId) ? n : p))
-            } else {
-                // doim avtomatik taqsimlash
-                const preview = allocationPreview || []
-                const createdRows = []
-                for (const row of preview) {
-                    const payload = {
-                        amount: row.allocated,
-                        purchase_id: row.type === 'purchase' ? row.purchase.id : null,
-                        ...common,
-                        payment_type: row.type === 'purchase' ? 'purchase_payment' : 'supplier_balance',
-                        description: row.type === 'purchase'
-                            ? (common.description || '') + (row.purchase?.reference ? ` (INV:${row.purchase.reference})` : '') || undefined
-                            : (common.description || null)
-                    }
-                    const saved = await suppliersApi.createSupplierPayment(sid, payload)
-                    const n = normalizeMovement({ ...payload, ...saved }, 'payment')
-                    if (n?.id) createdRows.push(n)
-                }
-                if (createdRows.length) setPayments(prev => [...createdRows, ...(prev || [])])
-            }
-            toast.success(paymentEditId ? "To'lov tahrirlandi" : "To'lov muvaffaqiyatli qo'shildi")
+            // To'lov turi uchun backend maydoni yo'q: naqd bo'lmasa izohga qo'shiladi
+            const description = [
+                paymentForm.payment_method !== 'cash' ? paymentMethodLabel(paymentForm.payment_method) : '',
+                paymentForm.description.trim()
+            ].filter(Boolean).join(' · ')
+            // Bitta so'rov: server FIFO bo'yicha o'zi taqsimlaydi
+            await suppliersApi.createPayment(sid, {
+                amount,
+                transaction_date: paymentForm.paid_at,
+                description: description || null
+            })
+            toast.success("To'lov muvaffaqiyatli qo'shildi")
             setShowPaymentDrawer(false)
-            try {
-                const ref = await suppliersApi.getSupplierPaymentsMerged(sid)
-                if (ref?.data) setPayments(ref.data.map(r => normalizeMovement(r, 'payment')))
-            } catch {}
+            await refreshAfterChange()
         } catch (err) {
-            const status = err?.response?.status
-            if (status === 422) {
-                const srv = err?.response?.data?.errors || {}
+            if (err?.response?.status === 422) {
+                const data = err.response.data || {}
+                const srv = data.errors || {}
+                const first = (v) => (Array.isArray(v) ? v[0] : v)
                 setPaymentForm(p => ({
                     ...p,
                     errors: {
                         ...p.errors,
-                        ...(srv.amount ? { amount: srv.amount[0] || srv.amount } : {}),
-                        ...(srv.paid_at || srv.date ? { paid_at: (srv.paid_at || srv.date)[0] || (srv.paid_at || srv.date) } : {}),
+                        amount: srv.amount ? first(srv.amount) : (srv.transaction_date ? undefined : data.message),
+                        ...(srv.transaction_date ? { paid_at: first(srv.transaction_date) } : {})
                     }
                 }))
+            } else {
+                toast.error(err?.response?.data?.message || 'Xatolik yuz berdi')
             }
             console.error('Payment submit failed:', err)
-            throw err
         } finally {
             setPaymentSubmitting(false)
         }
@@ -451,20 +355,25 @@ export default function SupplierDetailPage() {
     /* ==========================================================
        PER-ITEM HISTORY OPTIONS: Edit / Delete
        ========================================================== */
+    // Backendda tahrirlash yo'q: tranzaksiya bekor qilinadi (PATCH .../cancel), qarz qayta hisoblanadi
     const handleDeleteMovement = async () => {
         if (!selectedMovement) return
         setMovementDeleteSubmitting(true)
+        setMovementCancelError(null)
         try {
-            const m = selectedMovement
-            const isPurchase = (m._kind === 'purchase' || m.type?.includes('purchase') || m.type?.includes('invoice') || purchases.some(x => String(x.id) === String(m.id)))
-            if (isPurchase) await suppliersApi.deleteSupplierPurchase(m.id)
-            else await suppliersApi.deleteSupplierPayment(m.id)
-            if (isPurchase) setPurchases(prev => prev.filter(x => String(x.id) !== String(m.id)))
-            else setPayments(prev => prev.filter(x => String(x.id) !== String(m.id)))
-            toast.success(isPurchase ? "Xarid o'chirildi" : "To'lov o'chirildi")
+            await suppliersApi.cancelTransaction(selectedMovement.id)
+            toast.success(selectedMovement._kind === 'purchase' ? "Xarid bekor qilindi" : "To'lov bekor qilindi")
             setShowMovementDelete(false)
+            await refreshAfterChange()
         } catch (err) {
-            console.error('Movement delete failed:', err)
+            const status = err?.response?.status
+            // 422: xaridga to'langan pul qolgan xaridlardan oshib ketadi — server sababini oynada ko'rsatamiz
+            const message = status === 403
+                ? "Bekor qilishga ruxsat yo'q (faqat do'kon egasi)"
+                : (err?.response?.data?.message || 'Xatolik yuz berdi')
+            setMovementCancelError(message)
+            toast.error(message, { duration: 6000 })
+            console.error('Movement cancel failed:', err)
         } finally {
             setMovementDeleteSubmitting(false)
         }
@@ -572,7 +481,7 @@ export default function SupplierDetailPage() {
                             }`}>
                                 {formatCurrency(absBalance)}<span className="text-[11px] font-bold opacity-70 ml-0.5">so'm</span>
                             </div>
-                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9.5px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider whitespace-nowrap ${
                                 hasDebt
                                     ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30'
                                     : hasCredit
@@ -645,17 +554,17 @@ export default function SupplierDetailPage() {
                         <div className="flex items-center justify-between mb-1">
                             <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><ShoppingCart size={12} className="text-blue-500" /></div>
                         </div>
-                        <p className="text-[8.5px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami xarid</p>
+                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami xarid</p>
                         <p className="text-[13px] font-black text-gray-900 dark:text-white leading-tight truncate">{formatCurrency(totalBought)}</p>
-                        <p className="text-[8.5px] text-gray-400 mt-0.5">so'm</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">so'm</p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
                         <div className="flex items-center justify-between mb-1">
                             <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center"><CheckCircle2 size={12} className="text-emerald-500" /></div>
                         </div>
-                        <p className="text-[8.5px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami to'lov</p>
+                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami to'lov</p>
                         <p className="text-[13px] font-black text-gray-900 dark:text-white leading-tight truncate">{formatCurrency(totalPaid)}</p>
-                        <p className="text-[8.5px] text-gray-400 mt-0.5">so'm</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">so'm</p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
                         <div className="flex items-center justify-between mb-1">
@@ -663,9 +572,9 @@ export default function SupplierDetailPage() {
                                 {hasDebt ? <TrendingUp size={12} className="text-red-500" /> : hasCredit ? <TrendingDown size={12} className="text-emerald-500" /> : <Wallet size={12} className="text-gray-400" />}
                             </div>
                         </div>
-                        <p className="text-[8.5px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Farq</p>
+                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Farq</p>
                         <p className={`text-[13px] font-black leading-tight truncate ${hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-900 dark:text-white'}`}>{formatCurrency(absBalance)}</p>
-                        <p className="text-[8.5px] text-gray-400 mt-0.5">so'm</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">so'm</p>
                     </div>
                 </div>
             </div>
@@ -751,7 +660,7 @@ export default function SupplierDetailPage() {
                                                 </div>
                                                 {mov.description && <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">{mov.description}</p>}
                                                 <p className="text-[12px] text-gray-400">
-                                                    {formatDateShort(mov.created_at)}
+                                                    {formatDateShort(mov.date)}
                                                     {mov.items_count && ` • ${mov.items_count} ta tovar`}
                                                     {mov.payment_method && ` • ${paymentMethodLabel(mov.payment_method)}`}
                                                 </p>
@@ -795,7 +704,7 @@ export default function SupplierDetailPage() {
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
                                                     <div className="text-right mr-1">
-                                                        <div className="text-[12px] text-gray-400">{formatDate(pur.created_at)}</div>
+                                                        <div className="text-[12px] text-gray-400">{formatDateShort(pur.date)}</div>
                                                         {pur.reference && <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 font-mono">{pur.reference}</div>}
                                                     </div>
                                                     <button onClick={() => { setSelectedMovement({ ...pur, _kind: 'purchase' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform">
@@ -808,6 +717,11 @@ export default function SupplierDetailPage() {
                                                 <p className="text-[18px] font-black text-blue-600 dark:text-blue-400">
                                                     +{formatCurrency(amt)} <span className="text-[12px] font-normal opacity-60">so'm</span>
                                                 </p>
+                                                {pur.remaining_amount > 0 && pur.remaining_amount < amt && (
+                                                    <p className="text-[12px] text-gray-500 mt-0.5">Qoldiq: {formatCurrency(pur.remaining_amount)} so'm</p>
+                                                )}
+                                                {pur.status === 'closed' && <p className="text-[12px] text-emerald-600 mt-0.5">To'liq to'langan</p>}
+                                                {pur.is_overdue && <p className="text-[12px] text-red-500 mt-0.5">Muddati o'tgan</p>}
                                             </div>
                                             {pur.description && (
                                                 <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
@@ -848,7 +762,7 @@ export default function SupplierDetailPage() {
                                                     {pay.payment_method && <span className="text-[11px] text-gray-400">• {paymentMethodLabel(pay.payment_method)}</span>}
                                                 </div>
                                                 {pay.description && <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">{pay.description}</p>}
-                                                <p className="text-[12px] text-gray-400">{formatDate(pay.created_at)}</p>
+                                                <p className="text-[12px] text-gray-400">{formatDateShort(pay.date)}</p>
                                             </div>
                                             <div className="text-right flex-shrink-0 pl-1">
                                                 <p className="text-[15px] font-extrabold text-emerald-600 dark:text-emerald-400 leading-none mb-0.5">-{formatCurrency(amt)}</p>
@@ -938,7 +852,7 @@ export default function SupplierDetailPage() {
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-[18px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><Receipt size={18} className="text-blue-500" /></div>
-                                    {purchaseEditId ? "Xaridni tahrirlash" : "Yangi xarid qo'shish"}
+                                    Yangi xarid qo'shish
                                 </h3>
                                 <button onClick={() => setShowPurchaseDrawer(false)} disabled={purchaseSubmitting} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700/40 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-50">
                                     <X size={16} className="text-gray-500" />
@@ -973,7 +887,7 @@ export default function SupplierDetailPage() {
                                             purchaseForm.errors.date ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 focus-within:border-blue-400'
                                         }`}>
                                             <Calendar size={17} className="ml-3.5 text-gray-400" />
-                                            <input type="date" max={new Date().toISOString().slice(0,10)}
+                                            <input type="date" max={todayYmd()}
                                                 className="flex-1 bg-transparent outline-none py-3.5 px-3 text-[14px] font-semibold text-gray-900 dark:text-white"
                                                 value={purchaseForm.date}
                                                 onChange={(e) => setPurchaseForm(p => ({ ...p, date: e.target.value, errors: { ...p.errors, date: undefined } }))}
@@ -1008,7 +922,7 @@ export default function SupplierDetailPage() {
                                         className="py-3.5 rounded-2xl font-bold text-[14.5px] bg-blue-500 hover:bg-blue-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:hover:bg-blue-500 shadow-lg shadow-blue-500/15 flex items-center justify-center gap-2"
                                     >
                                         {purchaseSubmitting ? <Loader2 size={17} className="animate-spin" /> : <ShoppingCart size={17} />}
-                                        {purchaseEditId ? "Saqlash" : "Xaridni qo'shish"}
+                                        Xaridni qo'shish
                                     </button>
                                 </div>
                             </div>
@@ -1029,7 +943,7 @@ export default function SupplierDetailPage() {
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-[18px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center"><Wallet size={18} className="text-emerald-500" /></div>
-                                    {paymentEditId ? "To'lovni tahrirlash" : "To'lov qilish"}
+                                    To'lov qilish
                                 </h3>
                                 <button onClick={() => setShowPaymentDrawer(false)} disabled={paymentSubmitting} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700/40 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-50">
                                     <X size={16} className="text-gray-500" />
@@ -1039,7 +953,7 @@ export default function SupplierDetailPage() {
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5 px-0.5">
                                         <label className="text-[12px] text-gray-400 uppercase font-bold tracking-wider">Summa <span className="text-red-400">*</span></label>
-                                        {!paymentEditId && computedBalance > 0 && (
+                                        {computedBalance > 0 && (
                                             <button type="button" onClick={() => setPaymentForm(p => ({ ...p, amountDisplay: formatCurrency(computedBalance), errors: { ...p.errors, amount: undefined } }))}
                                                 className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider active:scale-95 transition-transform"
                                             >• To'liq ({formatCurrency(Math.ceil(computedBalance))} so'm)</button>
@@ -1086,7 +1000,7 @@ export default function SupplierDetailPage() {
                                             paymentForm.errors.paid_at ? 'border-red-400' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 focus-within:border-emerald-400'
                                         }`}>
                                             <Calendar size={17} className="ml-3.5 text-gray-400" />
-                                            <input type="date" max={new Date().toISOString().slice(0,10)}
+                                            <input type="date" max={todayYmd()}
                                                 className="flex-1 bg-transparent outline-none py-3.5 px-3 text-[14px] font-semibold text-gray-900 dark:text-white"
                                                 value={paymentForm.paid_at}
                                                 onChange={(e) => setPaymentForm(p => ({ ...p, paid_at: e.target.value, errors: { ...p.errors, paid_at: undefined } }))}
@@ -1097,7 +1011,7 @@ export default function SupplierDetailPage() {
                                 </div>
 
                                 {/* ALLOCATION PREVIEW */}
-                                {allocationPreview && allocationPreview.length > 0 && !paymentEditId && (
+                                {allocationPreview.length > 0 && (
                                     <div className="rounded-2xl border border-gray-100 dark:border-gray-700/60 bg-gray-50/70 dark:bg-gray-700/20 p-3.5">
                                         <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5 px-0.5 flex items-center gap-1.5"><ArrowRightLeft size={12} />Taqsimlanishi</h4>
                                         <div className="space-y-2">
@@ -1106,15 +1020,15 @@ export default function SupplierDetailPage() {
                                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                                         {row.type === 'purchase'
                                                             ? <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0"><ShoppingCart size={11} className="text-blue-500" /></div>
-                                                            : <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0"><CheckCircle2 size={11} className="text-emerald-500" /></div>
+                                                            : <div className="w-6 h-6 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0"><AlertCircle size={11} className="text-red-500" /></div>
                                                         }
-                                                        <p className="text-[12px] font-semibold text-gray-800 dark:text-gray-200 truncate">
+                                                        <p className={`text-[12px] font-semibold truncate ${row.type === 'over' ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'}`}>
                                                             {row.type === 'purchase'
-                                                                ? (row.purchase?.reference ? `INV ${row.purchase.reference}` : "Xarid " + String(row.purchase?.id || '').slice(0, 8))
-                                                                : "Balansga"}
+                                                                ? `Xarid ${formatDateShort(row.purchase.date)}${row.purchase.description ? ` · ${row.purchase.description}` : ''}`
+                                                                : "Ortiqcha — qabul qilinmaydi"}
                                                         </p>
                                                     </div>
-                                                    <p className="text-[12.5px] font-bold text-gray-900 dark:text-white flex-shrink-0">{formatCurrency(row.allocated)} so'm</p>
+                                                    <p className={`text-[12.5px] font-bold flex-shrink-0 ${row.type === 'over' ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}>{formatCurrency(row.allocated)} so'm</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -1137,7 +1051,7 @@ export default function SupplierDetailPage() {
                                         className="py-3.5 rounded-2xl font-bold text-[14.5px] bg-emerald-500 hover:bg-emerald-600 text-white active:scale-95 transition-all disabled:opacity-50 disabled:hover:bg-emerald-500 shadow-lg shadow-emerald-500/15 flex items-center justify-center gap-2"
                                     >
                                         {paymentSubmitting ? <Loader2 size={17} className="animate-spin" /> : <CheckCircle2 size={17} />}
-                                        {paymentEditId ? "Saqlash" : "To'lov qilish"}
+                                        To'lov qilish
                                     </button>
                                 </div>
                             </div>
@@ -1159,19 +1073,9 @@ export default function SupplierDetailPage() {
                                     <h3 className="text-[16px] font-bold text-gray-900 dark:text-white mb-4 px-1">
                                         {selectedMovement?._kind === 'purchase' ? "Xarid amallari" : "To'lov amallari"}
                                     </h3>
-                                    <button onClick={() => {
-                                        if (!selectedMovement) return
-                                        const isPur = isMovementPurchase(selectedMovement)
-                                        setShowHistoryOptions(false)
-                                        if (isPur) openPurchaseEdit(selectedMovement)
-                                        else openPaymentEdit(selectedMovement)
-                                    }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><Edit2 size={18} className="text-blue-500" /></div>
-                                        <div className="flex-1 text-left"><p className="text-[14px] font-bold text-gray-900 dark:text-white">Tahrirlash</p></div>
-                                    </button>
-                                    <button onClick={() => { setShowHistoryOptions(false); setShowMovementDelete(true) }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
+                                    <button onClick={() => { setShowHistoryOptions(false); setMovementCancelError(null); setShowMovementDelete(true) }} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
                                         <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><Trash2 size={18} className="text-red-500" /></div>
-                                        <div className="flex-1 text-left"><p className="text-[14px] font-bold text-red-500">O'chirish</p></div>
+                                        <div className="flex-1 text-left"><p className="text-[14px] font-bold text-red-500">Bekor qilish</p><p className="text-[12px] text-gray-400">Qarzdorlik qayta hisoblanadi</p></div>
                                     </button>
                                     <div className="h-px bg-gray-100 dark:bg-gray-700 my-2.5" />
                                     <button onClick={() => setShowHistoryOptions(false)} className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors">
@@ -1195,16 +1099,21 @@ export default function SupplierDetailPage() {
                             <div className="overflow-y-auto max-h-[calc(85vh-80px)] px-4 pb-8">
                                 <div className="flex flex-col items-center text-center mb-6">
                                     <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4"><AlertCircle size={30} className="text-red-500" /></div>
-                                    <h3 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">O'chirishni tasdiqlang</h3>
+                                    <h3 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">Bekor qilishni tasdiqlang</h3>
                                     <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed max-w-[320px]">
-                                        Ushbu {selectedMovement?._kind === 'purchase' ? 'xarid' : "to'lov"}ni o'chirib tashlamoqchimisiz? Bu amal qaytarilmaydi.
+                                        Ushbu {selectedMovement?._kind === 'purchase' ? 'xarid' : "to'lov"} bekor qilinadi va ta'minotchi qarzdorligi qayta hisoblanadi. Bu amal qaytarilmaydi.
                                     </p>
+                                    {movementCancelError && (
+                                        <p className="mt-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-[13px] text-red-600 dark:text-red-300 leading-snug max-w-[320px]">
+                                            {movementCancelError}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <button onClick={() => setShowMovementDelete(false)} disabled={movementDeleteSubmitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 active:scale-95 transition-all disabled:opacity-50">Bekor qilish</button>
+                                    <button onClick={() => setShowMovementDelete(false)} disabled={movementDeleteSubmitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 active:scale-95 transition-all disabled:opacity-50">Yopish</button>
                                     <button onClick={handleDeleteMovement} disabled={movementDeleteSubmitting} className="py-3.5 rounded-2xl font-bold text-[15px] bg-red-500 text-white active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-red-500/20 flex items-center justify-center gap-2">
                                         {movementDeleteSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={17} />}
-                                        O'chirish
+                                        Bekor qilish
                                     </button>
                                 </div>
                             </div>

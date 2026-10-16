@@ -2,10 +2,18 @@
  * Role Helper - Determine user role and permissions
  */
 
+// /auth/me javobidagi roles: shop_owner | shop_worker. Roles hali yuklanmagan bo'lsa null.
+export const isStaffFromUser = (user) => {
+    if (!Array.isArray(user?.roles)) return null
+    return user.roles.some((r) => (r?.name || r) === 'shop_worker')
+}
+
 export const isUserStaff = async (staffApi) => {
     try {
         const user = JSON.parse(localStorage.getItem('user') || '{}')
         if (!user.id) return false
+        const fromRoles = isStaffFromUser(user)
+        if (fromRoles !== null) return fromRoles
 
         const staffList = await staffApi.getStaff()
         const staff = Array.isArray(staffList) ? staffList : (staffList.data || [])
@@ -31,4 +39,4 @@ export const getUserRole = () => {
     }
 }
 
-export default { isUserStaff, getUserRole }
+export default { isUserStaff, isStaffFromUser, getUserRole }

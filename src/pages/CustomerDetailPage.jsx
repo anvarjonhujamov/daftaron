@@ -16,8 +16,10 @@ import {
 import { formatCurrency, parseCurrency } from '../utils/format'
 import { useSubscription } from '../contexts/SubscriptionContext'
 import { CustomerDetailSkeleton } from '../components/Skeleton'
-import { todayYmd, addMonthsYmd } from '../utils/date'
+import { todayYmd, addMonthsYmd, toYmd, diffDaysYmd, maxYmd } from '../utils/date'
 import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
+
+const HISTORY_PAGE_SIZE = 50
 
 const emptyDebtForm = () => ({ amount: '', description: '', debt_date: todayYmd(), return_date: '', send_sms: false })
 
@@ -40,6 +42,12 @@ export default function CustomerDetailPage() {
     const [customer, setCustomer] = useState(null)
     const [debts, setDebts] = useState([])
     const [customerPayments, setCustomerPayments] = useState([])
+    // Server pagination: { current_page, last_page, total }
+    const [debtsMeta, setDebtsMeta] = useState(null)
+    const [paymentsMeta, setPaymentsMeta] = useState(null)
+    const [loadingMore, setLoadingMore] = useState(null) // 'debts' | 'payments' | null
+    // Ochiq nasiyalar alohida (to'lov taqsimoti uchun, sahifalashdan qat'i nazar hammasi)
+    const [openDebts, setOpenDebts] = useState([])
     const [historyTab, setHistoryTab] = useState('debts') // 'debts' | 'payments'
     const [staffMembers, setStaffMembers] = useState([])
     const [loading, setLoading] = useState(true)
@@ -122,37 +130,45 @@ export default function CustomerDetailPage() {
     const loadData = async () => {
         try {
             const customerId = parseInt(id)
-            const [customerData, debtsData, paymentsData] = await Promise.all([
+            const [customerData, debtsPage, paymentsPage, openDebtsPage] = await Promise.all([
                 customersApi.getCustomer(id),
-                debtsApi.getDebts({ per_page: 100 }),
-                paymentsApi.getPayments({ customer_id: customerId, per_page: 100 })
+                debtsApi.getDebts({ customer_id: customerId, page: 1, per_page: HISTORY_PAGE_SIZE }),
+                paymentsApi.getPaymentsPage({ customer_id: customerId, page: 1, per_page: HISTORY_PAGE_SIZE }),
+                debtsApi.getDebts({ customer_id: customerId, status: 'open', page: 1, per_page: 100 })
             ])
             setCustomer(customerData.data || customerData)
-            // Filter debts to only show this customer's debts
-            const allDebts = Array.isArray(debtsData) ? debtsData : (debtsData.data || [])
-            const customerDebts = allDebts.filter(d =>
-                d.customer_id === customerId ||
-                d.customer?.id === customerId
-            )
-            setDebts(customerDebts)
-
-            // Filter payments (customer filter server tomonidan bo'lsa ham qo'shimcha filter)
-            const allPayments = Array.isArray(paymentsData) ? paymentsData : (paymentsData.data || [])
-            const custPayments = allPayments.filter(p => {
-                const pid = p.customer_id ?? p.customerId ?? p.customer?.id ?? null
-                return String(pid) === String(customerId)
-            })
-            const sortedPayments = custPayments.sort((a, b) => {
-                const ta = a.created_at ? new Date(a.created_at).getTime() : 0
-                const tb = b.created_at ? new Date(b.created_at).getTime() : 0
-                return tb - ta
-            })
-            setCustomerPayments(sortedPayments)
+            setDebts(debtsPage.data || [])
+            setDebtsMeta(debtsPage.meta || null)
+            setCustomerPayments(paymentsPage.data || [])
+            setPaymentsMeta(paymentsPage.meta || null)
+            setOpenDebts(openDebtsPage.data || [])
         } catch (err) {
             console.error('Failed to load customer:', err)
             if (err.response?.status === 404) navigate('/customers')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const loadMoreHistory = async (kind) => {
+        const meta = kind === 'debts' ? debtsMeta : paymentsMeta
+        if (!meta || meta.current_page >= meta.last_page || loadingMore) return
+        setLoadingMore(kind)
+        try {
+            const params = { customer_id: parseInt(id), page: meta.current_page + 1, per_page: HISTORY_PAGE_SIZE }
+            if (kind === 'debts') {
+                const res = await debtsApi.getDebts(params)
+                setDebts(prev => [...prev, ...(res.data || [])])
+                setDebtsMeta(res.meta || null)
+            } else {
+                const res = await paymentsApi.getPaymentsPage(params)
+                setCustomerPayments(prev => [...prev, ...(res.data || [])])
+                setPaymentsMeta(res.meta || null)
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
+        } finally {
+            setLoadingMore(null)
         }
     }
 
@@ -164,14 +180,13 @@ export default function CustomerDetailPage() {
 
         // Qaytarish sanasi validatsiyasi ("YYYY-MM-DD" satrlari to'g'ridan-to'g'ri solishtiriladi)
         if (debtForm.return_date) {
-            const effectiveDebtDate = debtForm.debt_date || todayYmd()
             if (debtForm.return_date < todayYmd()) {
                 setDebtErrors({
                     return_date: ['Qaytarish sanasi bugundan oldin bo\'lishi mumkin emas']
                 })
                 return
             }
-            if (debtForm.return_date < effectiveDebtDate) {
+            if (debtForm.debt_date && debtForm.return_date < debtForm.debt_date) {
                 setDebtErrors({
                     return_date: ['Qaytarish sanasi nasiya sanasidan oldin bo\'lishi mumkin emas']
                 })
@@ -191,7 +206,7 @@ export default function CustomerDetailPage() {
         setSubmitting(true)
         setDebtErrors({})
         try {
-            await debtsApi.createDebt({
+            const created = await debtsApi.createDebt({
                 customer_id: parseInt(id),
                 total_amount: numericAmount,
                 description: debtForm.description || null,
@@ -203,8 +218,8 @@ export default function CustomerDetailPage() {
             setDebtErrors({})
             setShowDebtDrawer(false)
             await loadData()
-            const newDebts = debts
-            const newDebt = newDebts.length > 0 ? [...newDebts].sort((a,b) => (b.id||0) - (a.id||0))[0] : null
+            // Toast uchun serverning javobidagi yangi nasiya (eski holatdagi ro'yxat emas)
+            const newDebt = created?.debt || null
             toast.success(
                 <div>
                     <p className="font-bold">Nasiya qo'shildi</p>
@@ -236,7 +251,7 @@ export default function CustomerDetailPage() {
     ], 0), [customer])
 
     const openDebtsNewestFirst = useMemo(() => {
-        return debts
+        return openDebts
             .filter(d => (d.status === 'open' || (Number(d.remaining_amount || 0) > 0 && d.status !== 'closed')))
             .sort((a, b) => {
                 const da = a.created_at ? new Date(a.created_at).getTime() : 0
@@ -244,7 +259,7 @@ export default function CustomerDetailPage() {
                 if (db !== da) return db - da
                 return (Number(b.id) || 0) - (Number(a.id) || 0)
             })
-    }, [debts])
+    }, [openDebts])
 
     const genericPaymentAllocationPreview = useMemo(() => {
         const amt = parseCurrency(genericPaymentForm.amount)
@@ -284,8 +299,9 @@ export default function CustomerDetailPage() {
 
     const selectedDebtForPayment = useMemo(() => {
         if (!debtPaymentForm.debt_id) return null
-        return debts.find(d => Number(d.id) === Number(debtPaymentForm.debt_id)) || null
-    }, [debts, debtPaymentForm.debt_id])
+        const byId = (d) => Number(d.id) === Number(debtPaymentForm.debt_id)
+        return debts.find(byId) || openDebts.find(byId) || null
+    }, [debts, openDebts, debtPaymentForm.debt_id])
 
     const selectedDebtRemaining = useMemo(() => {
         if (!selectedDebtForPayment) return 0
@@ -493,9 +509,9 @@ export default function CustomerDetailPage() {
         return <div className="flex items-center justify-center min-h-screen"><p className="text-gray-500">Mijoz topilmadi</p></div>
     }
 
-    const sumRemaining = debts.reduce((sum, d) => sum + (parseFloat(d.remaining_amount) || 0), 0)
-    const hasOutstandingDebt = debts.some((d) => (parseFloat(d.remaining_amount) || 0) > 0)
-    const sumPaid = customerPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
+    // Jami to'lov faqat barcha sahifalar yuklanganda to'g'ri (aks holda ko'rsatilmaydi)
+    const allPaymentsLoaded = !paymentsMeta || paymentsMeta.current_page >= paymentsMeta.last_page
+    const sumPaid = allPaymentsLoaded ? customerPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0
 
     const formatDateShort = (dateString) => {
         if (!dateString) return ''
@@ -506,14 +522,12 @@ export default function CustomerDetailPage() {
         return `${mm}/${dd}/${yyyy}`
     }
 
-    const totalDebt = debts.length > 0
-        ? sumRemaining
-        : parseFloat(
-            customer.remaining_amount ??
-            customer.remaining_debts ??
-            customer.debt_sum ??
-            customer.total_debt ?? 0
-        )
+    // Qolgan qarz serverdan (barcha nasiyalar bo'yicha, sahifalashdan qat'i nazar)
+    const totalDebt = parseFloat(
+        customer.total_remaining_debt ??
+        customer.total_debt ??
+        openDebts.reduce((sum, d) => sum + (parseFloat(d.remaining_amount) || 0), 0)
+    ) || 0
     const effectiveIsUnlimited = limitMeta.loaded ? limitMeta.isUnlimited : (remaining == null && total == null)
     const effectiveRemaining = limitMeta.loaded ? limitMeta.remaining : remaining
     const hasKnownDebtRemaining = effectiveRemaining !== null && effectiveRemaining !== undefined && effectiveRemaining !== ''
@@ -625,7 +639,9 @@ export default function CustomerDetailPage() {
                 <div className="flex items-center justify-between mb-3">
                     <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">Tarix</h2>
                     <span className="text-[13px] text-gray-400">
-                        {historyTab === 'debts' ? `${debts.length} ta nasiya` : `${customerPayments.length} ta to'lov`}
+                        {historyTab === 'debts'
+                            ? `${debtsMeta?.total ?? debts.length} ta nasiya`
+                            : `${paymentsMeta?.total ?? customerPayments.length} ta to'lov`}
                     </span>
                 </div>
 
@@ -676,34 +692,29 @@ export default function CustomerDetailPage() {
                             <div className="space-y-4">
                                 {debts.map(debt => {
                                     // Return date, overdue va SMS status hisoblari
-                                    const rd = debt.return_date || debt.due_date || null
-                                    const today0 = new Date()
-                                    today0.setHours(0, 0, 0, 0)
+                                    const rd = toYmd(debt.return_date) || null
                                     let daysLeft = null
                                     let isOverdue = false
                                     let isDueSoon = false
                                     if (rd && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0) {
-                                        const dueDt = new Date(rd)
-                                        dueDt.setHours(0, 0, 0, 0)
-                                        const diffDays = Math.round((dueDt.getTime() - today0.getTime()) / (1000 * 60 * 60 * 24))
+                                        const diffDays = diffDaysYmd(rd, todayYmd())
                                         daysLeft = diffDays
                                         isOverdue = diffDays < 0
                                         isDueSoon = diffDays >= 0 && diffDays <= 3
                                     }
-                                    // SMS status (API dan keladi: debt.return_date_sms_status / return_sms_status = sent / failed / limit_exceeded / skipped_limit / pending / queued / null)
-                                    const smsStatus = debt.return_date_sms_status || debt.return_sms_status || debt.sms_status || null
-                                    const rd0 = rd ? (() => { const d = new Date(rd); d.setHours(0,0,0,0); return d.getTime() })() : null
-                                    const rdPassed = rd0 != null && rd0 <= today0.getTime()
+                                    // return_date_sms_status: pending | sent | failed | skipped_limit | skipped_no_phone
+                                    const smsStatus = debt.return_date_sms_status || null
+                                    const rdPassed = rd != null && rd <= todayYmd()
                                     let smsMeta = rd
                                         ? (smsStatus === 'sent'
                                             ? { label: 'SMS yuborildi', cls: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100/60 dark:border-emerald-800/30', icon: <CheckCircle2 size={10} /> }
                                             : smsStatus === 'failed'
-                                                ? { label: 'SMS yuborilmadi', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <X size={10} /> }
-                                                : smsStatus === 'limit_exceeded'
+                                                ? { label: 'SMS xato', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <X size={10} /> }
+                                                : smsStatus === 'skipped_limit'
                                                     ? { label: 'SMS limiti tugagan', cls: 'bg-amber-50 dark:bg-amber-900/15 text-amber-700 dark:text-amber-300 border-amber-100/60 dark:border-amber-800/30', icon: <BellOff size={10} /> }
-                                                    : smsStatus === 'skipped_limit'
-                                                        ? { label: 'O\'tkazildi', cls: 'bg-gray-50 dark:bg-gray-700/40 text-gray-600 dark:text-gray-300 border-gray-100/60 dark:border-gray-600/40', icon: <BellOff size={10} /> }
-                                                        : smsStatus === 'pending' || smsStatus === 'queued'
+                                                    : smsStatus === 'skipped_no_phone'
+                                                        ? { label: "Telefon yo'q", cls: 'bg-gray-50 dark:bg-gray-700/40 text-gray-600 dark:text-gray-300 border-gray-100/60 dark:border-gray-600/40', icon: <BellOff size={10} /> }
+                                                        : smsStatus === 'pending'
                                                             ? { label: 'Kutilmoqda', cls: 'bg-blue-50 dark:bg-blue-900/15 text-blue-700 dark:text-blue-300 border-blue-100/60 dark:border-blue-800/30', icon: <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> }
                                                             : smsStatus == null && rdPassed
                                                                 ? { label: 'Yuborilmagan', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <AlertTriangle size={10} /> }
@@ -804,6 +815,17 @@ export default function CustomerDetailPage() {
                                 })}
                             </div>
                         )}
+                        {debtsMeta && debtsMeta.current_page < debtsMeta.last_page && (
+                            <button
+                                type="button"
+                                onClick={() => loadMoreHistory('debts')}
+                                disabled={loadingMore === 'debts'}
+                                className="w-full mt-3 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[14px] font-semibold text-blue-500 active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2"
+                            >
+                                {loadingMore === 'debts' ? <Loader2 size={16} className="animate-spin" /> : null}
+                                Ko'proq yuklash ({debtsMeta.total - debts.length} ta qoldi)
+                            </button>
+                        )}
                     </>
                 )}
 
@@ -883,6 +905,17 @@ export default function CustomerDetailPage() {
                                     )
                                 })}
                             </div>
+                        )}
+                        {paymentsMeta && paymentsMeta.current_page < paymentsMeta.last_page && (
+                            <button
+                                type="button"
+                                onClick={() => loadMoreHistory('payments')}
+                                disabled={loadingMore === 'payments'}
+                                className="w-full mt-3 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[14px] font-semibold text-blue-500 active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2"
+                            >
+                                {loadingMore === 'payments' ? <Loader2 size={16} className="animate-spin" /> : null}
+                                Ko'proq yuklash ({paymentsMeta.total - customerPayments.length} ta qoldi)
+                            </button>
                         )}
                     </>
                 )}
@@ -996,7 +1029,7 @@ export default function CustomerDetailPage() {
                                                 type="date"
                                                 className={`input border-indigo-100 dark:border-indigo-900/40 focus:border-indigo-500 focus:ring-indigo-500/20 ${debtErrors.return_date ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                                                 value={debtForm.return_date}
-                                                min={todayYmd()}
+                                                min={maxYmd(todayYmd(), debtForm.debt_date)}
                                                 onChange={(e) => {
                                                     setDebtForm({ ...debtForm, return_date: e.target.value })
                                                     if (debtErrors.return_date) setDebtErrors({ ...debtErrors, return_date: null })
