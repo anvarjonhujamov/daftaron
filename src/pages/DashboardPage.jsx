@@ -281,32 +281,32 @@ export default function DashboardPage() {
             </div>
 
             {/* Today Stats — 3 ta: Bugun nasiya / Bugun to'lov / Bugun ta'minotchiga berilgan */}
-            <div className="flex flex-col gap-3 mb-6 md:flex-row">
-                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-red-900/40 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+            <div className="grid grid-cols-3 gap-2 mb-6 md:gap-3">
+                <div className="card dark:bg-gray-800 flex flex-col items-start gap-2 !p-3 min-w-0 md:flex-row md:items-center md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-900/40 dark:bg-red-900/50 flex items-center justify-center shrink-0">
                         <ArrowDown size={18} className="text-red-400 dark:text-red-300" />
                     </div>
-                    <div className="min-w-0">
-                        <p className="text-[12px] text-gray-400">Bugun nasiya</p>
-                        <p className="text-[16px] font-bold text-red-400 dark:text-red-300 truncate">{formatCurrency(todayDebts)}</p>
+                    <div className="min-w-0 w-full">
+                        <p className="text-[11px] md:text-[12px] leading-tight text-gray-400">Bugun nasiya</p>
+                        <p className="text-[14px] md:text-[16px] font-bold text-red-400 dark:text-red-300 truncate">{formatCurrency(todayDebts)}</p>
                     </div>
                 </div>
-                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-green-900/40 dark:bg-green-900/50 flex items-center justify-center shrink-0">
+                <div className="card dark:bg-gray-800 flex flex-col items-start gap-2 !p-3 min-w-0 md:flex-row md:items-center md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-green-900/40 dark:bg-green-900/50 flex items-center justify-center shrink-0">
                         <ArrowUp size={18} className="text-green-400 dark:text-green-300" />
                     </div>
-                    <div className="min-w-0">
-                        <p className="text-[12px] text-gray-400">Bugun to'lov</p>
-                        <p className="text-[16px] font-bold text-green-400 dark:text-green-300 truncate">{formatCurrency(todayPayments)}</p>
+                    <div className="min-w-0 w-full">
+                        <p className="text-[11px] md:text-[12px] leading-tight text-gray-400">Bugun to'lov</p>
+                        <p className="text-[14px] md:text-[16px] font-bold text-green-400 dark:text-green-300 truncate">{formatCurrency(todayPayments)}</p>
                     </div>
                 </div>
-                <div className="flex-1 card dark:bg-gray-800 flex items-center gap-3 !p-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-amber-900/30 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                <div className="card dark:bg-gray-800 flex flex-col items-start gap-2 !p-3 min-w-0 md:flex-row md:items-center md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-amber-900/30 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
                         <Wallet size={18} className="text-amber-400 dark:text-amber-300" />
                     </div>
-                    <div className="min-w-0">
-                        <p className="text-[12px] text-gray-400">Bugun ta'minotchiga berilgan</p>
-                        <p className="text-[16px] font-bold text-amber-400 dark:text-amber-300 truncate">{formatCurrency(todaySupplierPayments)}</p>
+                    <div className="min-w-0 w-full">
+                        <p className="text-[11px] md:text-[12px] leading-tight text-gray-400">Bugun ta'minotchiga berilgan</p>
+                        <p className="text-[14px] md:text-[16px] font-bold text-amber-400 dark:text-amber-300 truncate">{formatCurrency(todaySupplierPayments)}</p>
                     </div>
                 </div>
             </div>
