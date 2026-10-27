@@ -3,3 +3,6 @@ node_modules
 
 # Claude Code shaxsiy sozlamalari
 /.claude/settings.local.json
+
+# vite-plugin-pwa dev rejimida yaratadi (npm run dev), prod build emas
+/dev-dist/
