@@ -1,0 +1,1 @@
+import{n as t}from"./index-Ck9EcT4u.js";const n=async r=>{try{return(await t.get(`/legal/${r}`)).data}catch(e){throw console.error(`Error fetching ${r}:`,e),e}},s=async(r,e)=>{try{return(await t.put(`/legal/${r}`,{content:e})).data}catch(o){throw console.error(`Error updating ${r}:`,o),o}};export{n as g,s as u};
