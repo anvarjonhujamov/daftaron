@@ -212,10 +212,10 @@ export default function HistoryPage() {
     }
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
+        <div className="px-4 py-6 md:px-6 lg:px-8 lg:py-8 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
-                <Link to="/" className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm">
+                <Link to="/" className="w-10 h-10 flex md:hidden items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm">
                     <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
                 </Link>
                 <div>
@@ -228,64 +228,67 @@ export default function HistoryPage() {
                 </div>
             </div>
 
-            {/* Scope segment: MIJOZLAR / YETKAZUVCHILAR */}
-            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4">
-                <button
-                    onClick={() => switchScope('customers')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${scope === 'customers'
-                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                        }`}
-                >
-                    <Users size={16} />
-                    Mijozlar
-                </button>
-                <button
-                    onClick={() => switchScope('suppliers')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${scope === 'suppliers'
-                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                        }`}
-                >
-                    <Package size={16} />
-                    Ta'minotchi
-                </button>
-            </div>
+            {/* Planshetdan boshlab ikkala segment va qidiruv bir qatorda */}
+            <div className="md:grid md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)] md:gap-3 mb-6">
+                {/* Scope segment: MIJOZLAR / YETKAZUVCHILAR */}
+                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4 md:mb-0">
+                    <button
+                        onClick={() => switchScope('customers')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${scope === 'customers'
+                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                            }`}
+                    >
+                        <Users size={16} />
+                        Mijozlar
+                    </button>
+                    <button
+                        onClick={() => switchScope('suppliers')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${scope === 'suppliers'
+                            ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                            }`}
+                    >
+                        <Package size={16} />
+                        Ta'minotchi
+                    </button>
+                </div>
 
-            {/* Mode segment: To'lovlar vs Nasiyalar/Xaridlar */}
-            <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-6">
-                <button
-                    onClick={() => switchMode('payments')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${mode === 'payments'
-                        ? `${scope === 'customers' ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'}`
-                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                        }`}
-                >
-                    <TrendingDown size={16} />
-                    {scope === 'customers' ? "To'lovlar" : "To'lovlar"}
-                </button>
-                <button
-                    onClick={() => switchMode(scope === 'customers' ? 'debts' : 'purchases')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${mode !== 'payments'
-                        ? `${scope === 'customers' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'}`
-                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                        }`}
-                >
-                    <TrendingUp size={16} />
-                    {scope === 'customers' ? 'Nasiyalar' : 'Xaridlar'}
-                </button>
-            </div>
+                {/* Mode segment: To'lovlar vs Nasiyalar/Xaridlar */}
+                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4 md:mb-0">
+                    <button
+                        onClick={() => switchMode('payments')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${mode === 'payments'
+                            ? `${scope === 'customers' ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'}`
+                            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                            }`}
+                    >
+                        <TrendingDown size={16} />
+                        {scope === 'customers' ? "To'lovlar" : "To'lovlar"}
+                    </button>
+                    <button
+                        onClick={() => switchMode(scope === 'customers' ? 'debts' : 'purchases')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[13px] font-bold transition-all ${mode !== 'payments'
+                            ? `${scope === 'customers' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'}`
+                            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                            }`}
+                    >
+                        <TrendingUp size={16} />
+                        {scope === 'customers' ? 'Nasiyalar' : 'Xaridlar'}
+                    </button>
+                </div>
 
-            {/* Search */}
-            <div className="relative mb-6">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                    type="text"
-                    placeholder={`${scopeLabel} bo'yicha qidiruv (ism, summa, telefon...)`}
-                    className="input pl-12"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                />
+                {/* Search */}
+                <div className="relative md:col-span-2 lg:col-span-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder={`${scopeLabel} bo'yicha qidiruv (ism, summa, telefon...)`}
+                        className="input pl-12"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
             </div>
 
             {/* Content List */}
@@ -384,7 +387,7 @@ export default function HistoryPage() {
                 </div>
             )}
 
-            <div className="h-24" />
+            <div className="h-24 md:h-8" />
         </div>
     )
 }

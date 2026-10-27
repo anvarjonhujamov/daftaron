@@ -262,7 +262,7 @@ export default function DebtDetailPage() {
         : 0
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
+        <div className="px-4 py-6 md:px-6 lg:px-8 lg:py-8 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             {/* Header */}
             <button
                 onClick={() => navigate(-1)}
@@ -272,346 +272,349 @@ export default function DebtDetailPage() {
                 <span className="text-[16px] font-semibold">Orqaga</span>
             </button>
 
-            {/* Debt Card Detail */}
-            <div className="card dark:bg-gray-800 p-5 mb-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                {/* Header with Customer Info + Return Date + SMS Status */}
-                <div className="mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
-                    <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                            <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1">Mijoz</p>
-                            <p className="text-[18px] font-bold text-gray-900 dark:text-white">
-                                {debt.customer?.name || "Noma'lum mijoz"}
-                            </p>
-                            {debt.customer?.phone && (
-                                <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
-                                    {debt.customer.phone}
+            {/* Kompyuterda to'lovlar tarixi nasiya kartasi yonida */}
+            <div className={payments.length > 0 ? 'lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-6 lg:items-start' : 'lg:max-w-2xl'}>
+                {/* Debt Card Detail */}
+                <div className="card dark:bg-gray-800 p-5 mb-6 lg:mb-0 lg:sticky lg:top-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                    {/* Header with Customer Info + Return Date + SMS Status */}
+                    <div className="mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                                <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1">Mijoz</p>
+                                <p className="text-[18px] font-bold text-gray-900 dark:text-white">
+                                    {debt.customer?.name || "Noma'lum mijoz"}
                                 </p>
-                            )}
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1">Sana</p>
-                            <p className="text-[15px] font-semibold text-gray-700 dark:text-gray-200">
-                                {formatDate(debt.debt_date || debt.created_at)}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Return Date + SMS Status block (NEW) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-100/60 dark:border-gray-700/60">
-                        {/* Return Date Badge */}
-                        <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700/80 flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                                <CalendarDays size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                {debt.customer?.phone && (
+                                    <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+                                        {debt.customer.phone}
+                                    </p>
+                                )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish sanasi</p>
+                            <div className="text-right">
+                                <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider mb-1">Sana</p>
+                                <p className="text-[15px] font-semibold text-gray-700 dark:text-gray-200">
+                                    {formatDate(debt.debt_date || debt.created_at)}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Return Date + SMS Status block (NEW) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-100/60 dark:border-gray-700/60">
+                            {/* Return Date Badge */}
+                            <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700/80 flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                                    <CalendarDays size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish sanasi</p>
+                                    {(() => {
+                                        const rd = debt.return_date || null
+                                        if (!rd) {
+                                            return <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Belgilanmagan</p>
+                                        }
+                                        const diffDays = diffDaysYmd(toYmd(rd), todayYmd())
+                                        const isOverdue = diffDays < 0 && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0
+                                        const isDueSoon = diffDays >= 0 && diffDays <= 3 && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0
+                                        const isPaid = debt.status === 'closed' || Number(debt.remaining_amount || 0) === 0
+                                        const color = isPaid
+                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                            : isOverdue
+                                                ? 'text-red-600 dark:text-red-400'
+                                                : isDueSoon
+                                                    ? 'text-amber-600 dark:text-amber-400'
+                                                    : 'text-gray-800 dark:text-gray-100'
+                                        const text = isPaid
+                                            ? `To'langan (${formatDate(rd)})`
+                                            : isOverdue
+                                                ? `Kechikkan ${Math.abs(diffDays)} kun • ${formatDate(rd)}`
+                                                : isDueSoon
+                                                    ? diffDays === 0
+                                                        ? `Bugun • ${formatDate(rd)}`
+                                                        : `${diffDays} kun qoldi • ${formatDate(rd)}`
+                                                    : formatDate(rd)
+                                        return <p className={`text-[13px] font-bold ${color} leading-snug`}>{text}</p>
+                                    })()}
+                                </div>
+                            </div>
+
+                            {/* SMS Status Badge (Return Date SMS) */}
+                            <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700/80 flex items-start gap-3">
                                 {(() => {
                                     const rd = debt.return_date || null
+                                    // pending | sent | failed | skipped_limit | skipped_no_phone
+                                    const smsStatus = debt.return_date_sms_status || null
                                     if (!rd) {
-                                        return <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Belgilanmagan</p>
+                                        return (
+                                            <>
+                                                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/50 flex items-center justify-center shrink-0">
+                                                    <X size={16} className="text-gray-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">SMS xolat</p>
+                                                    <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Sana belgilanmagan</p>
+                                                </div>
+                                            </>
+                                        )
                                     }
-                                    const diffDays = diffDaysYmd(toYmd(rd), todayYmd())
-                                    const isOverdue = diffDays < 0 && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0
-                                    const isDueSoon = diffDays >= 0 && diffDays <= 3 && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0
-                                    const isPaid = debt.status === 'closed' || Number(debt.remaining_amount || 0) === 0
-                                    const color = isPaid
-                                        ? 'text-emerald-600 dark:text-emerald-400'
-                                        : isOverdue
-                                            ? 'text-red-600 dark:text-red-400'
-                                            : isDueSoon
-                                                ? 'text-amber-600 dark:text-amber-400'
-                                                : 'text-gray-800 dark:text-gray-100'
-                                    const text = isPaid
-                                        ? `To'langan (${formatDate(rd)})`
-                                        : isOverdue
-                                            ? `Kechikkan ${Math.abs(diffDays)} kun • ${formatDate(rd)}`
-                                            : isDueSoon
-                                                ? diffDays === 0
-                                                    ? `Bugun • ${formatDate(rd)}`
-                                                    : `${diffDays} kun qoldi • ${formatDate(rd)}`
-                                                : formatDate(rd)
-                                    return <p className={`text-[13px] font-bold ${color} leading-snug`}>{text}</p>
-                                })()}
-                            </div>
-                        </div>
-
-                        {/* SMS Status Badge (Return Date SMS) */}
-                        <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700/80 flex items-start gap-3">
-                            {(() => {
-                                const rd = debt.return_date || null
-                                // pending | sent | failed | skipped_limit | skipped_no_phone
-                                const smsStatus = debt.return_date_sms_status || null
-                                if (!rd) {
-                                    return (
-                                        <>
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/50 flex items-center justify-center shrink-0">
-                                                <X size={16} className="text-gray-400" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">SMS xolat</p>
-                                                <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Sana belgilanmagan</p>
-                                            </div>
-                                        </>
-                                    )
-                                }
-                                if (smsStatus === 'sent') {
-                                    return (
-                                        <>
-                                            <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                                                <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">Yuborildi</p>
-                                                {debt.return_date_sms_sent_at && (
-                                                    <p className="text-[12px] text-gray-400 mt-0.5">{formatDateTime(debt.return_date_sms_sent_at)}</p>
-                                                )}
-                                            </div>
-                                        </>
-                                    )
-                                }
-                                if (smsStatus === 'skipped_limit') {
-                                    return (
-                                        <>
-                                            <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                                                <BellOff size={16} className="text-amber-600 dark:text-amber-400" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-amber-600 dark:text-amber-300">SMS limiti tugagan</p>
-                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">SMS yuborib bo'lmadi: limit va balans yetmadi. Paketni sotib oling.</p>
-                                            </div>
-                                        </>
-                                    )
-                                }
-                                if (smsStatus === 'skipped_no_phone') {
+                                    if (smsStatus === 'sent') {
+                                        return (
+                                            <>
+                                                <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                                                    <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                    <p className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">Yuborildi</p>
+                                                    {debt.return_date_sms_sent_at && (
+                                                        <p className="text-[12px] text-gray-400 mt-0.5">{formatDateTime(debt.return_date_sms_sent_at)}</p>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )
+                                    }
+                                    if (smsStatus === 'skipped_limit') {
+                                        return (
+                                            <>
+                                                <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                                                    <BellOff size={16} className="text-amber-600 dark:text-amber-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                    <p className="text-[13px] font-bold text-amber-600 dark:text-amber-300">SMS limiti tugagan</p>
+                                                    <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">SMS yuborib bo'lmadi: limit va balans yetmadi. Paketni sotib oling.</p>
+                                                </div>
+                                            </>
+                                        )
+                                    }
+                                    if (smsStatus === 'skipped_no_phone') {
+                                        return (
+                                            <>
+                                                <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/40 flex items-center justify-center shrink-0">
+                                                    <BellOff size={16} className="text-gray-500 dark:text-gray-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                    <p className="text-[13px] font-bold text-gray-600 dark:text-gray-300">Telefon yo'q</p>
+                                                    <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Mijozning telefon raqami kiritilmagan</p>
+                                                </div>
+                                            </>
+                                        )
+                                    }
+                                    if (smsStatus === 'failed') {
+                                        return (
+                                            <>
+                                                <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0">
+                                                    <X size={16} className="text-red-500" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                    <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Xato</p>
+                                                    <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Server keyingi kunlarda qayta urinadi</p>
+                                                </div>
+                                            </>
+                                        )
+                                    }
+                                    if (smsStatus === 'pending') {
+                                        return (
+                                            <>
+                                                <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                                                    <Clock size={16} className="text-blue-500 animate-pulse" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                    <p className="text-[13px] font-bold text-blue-600 dark:text-blue-400">Kutilmoqda</p>
+                                                    <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Qaytarish kuni soat 09:00 da yuboriladi</p>
+                                                </div>
+                                            </>
+                                        )
+                                    }
+                                    // smsStatus === null bo'lganda — return_date ga qaraymiz
+                                    const rdPassedOrDue = toYmd(rd) <= todayYmd()
+                                    if (rdPassedOrDue) {
+                                        // return_date kelib o'tgan lekin status null → hech qanday SMS jo'natilmagan / backend statusi yozilmagan
+                                        return (
+                                            <>
+                                                <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0">
+                                                    <AlertTriangle size={16} className="text-red-500" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
+                                                    <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Yuborilmagan</p>
+                                                    <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasi o'tib ketgan, SMS holati backenddan yuklanmadi.</p>
+                                                </div>
+                                            </>
+                                        )
+                                    }
+                                    // return_date hali kelmagan (kelajakda)
                                     return (
                                         <>
                                             <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/40 flex items-center justify-center shrink-0">
-                                                <BellOff size={16} className="text-gray-500 dark:text-gray-400" />
+                                                <CalendarClock size={16} className="text-gray-400" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-gray-600 dark:text-gray-300">Telefon yo'q</p>
-                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Mijozning telefon raqami kiritilmagan</p>
+                                                <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Hali vaqti kelmagan</p>
+                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasida avtomatik jo'natiladi</p>
                                             </div>
                                         </>
                                     )
-                                }
-                                if (smsStatus === 'failed') {
-                                    return (
-                                        <>
-                                            <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0">
-                                                <X size={16} className="text-red-500" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Xato</p>
-                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Server keyingi kunlarda qayta urinadi</p>
-                                            </div>
-                                        </>
-                                    )
-                                }
-                                if (smsStatus === 'pending') {
-                                    return (
-                                        <>
-                                            <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                                                <Clock size={16} className="text-blue-500 animate-pulse" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-blue-600 dark:text-blue-400">Kutilmoqda</p>
-                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Qaytarish kuni soat 09:00 da yuboriladi</p>
-                                            </div>
-                                        </>
-                                    )
-                                }
-                                // smsStatus === null bo'lganda — return_date ga qaraymiz
-                                const rdPassedOrDue = toYmd(rd) <= todayYmd()
-                                if (rdPassedOrDue) {
-                                    // return_date kelib o'tgan lekin status null → hech qanday SMS jo'natilmagan / backend statusi yozilmagan
-                                    return (
-                                        <>
-                                            <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0">
-                                                <AlertTriangle size={16} className="text-red-500" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                                <p className="text-[13px] font-bold text-red-600 dark:text-red-400">Yuborilmagan</p>
-                                                <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasi o'tib ketgan, SMS holati backenddan yuklanmadi.</p>
-                                            </div>
-                                        </>
-                                    )
-                                }
-                                // return_date hali kelmagan (kelajakda)
-                                return (
-                                    <>
-                                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600/40 flex items-center justify-center shrink-0">
-                                            <CalendarClock size={16} className="text-gray-400" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[12px] text-gray-400 uppercase tracking-wider font-bold mb-1">Qaytarish SMS</p>
-                                            <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 italic">Hali vaqti kelmagan</p>
-                                            <p className="text-[12px] text-gray-400 mt-0.5 opacity-80">Qaytarish sanasida avtomatik jo'natiladi</p>
-                                        </div>
-                                    </>
-                                )
-                            })()}
+                                })()}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2 text-[14px] font-semibold text-gray-700 dark:text-gray-300">
-                        <Clock size={16} className="text-gray-400" />
-                        <span>{debt.status === 'closed' ? 'Yopilgan' : 'Faol'}</span>
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2 text-[14px] font-semibold text-gray-700 dark:text-gray-300">
+                            <Clock size={16} className="text-gray-400" />
+                            <span>{debt.status === 'closed' ? 'Yopilgan' : 'Faol'}</span>
+                        </div>
+                        {!isStaff && (
+                            <div className="flex gap-2">
+                                {debt.status === 'open' && (
+                                    <button
+                                        onClick={openEditDrawer}
+                                        disabled={submitting}
+                                        aria-label="Tahrirlash"
+                                        className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-blue-500 active:scale-95 transition-transform"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                )}
+                                {debt.status === 'open' && (
+                                    <button
+                                        onClick={handleCloseDebt}
+                                        disabled={submitting}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform"
+                                    >
+                                        <CheckCircle2 size={16} className="text-green-500" />
+                                        Yopish
+                                    </button>
+                                )}
+                                <button
+                                    onClick={handleDeleteDebt}
+                                    disabled={submitting}
+                                    className="w-10 h-10 flex items-center justify-center bg-red-100 dark:bg-red-900/30 rounded-xl text-red-500 active:scale-95 transition-transform"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
+                        )}
                     </div>
-                    {!isStaff && (
-                        <div className="flex gap-2">
-                            {debt.status === 'open' && (
-                                <button
-                                    onClick={openEditDrawer}
-                                    disabled={submitting}
-                                    aria-label="Tahrirlash"
-                                    className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-blue-500 active:scale-95 transition-transform"
-                                >
-                                    <Edit2 size={18} />
-                                </button>
-                            )}
-                            {debt.status === 'open' && (
-                                <button
-                                    onClick={handleCloseDebt}
-                                    disabled={submitting}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform"
-                                >
-                                    <CheckCircle2 size={16} className="text-green-500" />
-                                    Yopish
-                                </button>
-                            )}
-                            <button
-                                onClick={handleDeleteDebt}
-                                disabled={submitting}
-                                className="w-10 h-10 flex items-center justify-center bg-red-100 dark:bg-red-900/30 rounded-xl text-red-500 active:scale-95 transition-transform"
-                            >
-                                <Trash2 size={18} />
-                            </button>
+
+                    {/* Progress Bar Section */}
+                    <div className="mb-6">
+                        <div className="flex justify-between items-end text-[13px] mb-2 font-medium">
+                            <span className="text-gray-400">To'landi</span>
+                            <span className="text-gray-900 dark:text-white text-[16px] font-bold">{progress}%</span>
+                        </div>
+                        <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-blue-500 transition-all duration-700 ease-out rounded-full shadow-[0_0_8px_rgba(59,130,246,0.3)]"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Metrics Grid */}
+                    <div className="grid grid-cols-3 gap-2 border-t border-gray-100 dark:border-gray-700 pt-6">
+                        <div className="text-center">
+                            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Jami</p>
+                            <p className="text-[15px] font-bold text-gray-900 dark:text-white">
+                                {formatCurrency(debt.total_amount)}
+                            </p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">To'landi</p>
+                            <p className="text-[15px] font-bold text-green-500">
+                                {formatCurrency(paidAmount)}
+                            </p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Qoldi</p>
+                            <p className="text-[15px] font-bold text-red-500">
+                                {formatCurrency(debt.remaining_amount)}
+                            </p>
+                        </div>
+                    </div>
+
+                    {debt.description && (
+                        <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-start gap-2">
+                            <FileText size={16} className="text-gray-300 mt-0.5" />
+                            <p className="text-[14px] text-gray-600 dark:text-gray-400 italic">
+                                {debt.description}
+                            </p>
                         </div>
                     )}
                 </div>
 
-                {/* Progress Bar Section */}
-                <div className="mb-6">
-                    <div className="flex justify-between items-end text-[13px] mb-2 font-medium">
-                        <span className="text-gray-400">To'landi</span>
-                        <span className="text-gray-900 dark:text-white text-[16px] font-bold">{progress}%</span>
-                    </div>
-                    <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-blue-500 transition-all duration-700 ease-out rounded-full shadow-[0_0_8px_rgba(59,130,246,0.3)]"
-                            style={{ width: `${progress}%` }}
-                        />
-                    </div>
-                </div>
+                {/* History List */}
+                {payments.length > 0 && (
+                    <div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-[18px] font-bold text-gray-900 dark:text-white">
+                                To'lovlar tarixi
+                            </h2>
+                            <span className="badge bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                                {payments.length}
+                            </span>
+                        </div>
 
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-3 gap-2 border-t border-gray-100 dark:border-gray-700 pt-6">
-                    <div className="text-center">
-                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Jami</p>
-                        <p className="text-[15px] font-bold text-gray-900 dark:text-white">
-                            {formatCurrency(debt.total_amount)}
-                        </p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">To'landi</p>
-                        <p className="text-[15px] font-bold text-green-500">
-                            {formatCurrency(paidAmount)}
-                        </p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Qoldi</p>
-                        <p className="text-[15px] font-bold text-red-500">
-                            {formatCurrency(debt.remaining_amount)}
-                        </p>
-                    </div>
-                </div>
-
-                {debt.description && (
-                    <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-start gap-2">
-                        <FileText size={16} className="text-gray-300 mt-0.5" />
-                        <p className="text-[14px] text-gray-600 dark:text-gray-400 italic">
-                            {debt.description}
-                        </p>
+                        <div className="space-y-3">
+                            {payments.map(payment => {
+                                const pType = String(payment.payment_type || '').toLowerCase()
+                                const dId = payment.debt_id ?? payment.debtId ?? payment.debt?.id
+                                const isBalance = pType.includes('balance') || pType.includes('customer') || pType.includes('deposit') || pType.includes('umumiy')
+                                    || (dId === null || dId === undefined || String(dId) === '0' || String(dId) === 'null')
+                                return (
+                                    <div
+                                        key={payment.id}
+                                        className="card dark:bg-gray-800 flex items-center justify-between p-4 active:scale-98 transition-transform"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                isBalance
+                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                                                    : 'bg-green-50 dark:bg-green-900/20'
+                                            }`}>
+                                                {isBalance
+                                                    ? <Wallet size={20} className="text-emerald-500" />
+                                                    : <CheckCircle2 size={20} className="text-green-500" />
+                                                }
+                                            </div>
+                                            <div>
+                                                <p className="text-[16px] font-bold text-gray-900 dark:text-white">
+                                                    {formatCurrency(payment.amount)} <span className="text-[12px] font-normal text-gray-400">so'm</span>
+                                                </p>
+                                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
+                                                        isBalance
+                                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
+                                                            : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100/60 dark:border-green-900/30'
+                                                    }`}>
+                                                        {isBalance ? <Wallet size={10} /> : <Tag size={10} />}
+                                                        {isBalance ? 'Balansdan' : 'Qarz uchun'}
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1 text-[12px] text-gray-400">
+                                                        <Calendar size={12} />
+                                                        {formatDateTime(payment.paid_at || payment.created_at)}
+                                                    </span>
+                                                </div>
+                                                {getCreatorName(payment) && (
+                                                    <p className="text-[12px] text-gray-400 mt-1">
+                                                        <span className="font-semibold">Qabul qilgan:</span> {getCreatorName(payment)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
+                                    </div>
+                                )
+                            })}
+                        </div>
                     </div>
                 )}
             </div>
 
-
-            {/* History List */}
-            {payments.length > 0 && (
-                <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-[18px] font-bold text-gray-900 dark:text-white">
-                            To'lovlar tarixi
-                        </h2>
-                        <span className="badge bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                            {payments.length}
-                        </span>
-                    </div>
-
-                    <div className="space-y-3">
-                        {payments.map(payment => {
-                            const pType = String(payment.payment_type || '').toLowerCase()
-                            const dId = payment.debt_id ?? payment.debtId ?? payment.debt?.id
-                            const isBalance = pType.includes('balance') || pType.includes('customer') || pType.includes('deposit') || pType.includes('umumiy')
-                                || (dId === null || dId === undefined || String(dId) === '0' || String(dId) === 'null')
-                            return (
-                                <div
-                                    key={payment.id}
-                                    className="card dark:bg-gray-800 flex items-center justify-between p-4 active:scale-98 transition-transform"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                            isBalance
-                                                ? 'bg-emerald-50 dark:bg-emerald-900/20'
-                                                : 'bg-green-50 dark:bg-green-900/20'
-                                        }`}>
-                                            {isBalance
-                                                ? <Wallet size={20} className="text-emerald-500" />
-                                                : <CheckCircle2 size={20} className="text-green-500" />
-                                            }
-                                        </div>
-                                        <div>
-                                            <p className="text-[16px] font-bold text-gray-900 dark:text-white">
-                                                {formatCurrency(payment.amount)} <span className="text-[12px] font-normal text-gray-400">so'm</span>
-                                            </p>
-                                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
-                                                    isBalance
-                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
-                                                        : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100/60 dark:border-green-900/30'
-                                                }`}>
-                                                    {isBalance ? <Wallet size={10} /> : <Tag size={10} />}
-                                                    {isBalance ? 'Balansdan' : 'Qarz uchun'}
-                                                </span>
-                                                <span className="inline-flex items-center gap-1 text-[12px] text-gray-400">
-                                                    <Calendar size={12} />
-                                                    {formatDateTime(payment.paid_at || payment.created_at)}
-                                                </span>
-                                            </div>
-                                            {getCreatorName(payment) && (
-                                                <p className="text-[12px] text-gray-400 mt-1">
-                                                    <span className="font-semibold">Qabul qilgan:</span> {getCreatorName(payment)}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
-            )}
             {/* Edit Debt Drawer */}
             <Drawer.Root open={showEditDrawer} onOpenChange={setShowEditDrawer} repositionInputs={false}>
                 <Drawer.Portal>

@@ -567,17 +567,17 @@ export default function ShopsPage() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors">
+        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-8 transition-colors">
             {/* Header */}
-            <div className="sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-700">
-                <div className="px-4 h-[60px] flex items-center justify-between gap-3">
+            <div className="sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-700 md:static md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:border-0">
+                <div className="px-4 md:px-6 lg:px-8 h-[60px] md:h-auto md:pt-6 lg:pt-8 md:pb-2 flex items-center justify-between gap-3">
                     <button
                         onClick={handleBack}
-                        className="w-10 h-10 -ml-2 rounded-xl flex items-center justify-center active:bg-gray-100 dark:active:bg-gray-700 transition-colors"
+                        className="w-10 h-10 -ml-2 rounded-xl flex md:hidden items-center justify-center active:bg-gray-100 dark:active:bg-gray-700 transition-colors"
                     >
                         <ArrowLeft size={22} className="text-gray-700 dark:text-gray-300" />
                     </button>
-                    <h1 className="flex-1 text-[17px] font-bold text-gray-900 dark:text-white truncate">
+                    <h1 className="flex-1 text-[17px] md:text-[28px] font-bold text-gray-900 dark:text-white truncate">
                         Mening do'konlarim
                     </h1>
                     <button
@@ -589,7 +589,7 @@ export default function ShopsPage() {
                 </div>
             </div>
 
-            <div className="p-4 flex-1">
+            <div className="p-4 md:px-6 lg:px-8 flex-1">
                 <div className="mb-6 bg-gradient-to-br from-purple-500 to-indigo-600 p-5 rounded-2xl text-white shadow-lg shadow-purple-500/20">
                     <div className="flex items-center justify-between">
                         <div>
@@ -604,7 +604,7 @@ export default function ShopsPage() {
                     </div>
                 </div>
 
-                <div className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {shops.map(shop => {
                         const isActive = shop.id === activeId || shop.is_active
                         const locationLabel = getShopLocationLabel(shop)

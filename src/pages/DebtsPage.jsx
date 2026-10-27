@@ -452,421 +452,426 @@ export default function DebtsPage() {
     const paymentIcon = ArrowDownRight
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
+        <div className="px-4 py-6 md:px-6 lg:px-8 lg:py-8 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             <div className="mb-6">
                 <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Hisobotlar</h1>
                 <p className="text-gray-400 text-[14px]">Biznes tahlili va ko'rsatkichlar</p>
             </div>
 
-            <div className="mb-4 space-y-3">
-                {/* Scope selector */}
-                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl">
-                    <button
-                        onClick={() => switchScope('customers')}
-                        className={scope === 'customers'
-                            ? 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-blue-500 shadow-sm'
-                            : 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-medium text-gray-500 dark:text-gray-400'}
-                    >
-                        <Users size={16} /> Mijozlar
-                    </button>
-                    <button
-                        onClick={() => switchScope('suppliers')}
-                        className={scope === 'suppliers'
-                            ? 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-orange-500 shadow-sm'
-                            : 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-medium text-gray-500 dark:text-gray-400'}
-                    >
-                        <Package size={16} /> Ta'minotchi
-                    </button>
-                </div>
-
-                {!isStaff && (
-                    <div className="card p-3 h-full">
-                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Xodim bo'yicha</p>
-                        <div className="relative">
-                            <select
-                                value={selectedStaffId}
-                                onChange={(event) => setSelectedStaffId(event.target.value)}
-                                className="w-full appearance-none rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {/* Kompyuterda ikki ustun: chapda filtr va hisobot, o'ngda so'nggi faoliyat */}
+            <div className="lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[24rem_minmax(0,1fr)] lg:gap-6 lg:items-start">
+                <div className="lg:sticky lg:top-6">
+                    <div className="mb-4 space-y-3">
+                        {/* Scope selector */}
+                        <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl">
+                            <button
+                                onClick={() => switchScope('customers')}
+                                className={scope === 'customers'
+                                    ? 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-blue-500 shadow-sm'
+                                    : 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-medium text-gray-500 dark:text-gray-400'}
                             >
-                                <option value="all">Hammasi</option>
-                                {staffOptions.map((option) => (
-                                    <option key={option.value} value={option.value}>{option.label}</option>
-                                ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                                <svg className="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
+                                <Users size={16} /> Mijozlar
+                            </button>
+                            <button
+                                onClick={() => switchScope('suppliers')}
+                                className={scope === 'suppliers'
+                                    ? 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-orange-500 shadow-sm'
+                                    : 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-medium text-gray-500 dark:text-gray-400'}
+                            >
+                                <Package size={16} /> Ta'minotchi
+                            </button>
                         </div>
-                    </div>
-                )}
 
-                <div className="card p-3 h-full">
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider whitespace-nowrap">Hisobot turi</p>
-                                <p className="text-[16px] font-bold text-gray-900 dark:text-white truncate">{displayPeriod}</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-1.5 items-center flex-wrap">
-                            {[
-                                { value: 'yearly', label: 'Yillik' },
-                                { value: 'monthly', label: 'Oylik' },
-                                { value: 'weekly', label: 'Bu hafta' },
-                                { value: 'last_week', label: "O'tgan hafta" },
-                                { value: 'daily', label: 'Kunlik' }
-                            ].map((option) => (
-                                <button
-                                    key={option.value}
-                                    onClick={() => handlePeriodTypeSelect(option.value)}
-                                    className={`rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition shrink-0 ${periodType === option.value ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'}`}
-                                >
-                                    {option.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-2 items-stretch">
-                    {periodType === 'yearly' && (
-                        <div className="card p-3 h-full sm:col-span-2 flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                                <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider">Yil</p>
-                                <p className="text-[17px] font-bold text-gray-900 dark:text-white truncate">{selectedDate} yil</p>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                                <button
-                                    onClick={() => {
-                                        const year = Number(selectedDate) - 1
-                                        setSelectedDate(String(year))
-                                        setPickerYear(year)
-                                    }}
-                                    className="w-11 h-11 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 flex items-center justify-center"
-                                >
-                                    <ChevronLeft size={18} />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        const year = Number(selectedDate) + 1
-                                        setSelectedDate(String(year))
-                                        setPickerYear(year)
-                                    }}
-                                    disabled={Number(selectedDate) >= currentYear}
-                                    className="w-11 h-11 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 flex items-center justify-center"
-                                >
-                                    <ChevronRight size={18} />
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {periodType === 'daily' && (
-                        <div className="card p-3 h-full sm:col-span-2 overflow-hidden">
-                            <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-2">Kun</p>
-                            <input
-                                type="date"
-                                value={selectedDate}
-                                onChange={(event) => setSelectedDate(event.target.value)}
-                                className="input w-full max-w-full box-border"
-                            />
-                        </div>
-                    )}
-
-                    {periodType === 'monthly' && (
-                        <button
-                            onClick={() => {
-                                setPickerYear(parseInt(selectedDate.split('-')[0], 10))
-                                setShowDatePicker(true)
-                            }}
-                            className="card h-full sm:col-span-2 w-full flex items-center justify-between p-3 active:scale-[0.98] transition-all text-left"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-500">
-                                    <Calendar size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider">Oy tanlandi</p>
-                                    <p className="text-[17px] font-bold text-gray-900 dark:text-white">{displayPeriod}</p>
-                                </div>
-                            </div>
-                            <div className="p-2 text-gray-300">
-                                <Calendar size={18} />
-                            </div>
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Drawer for Month Picker */}
-            <Drawer.Root open={showDatePicker} onOpenChange={setShowDatePicker}>
-                <Drawer.Portal>
-                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
-                        <div className="p-4 pb-8">
-                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-6" />
-
-                            <div className="flex items-center justify-between mb-8 px-2">
-                                <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
-                                    Davrni tanlang
-                                </Drawer.Title>
-                                <button
-                                    onClick={() => setShowDatePicker(false)}
-                                    className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-500"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
-
-                            <div className="flex items-center justify-center gap-8 mb-8">
-                                <button
-                                    onClick={() => setPickerYear(prev => prev - 1)}
-                                    className="p-2 text-gray-400 hover:text-blue-500"
-                                >
-                                    <ChevronLeft size={24} />
-                                </button>
-                                <span className="text-[24px] font-black text-gray-900 dark:text-white tracking-tight">
-                                    {pickerYear}
-                                </span>
-                                <button
-                                    onClick={() => {
-                                        if (pickerYear < currentYear) {
-                                            setPickerYear(prev => prev + 1)
-                                        }
-                                    }}
-                                    disabled={pickerYear >= currentYear}
-                                    className="p-2 text-gray-400 hover:text-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    <ChevronRight size={24} />
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-3">
-                                {MONTH_NAMES.map((name, index) => {
-                                    const isSelected = selectedDate === `${pickerYear}-${String(index + 1).padStart(2, '0')}`
-                                    const isFutureMonth = pickerYear > currentYear || (pickerYear === currentYear && index > currentMonthIndex)
-                                    return (
-                                        <button
-                                            key={name}
-                                            onClick={() => handleSelectMonth(index)}
-                                            disabled={isFutureMonth}
-                                            className={`py-4 rounded-2xl text-[15px] font-semibold transition-all active:scale-95 ${isSelected
-                                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                                                : isFutureMonth
-                                                    ? 'bg-gray-100 dark:bg-gray-700/30 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                                                    : 'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-100'
-                                                }`}
-                                        >
-                                            {name}
-                                        </button>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    </Drawer.Content>
-                </Drawer.Portal>
-            </Drawer.Root>
-
-            <div className="mb-8">
-                <h2 className="section-title">HISOBOT · {scopeLabel}</h2>
-                <div className="card bg-white dark:bg-gray-800 p-3">
-                    <div className="flex items-start justify-between gap-3 border-b border-gray-100 dark:border-gray-700 pb-2.5">
-                        <div>
-                            <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{debtLabel}</p>
-                            <p className="text-[12px] text-gray-400">{debtSubtitle}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className={`text-[16px] font-bold ${debtAmountClass}`}>{formatCurrency(reportStats.debts)}</p>
-                            <p className="text-[12px] text-gray-400">so'm · {reportStats.debtCount} {debtCountText}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-start justify-between gap-3 pt-2.5">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${paymentIconClass}`}>
-                                {(() => {
-                                    const Icon = paymentIcon
-                                    return <Icon size={18} className={scope === 'suppliers' ? 'text-amber-500' : 'text-green-500'} />
-                                })()}
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{paymentLabel}</p>
-                                <p className="text-[12px] text-gray-400">{paymentSubtitle}</p>
-                            </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                            <p className={`text-[16px] font-bold ${paymentAmountClass}`}>{formatCurrency(reportStats.payments)}</p>
-                            <p className="text-[12px] text-gray-400">so'm</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* SO'NGGI FAOLIYAT */}
-            <div>
-                <div className="flex items-center justify-between mb-3">
-                    <h2 className="section-title !mb-0">SO'NGGI FAOLIYAT</h2>
-                    <Link to="/payments" className="text-[12px] font-semibold text-blue-500">Barchasi</Link>
-                </div>
-                {combinedActivity.length === 0 ? (
-                    <div className="card text-center py-12 text-gray-400">
-                        <Receipt size={40} className="mx-auto mb-2 opacity-20" />
-                        <p>Faoliyat yo'q</p>
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        {combinedActivity.map((item) => {
-                            const isPurchase = item.type === 'debt' || item.type === 'supplier_purchase'
-                            const isSupplier = item.type === 'supplier_purchase' || item.type === 'supplier_payment'
-                            const isDebtRow = item.type === 'debt'
-                            const iconClass = isPurchase
-                                ? (isSupplier ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-red-100 dark:bg-red-900/30')
-                                : (isSupplier ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30')
-                            const amountClass = isPurchase
-                                ? (isSupplier ? 'text-blue-500' : 'text-red-500')
-                                : (isSupplier ? 'text-amber-500' : 'text-green-500')
-                            const nameText = isSupplier
-                                ? (item.supplier?.name || getSupplierById(item.supplier_id)?.name || "Ta'minotchi")
-                                : (item.customer?.name || item.debt?.customer?.name || 'Mijoz')
-                            const amountVal = item.total_amount ?? item.amount ?? 0
-                            const dateVal = isSupplier
-                                ? (item.paid_at || item.purchase_date || item.date || item.created_at)
-                                : (item.created_at || item.paid_at)
-                            const linkTo = isSupplier
-                                ? (item.type === 'supplier_purchase' ? `/suppliers/${item.supplier_id}` : `/suppliers/${item.supplier_id}`)
-                                : (item.type === 'debt' ? `/debts/${item.id}` : `/debts/${item.debt_id}`)
-                            const IconA = isPurchase ? ArrowUpRight : ArrowDownRight
-
-                            let rdBadge = null
-                            let smsBadge = null
-                            if (isDebtRow) {
-                                const rd = item.return_date || null
-                                const remainingRaw = item.remaining_amount
-                                const paidFully = (item.status === 'paid' || item.status === 'closed' || (remainingRaw != null && Number(remainingRaw) <= 0.001))
-                                if (rd) {
-                                    const today0 = new Date(); today0.setHours(0, 0, 0, 0)
-                                    const rd0 = new Date(rd); rd0.setHours(0, 0, 0, 0)
-                                    const diffMs = rd0.getTime() - today0.getTime()
-                                    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
-                                    const isOverdue = !paidFully && diffDays < 0
-                                    const isDueSoon = !paidFully && diffDays >= 0 && diffDays <= 3
-
-                                    let badgeCls = ''
-                                    let badgeText = ''
-                                    if (paidFully) {
-                                        badgeCls = 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/40'
-                                        badgeText = `To'langan • ${formatDateShort(rd)}`
-                                    } else if (isOverdue) {
-                                        badgeCls = 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40'
-                                        badgeText = `Kechikkan ${Math.abs(diffDays)} kun • ${formatDateShort(rd)}`
-                                    } else if (diffDays === 0) {
-                                        badgeCls = 'bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40'
-                                        badgeText = `Bugun qaytarish • ${formatDateShort(rd)}`
-                                    } else if (isDueSoon) {
-                                        badgeCls = 'bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40'
-                                        badgeText = `${diffDays} kun qoldi • ${formatDateShort(rd)}`
-                                    } else {
-                                        badgeCls = 'bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800/40'
-                                        badgeText = `Qaytish: ${formatDateShort(rd)}`
-                                    }
-
-                                    rdBadge = (
-                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${badgeCls}`}>
-                                            <CalendarClock size={10.5} /> {badgeText}
-                                        </span>
-                                    )
-
-                                    const smsStatus = item.return_date_sms_status || null
-                                    const rdPassed = rd0.getTime() <= today0.getTime()
-                                    let smsMeta = null
-                                    if (smsStatus === 'sent') {
-                                        smsMeta = {
-                                            label: 'SMS yuborildi',
-                                            cls: 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/40',
-                                            icon: <CheckCircle2 size={10.5} />
-                                        }
-                                    } else if (smsStatus === 'skipped_limit') {
-                                        smsMeta = {
-                                            label: 'SMS limiti tugagan',
-                                            cls: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40',
-                                            icon: <BellOff size={10.5} />
-                                        }
-                                    } else if (smsStatus === 'skipped_no_phone') {
-                                        smsMeta = {
-                                            label: "Telefon yo'q",
-                                            cls: 'bg-gray-50 text-gray-600 border border-gray-100 dark:bg-gray-700/40 dark:text-gray-300 dark:border-gray-600/40',
-                                            icon: <BellOff size={10.5} />
-                                        }
-                                    } else if (smsStatus === 'failed') {
-                                        smsMeta = {
-                                            label: 'Xato',
-                                            cls: 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40',
-                                            icon: <X size={10.5} />
-                                        }
-                                    } else if (smsStatus === 'pending') {
-                                        smsMeta = {
-                                            label: 'Kutilmoqda',
-                                            cls: 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40',
-                                            icon: <Clock size={10.5} className="animate-pulse" />
-                                        }
-                                    } else if (smsStatus == null && rdPassed) {
-                                        smsMeta = {
-                                            label: 'Yuborilmagan',
-                                            cls: 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40',
-                                            icon: <AlertTriangle size={10.5} />
-                                        }
-                                    }
-
-                                    if (smsMeta) {
-                                        smsBadge = (
-                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${smsMeta.cls}`}>
-                                                {smsMeta.icon} {smsMeta.label}
-                                            </span>
-                                        )
-                                    }
-                                }
-                            }
-
-                            return (
-                                <Link
-                                    key={`${item.type}-${item.id}-${isSupplier ? 's' : 'c'}`}
-                                    to={linkTo}
-                                    className="card flex items-center gap-3 py-3 active:scale-[0.99] transition-transform"
-                                >
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconClass}`}>
-                                        <IconA size={20} className={amountClass} />
+                        {!isStaff && (
+                            <div className="card p-3 h-full">
+                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Xodim bo'yicha</p>
+                                <div className="relative">
+                                    <select
+                                        value={selectedStaffId}
+                                        onChange={(event) => setSelectedStaffId(event.target.value)}
+                                        className="w-full appearance-none rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="all">Hammasi</option>
+                                        {staffOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
+                                    </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                        <svg className="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                        </svg>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
-                                            {nameText}
-                                        </p>
-                                        {(rdBadge || smsBadge) && (
-                                            <div className="flex flex-wrap gap-1.5 mt-1.5 mb-1.5">
-                                                {rdBadge}
-                                                {smsBadge}
-                                            </div>
-                                        )}
-                                        <div className="flex items-center gap-1.5 text-[12px] text-gray-400">
-                                            <Clock size={12} />
-                                            {formatDate(dateVal)}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="card p-3 h-full">
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider whitespace-nowrap">Hisobot turi</p>
+                                        <p className="text-[16px] font-bold text-gray-900 dark:text-white truncate">{displayPeriod}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-1.5 items-center flex-wrap">
+                                    {[
+                                        { value: 'yearly', label: 'Yillik' },
+                                        { value: 'monthly', label: 'Oylik' },
+                                        { value: 'weekly', label: 'Bu hafta' },
+                                        { value: 'last_week', label: "O'tgan hafta" },
+                                        { value: 'daily', label: 'Kunlik' }
+                                    ].map((option) => (
+                                        <button
+                                            key={option.value}
+                                            onClick={() => handlePeriodTypeSelect(option.value)}
+                                            className={`rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition shrink-0 ${periodType === option.value ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'}`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-2 items-stretch">
+                            {periodType === 'yearly' && (
+                                <div className="card p-3 h-full sm:col-span-2 flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider">Yil</p>
+                                        <p className="text-[17px] font-bold text-gray-900 dark:text-white truncate">{selectedDate} yil</p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <button
+                                            onClick={() => {
+                                                const year = Number(selectedDate) - 1
+                                                setSelectedDate(String(year))
+                                                setPickerYear(year)
+                                            }}
+                                            className="w-11 h-11 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 flex items-center justify-center"
+                                        >
+                                            <ChevronLeft size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const year = Number(selectedDate) + 1
+                                                setSelectedDate(String(year))
+                                                setPickerYear(year)
+                                            }}
+                                            disabled={Number(selectedDate) >= currentYear}
+                                            className="w-11 h-11 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 flex items-center justify-center"
+                                        >
+                                            <ChevronRight size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {periodType === 'daily' && (
+                                <div className="card p-3 h-full sm:col-span-2 overflow-hidden">
+                                    <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-2">Kun</p>
+                                    <input
+                                        type="date"
+                                        value={selectedDate}
+                                        onChange={(event) => setSelectedDate(event.target.value)}
+                                        className="input w-full max-w-full box-border"
+                                    />
+                                </div>
+                            )}
+
+                            {periodType === 'monthly' && (
+                                <button
+                                    onClick={() => {
+                                        setPickerYear(parseInt(selectedDate.split('-')[0], 10))
+                                        setShowDatePicker(true)
+                                    }}
+                                    className="card h-full sm:col-span-2 w-full flex items-center justify-between p-3 active:scale-[0.98] transition-all text-left"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-500">
+                                            <Calendar size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[12px] text-gray-400 uppercase font-bold tracking-wider">Oy tanlandi</p>
+                                            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{displayPeriod}</p>
                                         </div>
                                     </div>
-                                    <div className="text-right shrink-0">
-                                        <p className={`text-[15px] font-bold ${amountClass}`}>
-                                            {isPurchase ? '+' : ''}{formatCurrency(amountVal)}
-                                        </p>
-                                        <p className="text-[11px] text-gray-400">so'm</p>
+                                    <div className="p-2 text-gray-300">
+                                        <Calendar size={18} />
                                     </div>
-                                    <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
-                                </Link>
-                            )
-                        })}
+                                </button>
+                            )}
+                        </div>
                     </div>
-                )}
+
+                    {/* Drawer for Month Picker */}
+                    <Drawer.Root open={showDatePicker} onOpenChange={setShowDatePicker}>
+                        <Drawer.Portal>
+                            <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                            <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50 max-h-[85vh] outline-none">
+                                <div className="p-4 pb-8">
+                                    <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-6" />
+
+                                    <div className="flex items-center justify-between mb-8 px-2">
+                                        <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
+                                            Davrni tanlang
+                                        </Drawer.Title>
+                                        <button
+                                            onClick={() => setShowDatePicker(false)}
+                                            className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-500"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center justify-center gap-8 mb-8">
+                                        <button
+                                            onClick={() => setPickerYear(prev => prev - 1)}
+                                            className="p-2 text-gray-400 hover:text-blue-500"
+                                        >
+                                            <ChevronLeft size={24} />
+                                        </button>
+                                        <span className="text-[24px] font-black text-gray-900 dark:text-white tracking-tight">
+                                            {pickerYear}
+                                        </span>
+                                        <button
+                                            onClick={() => {
+                                                if (pickerYear < currentYear) {
+                                                    setPickerYear(prev => prev + 1)
+                                                }
+                                            }}
+                                            disabled={pickerYear >= currentYear}
+                                            className="p-2 text-gray-400 hover:text-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            <ChevronRight size={24} />
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {MONTH_NAMES.map((name, index) => {
+                                            const isSelected = selectedDate === `${pickerYear}-${String(index + 1).padStart(2, '0')}`
+                                            const isFutureMonth = pickerYear > currentYear || (pickerYear === currentYear && index > currentMonthIndex)
+                                            return (
+                                                <button
+                                                    key={name}
+                                                    onClick={() => handleSelectMonth(index)}
+                                                    disabled={isFutureMonth}
+                                                    className={`py-4 rounded-2xl text-[15px] font-semibold transition-all active:scale-95 ${isSelected
+                                                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+                                                        : isFutureMonth
+                                                            ? 'bg-gray-100 dark:bg-gray-700/30 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                                                            : 'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-100'
+                                                        }`}
+                                                >
+                                                    {name}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </Drawer.Content>
+                        </Drawer.Portal>
+                    </Drawer.Root>
+
+                    <div className="mb-8 lg:mb-0">
+                        <h2 className="section-title">HISOBOT · {scopeLabel}</h2>
+                        <div className="card bg-white dark:bg-gray-800 p-3">
+                            <div className="flex items-start justify-between gap-3 border-b border-gray-100 dark:border-gray-700 pb-2.5">
+                                <div>
+                                    <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{debtLabel}</p>
+                                    <p className="text-[12px] text-gray-400">{debtSubtitle}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-[16px] font-bold ${debtAmountClass}`}>{formatCurrency(reportStats.debts)}</p>
+                                    <p className="text-[12px] text-gray-400">so'm · {reportStats.debtCount} {debtCountText}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start justify-between gap-3 pt-2.5">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${paymentIconClass}`}>
+                                        {(() => {
+                                            const Icon = paymentIcon
+                                            return <Icon size={18} className={scope === 'suppliers' ? 'text-amber-500' : 'text-green-500'} />
+                                        })()}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{paymentLabel}</p>
+                                        <p className="text-[12px] text-gray-400">{paymentSubtitle}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className={`text-[16px] font-bold ${paymentAmountClass}`}>{formatCurrency(reportStats.payments)}</p>
+                                    <p className="text-[12px] text-gray-400">so'm</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SO'NGGI FAOLIYAT */}
+                <div>
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="section-title !mb-0">SO'NGGI FAOLIYAT</h2>
+                        <Link to="/payments" className="text-[12px] font-semibold text-blue-500">Barchasi</Link>
+                    </div>
+                    {combinedActivity.length === 0 ? (
+                        <div className="card text-center py-12 text-gray-400">
+                            <Receipt size={40} className="mx-auto mb-2 opacity-20" />
+                            <p>Faoliyat yo'q</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {combinedActivity.map((item) => {
+                                const isPurchase = item.type === 'debt' || item.type === 'supplier_purchase'
+                                const isSupplier = item.type === 'supplier_purchase' || item.type === 'supplier_payment'
+                                const isDebtRow = item.type === 'debt'
+                                const iconClass = isPurchase
+                                    ? (isSupplier ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-red-100 dark:bg-red-900/30')
+                                    : (isSupplier ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30')
+                                const amountClass = isPurchase
+                                    ? (isSupplier ? 'text-blue-500' : 'text-red-500')
+                                    : (isSupplier ? 'text-amber-500' : 'text-green-500')
+                                const nameText = isSupplier
+                                    ? (item.supplier?.name || getSupplierById(item.supplier_id)?.name || "Ta'minotchi")
+                                    : (item.customer?.name || item.debt?.customer?.name || 'Mijoz')
+                                const amountVal = item.total_amount ?? item.amount ?? 0
+                                const dateVal = isSupplier
+                                    ? (item.paid_at || item.purchase_date || item.date || item.created_at)
+                                    : (item.created_at || item.paid_at)
+                                const linkTo = isSupplier
+                                    ? (item.type === 'supplier_purchase' ? `/suppliers/${item.supplier_id}` : `/suppliers/${item.supplier_id}`)
+                                    : (item.type === 'debt' ? `/debts/${item.id}` : `/debts/${item.debt_id}`)
+                                const IconA = isPurchase ? ArrowUpRight : ArrowDownRight
+
+                                let rdBadge = null
+                                let smsBadge = null
+                                if (isDebtRow) {
+                                    const rd = item.return_date || null
+                                    const remainingRaw = item.remaining_amount
+                                    const paidFully = (item.status === 'paid' || item.status === 'closed' || (remainingRaw != null && Number(remainingRaw) <= 0.001))
+                                    if (rd) {
+                                        const today0 = new Date(); today0.setHours(0, 0, 0, 0)
+                                        const rd0 = new Date(rd); rd0.setHours(0, 0, 0, 0)
+                                        const diffMs = rd0.getTime() - today0.getTime()
+                                        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+                                        const isOverdue = !paidFully && diffDays < 0
+                                        const isDueSoon = !paidFully && diffDays >= 0 && diffDays <= 3
+
+                                        let badgeCls = ''
+                                        let badgeText = ''
+                                        if (paidFully) {
+                                            badgeCls = 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/40'
+                                            badgeText = `To'langan • ${formatDateShort(rd)}`
+                                        } else if (isOverdue) {
+                                            badgeCls = 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40'
+                                            badgeText = `Kechikkan ${Math.abs(diffDays)} kun • ${formatDateShort(rd)}`
+                                        } else if (diffDays === 0) {
+                                            badgeCls = 'bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40'
+                                            badgeText = `Bugun qaytarish • ${formatDateShort(rd)}`
+                                        } else if (isDueSoon) {
+                                            badgeCls = 'bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40'
+                                            badgeText = `${diffDays} kun qoldi • ${formatDateShort(rd)}`
+                                        } else {
+                                            badgeCls = 'bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800/40'
+                                            badgeText = `Qaytish: ${formatDateShort(rd)}`
+                                        }
+
+                                        rdBadge = (
+                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${badgeCls}`}>
+                                                <CalendarClock size={10.5} /> {badgeText}
+                                            </span>
+                                        )
+
+                                        const smsStatus = item.return_date_sms_status || null
+                                        const rdPassed = rd0.getTime() <= today0.getTime()
+                                        let smsMeta = null
+                                        if (smsStatus === 'sent') {
+                                            smsMeta = {
+                                                label: 'SMS yuborildi',
+                                                cls: 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/40',
+                                                icon: <CheckCircle2 size={10.5} />
+                                            }
+                                        } else if (smsStatus === 'skipped_limit') {
+                                            smsMeta = {
+                                                label: 'SMS limiti tugagan',
+                                                cls: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40',
+                                                icon: <BellOff size={10.5} />
+                                            }
+                                        } else if (smsStatus === 'skipped_no_phone') {
+                                            smsMeta = {
+                                                label: "Telefon yo'q",
+                                                cls: 'bg-gray-50 text-gray-600 border border-gray-100 dark:bg-gray-700/40 dark:text-gray-300 dark:border-gray-600/40',
+                                                icon: <BellOff size={10.5} />
+                                            }
+                                        } else if (smsStatus === 'failed') {
+                                            smsMeta = {
+                                                label: 'Xato',
+                                                cls: 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40',
+                                                icon: <X size={10.5} />
+                                            }
+                                        } else if (smsStatus === 'pending') {
+                                            smsMeta = {
+                                                label: 'Kutilmoqda',
+                                                cls: 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40',
+                                                icon: <Clock size={10.5} className="animate-pulse" />
+                                            }
+                                        } else if (smsStatus == null && rdPassed) {
+                                            smsMeta = {
+                                                label: 'Yuborilmagan',
+                                                cls: 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800/40',
+                                                icon: <AlertTriangle size={10.5} />
+                                            }
+                                        }
+
+                                        if (smsMeta) {
+                                            smsBadge = (
+                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${smsMeta.cls}`}>
+                                                    {smsMeta.icon} {smsMeta.label}
+                                                </span>
+                                            )
+                                        }
+                                    }
+                                }
+
+                                return (
+                                    <Link
+                                        key={`${item.type}-${item.id}-${isSupplier ? 's' : 'c'}`}
+                                        to={linkTo}
+                                        className="card flex items-center gap-3 py-3 active:scale-[0.99] transition-transform"
+                                    >
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconClass}`}>
+                                            <IconA size={20} className={amountClass} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
+                                                {nameText}
+                                            </p>
+                                            {(rdBadge || smsBadge) && (
+                                                <div className="flex flex-wrap gap-1.5 mt-1.5 mb-1.5">
+                                                    {rdBadge}
+                                                    {smsBadge}
+                                                </div>
+                                            )}
+                                            <div className="flex items-center gap-1.5 text-[12px] text-gray-400">
+                                                <Clock size={12} />
+                                                {formatDate(dateVal)}
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className={`text-[15px] font-bold ${amountClass}`}>
+                                                {isPurchase ? '+' : ''}{formatCurrency(amountVal)}
+                                            </p>
+                                            <p className="text-[11px] text-gray-400">so'm</p>
+                                        </div>
+                                        <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="h-24" />
+            <div className="h-24 md:h-8" />
         </div>
     )
 }

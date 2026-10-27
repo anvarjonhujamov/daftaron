@@ -97,7 +97,7 @@ export default function NotificationsPage() {
     const unreadCount = notifications.filter(n => !n.read_at).length
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+        <div className="px-4 py-6 md:px-6 lg:py-8 md:max-w-3xl md:mx-auto bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
             <div className="flex items-center gap-3 mb-5">
                 <button
                     onClick={() => navigate(-1)}

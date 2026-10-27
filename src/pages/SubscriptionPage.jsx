@@ -229,7 +229,7 @@ export default function SubscriptionPage() {
     const isBlocked = trialInfo?.is_expired || trialInfo?.status === 0
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
+        <div className="px-4 py-6 md:px-6 lg:py-8 md:max-w-3xl md:mx-auto bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             <div className="flex items-center justify-between mb-6">
                 {isBlocked ? (
                     <div className="w-10 h-10" />
@@ -545,7 +545,7 @@ export default function SubscriptionPage() {
                     </span>
                 </div>
                 
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {extraPackages.map((pkg) => (
                         <div 
                             key={pkg.id}

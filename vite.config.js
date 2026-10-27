@@ -26,7 +26,8 @@ export default defineConfig({
                 theme_color: '#3b82f6',
                 background_color: '#f8fafc',
                 display: 'standalone',
-                orientation: 'portrait',
+                // Planshetda landshaft rejim ham kerak
+                orientation: 'any',
                 start_url: '/',
                 icons: [
                     {

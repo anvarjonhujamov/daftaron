@@ -1,6 +1,7 @@
 import { useEffect, Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import BottomNav from './BottomNav'
+import Sidebar from './Sidebar'
 import LoadingSpinner from './LoadingSpinner'
 import toast from 'react-hot-toast'
 import { migrateLegacySupplierRecords } from '../api/suppliers.api'
@@ -26,9 +27,11 @@ export default function Layout() {
             .catch((err) => console.error('Supplier migration failed:', err))
     }, [])
 
+    // Telefonda pastki menyu, planshet/kompyuterda yon menyu (md:pl-24 / lg:pl-64 uning kengligi)
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-            <main className="pb-24 max-w-lg mx-auto">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors md:pl-24 lg:pl-64">
+            <Sidebar />
+            <main className="pb-24 md:pb-8 app-container">
                 {/* Lazy sahifa yuklanayotganda pastki menyu joyida qoladi */}
                 <Suspense fallback={<div className="flex justify-center pt-24"><LoadingSpinner /></div>}>
                     <Outlet />

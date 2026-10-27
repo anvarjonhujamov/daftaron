@@ -449,335 +449,340 @@ export default function SupplierDetailPage() {
     }
 
     return (
-        <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors overflow-x-hidden">
-            {/* === HERO CARD (unchanged, already optimized) === */}
-            <div className="px-4 mt-2">
-                <div className="bg-white dark:bg-gray-800 pt-2 pb-3.5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all">
-                    <div className="flex items-center justify-between px-4 py-0.5 mb-1">
-                        <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform">
-                            <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" />
-                        </button>
-                        <button onClick={() => setShowOptionsDrawer(true)} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform">
-                            <MoreVertical size={18} className="text-gray-600 dark:text-gray-300" />
-                        </button>
+        <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 md:pb-8 md:pt-4 lg:pt-6 transition-colors overflow-x-hidden">
+            {/* Kompyuterda ikki ustun: chapda ta'minotchi kartasi va amallar, o'ngda operatsiyalar */}
+            <div className="md:px-2 lg:grid lg:grid-cols-[24rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)] lg:items-start">
+                <div className="lg:sticky lg:top-6">
+                    {/* === HERO CARD (unchanged, already optimized) === */}
+                    <div className="px-4 mt-2">
+                        <div className="bg-white dark:bg-gray-800 pt-2 pb-3.5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all">
+                            <div className="flex items-center justify-between px-4 py-0.5 mb-1">
+                                <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform">
+                                    <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" />
+                                </button>
+                                <button onClick={() => setShowOptionsDrawer(true)} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform">
+                                    <MoreVertical size={18} className="text-gray-600 dark:text-gray-300" />
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-5 gap-3 px-4 pt-1">
+                                <div className="col-span-3 flex items-start gap-2.5 min-w-0">
+                                    <div className="w-14 h-14 bg-gradient-to-tr from-orange-100 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-600 dark:text-orange-400 rounded-[20px] flex items-center justify-center shadow-inner flex-shrink-0">
+                                        <Building2 size={26} />
+                                    </div>
+                                    <div className="flex-1 min-w-0 pt-0.5 text-left">
+                                        <h1 className="text-[16.5px] font-bold text-gray-900 dark:text-white mb-0.5 leading-tight truncate">{supplier.name}</h1>
+                                        {supplier.company_name && supplier.company_name !== supplier.name && (
+                                            <p className="text-gray-400 dark:text-gray-500 text-[12px] font-medium mb-0.5 truncate">{supplier.company_name}</p>
+                                        )}
+                                        <p className="text-gray-400 dark:text-gray-500 text-[12px] font-semibold">{supplier.phone ? formatPhone(supplier.phone) : ''}</p>
+                                    </div>
+                                </div>
+                                <div className="col-span-2 flex flex-col items-end justify-center text-right min-w-0">
+                                    <div className={`text-[20px] font-extrabold tracking-tight leading-none mb-1 ${
+                                        hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-600 dark:text-gray-300'
+                                    }`}>
+                                        {formatCurrency(absBalance)}<span className="text-[11px] font-bold opacity-70 ml-0.5">so'm</span>
+                                    </div>
+                                    <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                                        hasDebt
+                                            ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30'
+                                            : hasCredit
+                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border border-emerald-100 dark:border-emerald-900/30'
+                                                : 'bg-gray-100 dark:bg-gray-700/30 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700/50'
+                                    }`}>
+                                        {hasDebt ? 'QARZ' : hasCredit ? 'BIZGA QARZ' : 'BALANS NOL'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {(supplier.contact_person || supplier.inn || supplier.address || supplier.note || supplier.created_at) && (
+                                <div className="px-4 pt-3 mt-2.5 border-t border-gray-100 dark:border-gray-700/50">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
+                                        {supplier.contact_person && (
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0"><User size={12} className="text-gray-500" /></div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Mas'ul</p>
+                                                    <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{supplier.contact_person}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {supplier.inn && (
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0"><Hash size={12} className="text-gray-500" /></div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">INN</p>
+                                                    <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight font-mono truncate">{supplier.inn}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {supplier.created_at && (
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0"><RefreshCw size={12} className="text-gray-500" /></div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Sana</p>
+                                                    <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{formatDateShort(supplier.created_at)}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {supplier.address && (
+                                            <div className="flex items-start gap-1.5 min-w-0 sm:col-span-2">
+                                                <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0 mt-0.5"><MapPin size={12} className="text-gray-500" /></div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Manzil</p>
+                                                    <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.address}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {supplier.note && (
+                                            <div className={`flex items-start gap-1.5 min-w-0 ${supplier.address ? 'sm:col-span-1' : 'col-span-2 sm:col-span-3'}`}>
+                                                <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0 mt-0.5"><FileText size={12} className="text-gray-500" /></div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Izoh</p>
+                                                    <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.note}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-5 gap-3 px-4 pt-1">
-                        <div className="col-span-3 flex items-start gap-2.5 min-w-0">
-                            <div className="w-14 h-14 bg-gradient-to-tr from-orange-100 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-600 dark:text-orange-400 rounded-[20px] flex items-center justify-center shadow-inner flex-shrink-0">
-                                <Building2 size={26} />
+                    {/* === STATS === */}
+                    <div className="px-4 mt-2.5">
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                                <div className="flex items-center justify-between mb-1">
+                                    <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><ShoppingCart size={12} className="text-blue-500" /></div>
+                                </div>
+                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami xarid</p>
+                                <p className="text-[13px] font-black text-gray-900 dark:text-white leading-tight truncate">{formatCurrency(totalBought)}</p>
+                                <p className="text-[11px] text-gray-400 mt-0.5">so'm</p>
                             </div>
-                            <div className="flex-1 min-w-0 pt-0.5 text-left">
-                                <h1 className="text-[16.5px] font-bold text-gray-900 dark:text-white mb-0.5 leading-tight truncate">{supplier.name}</h1>
-                                {supplier.company_name && supplier.company_name !== supplier.name && (
-                                    <p className="text-gray-400 dark:text-gray-500 text-[12px] font-medium mb-0.5 truncate">{supplier.company_name}</p>
-                                )}
-                                <p className="text-gray-400 dark:text-gray-500 text-[12px] font-semibold">{supplier.phone ? formatPhone(supplier.phone) : ''}</p>
+                            <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                                <div className="flex items-center justify-between mb-1">
+                                    <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center"><CheckCircle2 size={12} className="text-emerald-500" /></div>
+                                </div>
+                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami to'lov</p>
+                                <p className="text-[13px] font-black text-gray-900 dark:text-white leading-tight truncate">{formatCurrency(totalPaid)}</p>
+                                <p className="text-[11px] text-gray-400 mt-0.5">so'm</p>
                             </div>
-                        </div>
-                        <div className="col-span-2 flex flex-col items-end justify-center text-right min-w-0">
-                            <div className={`text-[20px] font-extrabold tracking-tight leading-none mb-1 ${
-                                hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-600 dark:text-gray-300'
-                            }`}>
-                                {formatCurrency(absBalance)}<span className="text-[11px] font-bold opacity-70 ml-0.5">so'm</span>
-                            </div>
-                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider whitespace-nowrap ${
-                                hasDebt
-                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30'
-                                    : hasCredit
-                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 border border-emerald-100 dark:border-emerald-900/30'
-                                        : 'bg-gray-100 dark:bg-gray-700/30 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700/50'
-                            }`}>
-                                {hasDebt ? 'QARZ' : hasCredit ? 'BIZGA QARZ' : 'BALANS NOL'}
+                            <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                                <div className="flex items-center justify-between mb-1">
+                                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${hasDebt ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+                                        {hasDebt ? <TrendingUp size={12} className="text-red-500" /> : hasCredit ? <TrendingDown size={12} className="text-emerald-500" /> : <Wallet size={12} className="text-gray-400" />}
+                                    </div>
+                                </div>
+                                <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Farq</p>
+                                <p className={`text-[13px] font-black leading-tight truncate ${hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-900 dark:text-white'}`}>{formatCurrency(absBalance)}</p>
+                                <p className="text-[11px] text-gray-400 mt-0.5">so'm</p>
                             </div>
                         </div>
                     </div>
 
-                    {(supplier.contact_person || supplier.inn || supplier.address || supplier.note || supplier.created_at) && (
-                        <div className="px-4 pt-3 mt-2.5 border-t border-gray-100 dark:border-gray-700/50">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
-                                {supplier.contact_person && (
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                        <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0"><User size={12} className="text-gray-500" /></div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Mas'ul</p>
-                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{supplier.contact_person}</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {supplier.inn && (
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                        <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0"><Hash size={12} className="text-gray-500" /></div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">INN</p>
-                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight font-mono truncate">{supplier.inn}</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {supplier.created_at && (
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                        <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0"><RefreshCw size={12} className="text-gray-500" /></div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Sana</p>
-                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight truncate">{formatDateShort(supplier.created_at)}</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {supplier.address && (
-                                    <div className="flex items-start gap-1.5 min-w-0 sm:col-span-2">
-                                        <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0 mt-0.5"><MapPin size={12} className="text-gray-500" /></div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Manzil</p>
-                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.address}</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {supplier.note && (
-                                    <div className={`flex items-start gap-1.5 min-w-0 ${supplier.address ? 'sm:col-span-1' : 'col-span-2 sm:col-span-3'}`}>
-                                        <div className="w-6 h-6 rounded-lg bg-gray-50 dark:bg-gray-700/40 flex items-center justify-center flex-shrink-0 mt-0.5"><FileText size={12} className="text-gray-500" /></div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider leading-none mb-0.5">Izoh</p>
-                                            <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-snug">{supplier.note}</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                    {/* === TASK 3: ACTION BUTTONS — XARID QO'SHISH + TO'LOV QILISH (NEW) === */}
+                    <div className="px-4 mt-2.5">
+                        <div className="grid grid-cols-2 gap-2">
+                            <button onClick={openPurchaseCreate} className="flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold text-[13px] shadow-lg shadow-blue-500/15 active:scale-[0.98] transition-all">
+                                <Plus size={15} />
+                                <ShoppingCart size={15} />
+                                Xarid qo'shish
+                            </button>
+                            <button onClick={openPaymentCreate} className="flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[13px] shadow-lg shadow-emerald-500/15 active:scale-[0.98] transition-all">
+                                <Plus size={15} />
+                                <Wallet size={15} />
+                                To'lov qilish
+                            </button>
                         </div>
+                    </div>
+
+                    {/* === CALL + SMS (existing, preserved) === */}
+                    <div className="px-4 mt-2">
+                        <div className="flex gap-2">
+                            <button onClick={handleCall} disabled={!supplier.phone} className="btn btn-outline flex-1 py-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 disabled:opacity-40 text-[12.5px]">
+                                <PhoneIcon size={15} />Qo'ng'iroq
+                            </button>
+                            <button onClick={handleMessage} disabled={!supplier.phone} className="btn btn-outline flex-1 py-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 disabled:opacity-40 text-[12.5px]">
+                                <MessageSquare size={15} />Xabar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* === OPERATSIYALAR TARIXI === */}
+                <div className="px-4 mt-3.5 lg:mt-2">
+                    <div className="flex items-center justify-between mb-2">
+                        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">Operatsiyalar tarixi</h2>
+                        <span className="text-[12px] text-gray-400">
+                            {historyTab === 'all' ? `${allMovements.length} ta`
+                                : historyTab === 'purchases' ? `${purchases.length} ta xarid`
+                                    : `${payments.length} ta to'lov`}
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-3">
+                        <button type="button" onClick={() => setHistoryTab('all')} className={`py-1.5 rounded-xl text-[12px] font-bold transition-all ${
+                            historyTab === 'all' ? 'bg-white dark:bg-gray-900 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+                        }`}><ArrowRightLeft size={11} className="inline mr-1 -mt-0.5" />Hammasi</button>
+                        <button type="button" onClick={() => setHistoryTab('purchases')} className={`py-1.5 rounded-xl text-[12px] font-bold transition-all ${
+                            historyTab === 'purchases' ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+                        }`}><ShoppingCart size={11} className="inline mr-1 -mt-0.5" />Xaridlar</button>
+                        <button type="button" onClick={() => setHistoryTab('payments')} className={`py-1.5 rounded-xl text-[12px] font-bold transition-all ${
+                            historyTab === 'payments' ? 'bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+                        }`}><CreditCard size={11} className="inline mr-1 -mt-0.5" />To'lovlar</button>
+                    </div>
+
+                    {/* === ALL TAB === */}
+                    {historyTab === 'all' && (
+                        <>
+                            {allMovements.length === 0 ? (
+                                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
+                                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center"><ArrowRightLeft size={20} className="text-gray-400" /></div>
+                                    <div className="text-gray-400">Hali operatsiyalar yo'q</div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {allMovements.map(mov => {
+                                        const isPurchase = isMovementPurchase(mov)
+                                        const amt = parseFloat(mov.amount || mov.total_amount) || 0
+                                        return (
+                                            <div key={mov.id} className="bg-white dark:bg-gray-800 p-3 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm flex items-center gap-3">
+                                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                                                    isPurchase ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'
+                                                }`}>
+                                                    {isPurchase ? <ShoppingCart size={19} className="text-blue-500" /> : <CheckCircle2 size={19} className="text-emerald-500" />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
+                                                            isPurchase
+                                                                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100/60 dark:border-blue-900/30'
+                                                                : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
+                                                        }`}>{isPurchase ? 'Xarid' : "To'lov"}</span>
+                                                        {mov.reference && <span className="text-[11px] text-gray-400">• {mov.reference}</span>}
+                                                    </div>
+                                                    {mov.description && <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">{mov.description}</p>}
+                                                    <p className="text-[12px] text-gray-400">
+                                                        {formatDateShort(mov.date)}
+                                                        {mov.items_count && ` • ${mov.items_count} ta tovar`}
+                                                        {mov.payment_method && ` • ${paymentMethodLabel(mov.payment_method)}`}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right flex-shrink-0 pl-1">
+                                                    <p className={`text-[15px] font-extrabold leading-none mb-0.5 ${isPurchase ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                                        {isPurchase ? '+' : '-'}{formatCurrency(amt)}
+                                                    </p>
+                                                    <p className="text-[12px] text-gray-400 font-normal">so'm</p>
+                                                </div>
+                                                <button onClick={() => { setSelectedMovement({ ...mov, _kind: isPurchase ? 'purchase' : 'payment' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform ml-1">
+                                                    <MoreVertical size={16} className="text-gray-500" />
+                                                </button>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* === PURCHASES TAB === */}
+                    {historyTab === 'purchases' && (
+                        <>
+                            {purchases.length === 0 ? (
+                                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
+                                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center"><ShoppingCart size={20} className="text-gray-400" /></div>
+                                    <div className="text-gray-400">Hali xaridlar yo'q</div>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {purchases.map(pur => {
+                                        const amt = parseFloat(pur.amount || pur.total_amount) || 0
+                                        return (
+                                            <div key={pur.id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[12px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100/60 dark:border-blue-900/30">
+                                                            Xarid
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="text-right mr-1">
+                                                            <div className="text-[12px] text-gray-400">{formatDateShort(pur.date)}</div>
+                                                            {pur.reference && <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 font-mono">{pur.reference}</div>}
+                                                        </div>
+                                                        <button onClick={() => { setSelectedMovement({ ...pur, _kind: 'purchase' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform">
+                                                            <MoreVertical size={15} className="text-gray-500" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="mb-3">
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider mb-1">Summasi</p>
+                                                    <p className="text-[18px] font-black text-blue-600 dark:text-blue-400">
+                                                        +{formatCurrency(amt)} <span className="text-[12px] font-normal opacity-60">so'm</span>
+                                                    </p>
+                                                    {pur.remaining_amount > 0 && pur.remaining_amount < amt && (
+                                                        <p className="text-[12px] text-gray-500 mt-0.5">Qoldiq: {formatCurrency(pur.remaining_amount)} so'm</p>
+                                                    )}
+                                                    {pur.status === 'closed' && <p className="text-[12px] text-emerald-600 mt-0.5">To'liq to'langan</p>}
+                                                    {pur.is_overdue && <p className="text-[12px] text-red-500 mt-0.5">Muddati o'tgan</p>}
+                                                </div>
+                                                {pur.description && (
+                                                    <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                                                        <FileText size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                                                        <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-tight">{pur.description}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* === PAYMENTS TAB === */}
+                    {historyTab === 'payments' && (
+                        <>
+                            {payments.length === 0 ? (
+                                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
+                                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center"><CreditCard size={20} className="text-gray-400" /></div>
+                                    <div className="text-gray-400">Hali to'lovlar yo'q</div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {payments.map(pay => {
+                                        const amt = parseFloat(pay.amount) || 0
+                                        return (
+                                            <div key={pay.id} className="bg-white dark:bg-gray-800 p-3 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm flex items-center gap-3">
+                                                <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 bg-emerald-50 dark:bg-emerald-900/20">
+                                                    <CheckCircle2 size={19} className="text-emerald-500" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30">
+                                                            To'lov
+                                                        </span>
+                                                        {pay.payment_method && <span className="text-[11px] text-gray-400">• {paymentMethodLabel(pay.payment_method)}</span>}
+                                                    </div>
+                                                    {pay.description && <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">{pay.description}</p>}
+                                                    <p className="text-[12px] text-gray-400">{formatDateShort(pay.date)}</p>
+                                                </div>
+                                                <div className="text-right flex-shrink-0 pl-1">
+                                                    <p className="text-[15px] font-extrabold text-emerald-600 dark:text-emerald-400 leading-none mb-0.5">-{formatCurrency(amt)}</p>
+                                                    <p className="text-[12px] text-gray-400 font-normal">so'm</p>
+                                                </div>
+                                                <button onClick={() => { setSelectedMovement({ ...pay, _kind: 'payment' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform ml-1">
+                                                    <MoreVertical size={16} className="text-gray-500" />
+                                                </button>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
-            </div>
-
-            {/* === STATS === */}
-            <div className="px-4 mt-2.5">
-                <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                        <div className="flex items-center justify-between mb-1">
-                            <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center"><ShoppingCart size={12} className="text-blue-500" /></div>
-                        </div>
-                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami xarid</p>
-                        <p className="text-[13px] font-black text-gray-900 dark:text-white leading-tight truncate">{formatCurrency(totalBought)}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">so'm</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                        <div className="flex items-center justify-between mb-1">
-                            <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center"><CheckCircle2 size={12} className="text-emerald-500" /></div>
-                        </div>
-                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Jami to'lov</p>
-                        <p className="text-[13px] font-black text-gray-900 dark:text-white leading-tight truncate">{formatCurrency(totalPaid)}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">so'm</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                        <div className="flex items-center justify-between mb-1">
-                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${hasDebt ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-gray-700/30'}`}>
-                                {hasDebt ? <TrendingUp size={12} className="text-red-500" /> : hasCredit ? <TrendingDown size={12} className="text-emerald-500" /> : <Wallet size={12} className="text-gray-400" />}
-                            </div>
-                        </div>
-                        <p className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Farq</p>
-                        <p className={`text-[13px] font-black leading-tight truncate ${hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-900 dark:text-white'}`}>{formatCurrency(absBalance)}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">so'm</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* === TASK 3: ACTION BUTTONS — XARID QO'SHISH + TO'LOV QILISH (NEW) === */}
-            <div className="px-4 mt-2.5">
-                <div className="grid grid-cols-2 gap-2">
-                    <button onClick={openPurchaseCreate} className="flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-bold text-[13px] shadow-lg shadow-blue-500/15 active:scale-[0.98] transition-all">
-                        <Plus size={15} />
-                        <ShoppingCart size={15} />
-                        Xarid qo'shish
-                    </button>
-                    <button onClick={openPaymentCreate} className="flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[13px] shadow-lg shadow-emerald-500/15 active:scale-[0.98] transition-all">
-                        <Plus size={15} />
-                        <Wallet size={15} />
-                        To'lov qilish
-                    </button>
-                </div>
-            </div>
-
-            {/* === CALL + SMS (existing, preserved) === */}
-            <div className="px-4 mt-2">
-                <div className="flex gap-2">
-                    <button onClick={handleCall} disabled={!supplier.phone} className="btn btn-outline flex-1 py-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 disabled:opacity-40 text-[12.5px]">
-                        <PhoneIcon size={15} />Qo'ng'iroq
-                    </button>
-                    <button onClick={handleMessage} disabled={!supplier.phone} className="btn btn-outline flex-1 py-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 disabled:opacity-40 text-[12.5px]">
-                        <MessageSquare size={15} />Xabar
-                    </button>
-                </div>
-            </div>
-
-            {/* === OPERATSIYALAR TARIXI === */}
-            <div className="px-4 mt-3.5">
-                <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">Operatsiyalar tarixi</h2>
-                    <span className="text-[12px] text-gray-400">
-                        {historyTab === 'all' ? `${allMovements.length} ta`
-                            : historyTab === 'purchases' ? `${purchases.length} ta xarid`
-                                : `${payments.length} ta to'lov`}
-                    </span>
-                </div>
-                <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-3">
-                    <button type="button" onClick={() => setHistoryTab('all')} className={`py-1.5 rounded-xl text-[12px] font-bold transition-all ${
-                        historyTab === 'all' ? 'bg-white dark:bg-gray-900 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
-                    }`}><ArrowRightLeft size={11} className="inline mr-1 -mt-0.5" />Hammasi</button>
-                    <button type="button" onClick={() => setHistoryTab('purchases')} className={`py-1.5 rounded-xl text-[12px] font-bold transition-all ${
-                        historyTab === 'purchases' ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
-                    }`}><ShoppingCart size={11} className="inline mr-1 -mt-0.5" />Xaridlar</button>
-                    <button type="button" onClick={() => setHistoryTab('payments')} className={`py-1.5 rounded-xl text-[12px] font-bold transition-all ${
-                        historyTab === 'payments' ? 'bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'
-                    }`}><CreditCard size={11} className="inline mr-1 -mt-0.5" />To'lovlar</button>
-                </div>
-
-                {/* === ALL TAB === */}
-                {historyTab === 'all' && (
-                    <>
-                        {allMovements.length === 0 ? (
-                            <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
-                                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center"><ArrowRightLeft size={20} className="text-gray-400" /></div>
-                                <div className="text-gray-400">Hali operatsiyalar yo'q</div>
-                            </div>
-                        ) : (
-                            <div className="space-y-2.5">
-                                {allMovements.map(mov => {
-                                    const isPurchase = isMovementPurchase(mov)
-                                    const amt = parseFloat(mov.amount || mov.total_amount) || 0
-                                    return (
-                                        <div key={mov.id} className="bg-white dark:bg-gray-800 p-3 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm flex items-center gap-3">
-                                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                                                isPurchase ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'
-                                            }`}>
-                                                {isPurchase ? <ShoppingCart size={19} className="text-blue-500" /> : <CheckCircle2 size={19} className="text-emerald-500" />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
-                                                        isPurchase
-                                                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100/60 dark:border-blue-900/30'
-                                                            : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
-                                                    }`}>{isPurchase ? 'Xarid' : "To'lov"}</span>
-                                                    {mov.reference && <span className="text-[11px] text-gray-400">• {mov.reference}</span>}
-                                                </div>
-                                                {mov.description && <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">{mov.description}</p>}
-                                                <p className="text-[12px] text-gray-400">
-                                                    {formatDateShort(mov.date)}
-                                                    {mov.items_count && ` • ${mov.items_count} ta tovar`}
-                                                    {mov.payment_method && ` • ${paymentMethodLabel(mov.payment_method)}`}
-                                                </p>
-                                            </div>
-                                            <div className="text-right flex-shrink-0 pl-1">
-                                                <p className={`text-[15px] font-extrabold leading-none mb-0.5 ${isPurchase ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                                    {isPurchase ? '+' : '-'}{formatCurrency(amt)}
-                                                </p>
-                                                <p className="text-[12px] text-gray-400 font-normal">so'm</p>
-                                            </div>
-                                            <button onClick={() => { setSelectedMovement({ ...mov, _kind: isPurchase ? 'purchase' : 'payment' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform ml-1">
-                                                <MoreVertical size={16} className="text-gray-500" />
-                                            </button>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </>
-                )}
-
-                {/* === PURCHASES TAB === */}
-                {historyTab === 'purchases' && (
-                    <>
-                        {purchases.length === 0 ? (
-                            <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
-                                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center"><ShoppingCart size={20} className="text-gray-400" /></div>
-                                <div className="text-gray-400">Hali xaridlar yo'q</div>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {purchases.map(pur => {
-                                    const amt = parseFloat(pur.amount || pur.total_amount) || 0
-                                    return (
-                                        <div key={pur.id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[12px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100/60 dark:border-blue-900/30">
-                                                        Xarid
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="text-right mr-1">
-                                                        <div className="text-[12px] text-gray-400">{formatDateShort(pur.date)}</div>
-                                                        {pur.reference && <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 font-mono">{pur.reference}</div>}
-                                                    </div>
-                                                    <button onClick={() => { setSelectedMovement({ ...pur, _kind: 'purchase' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform">
-                                                        <MoreVertical size={15} className="text-gray-500" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div className="mb-3">
-                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider mb-1">Summasi</p>
-                                                <p className="text-[18px] font-black text-blue-600 dark:text-blue-400">
-                                                    +{formatCurrency(amt)} <span className="text-[12px] font-normal opacity-60">so'm</span>
-                                                </p>
-                                                {pur.remaining_amount > 0 && pur.remaining_amount < amt && (
-                                                    <p className="text-[12px] text-gray-500 mt-0.5">Qoldiq: {formatCurrency(pur.remaining_amount)} so'm</p>
-                                                )}
-                                                {pur.status === 'closed' && <p className="text-[12px] text-emerald-600 mt-0.5">To'liq to'langan</p>}
-                                                {pur.is_overdue && <p className="text-[12px] text-red-500 mt-0.5">Muddati o'tgan</p>}
-                                            </div>
-                                            {pur.description && (
-                                                <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                                                    <FileText size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                                                    <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-tight">{pur.description}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </>
-                )}
-
-                {/* === PAYMENTS TAB === */}
-                {historyTab === 'payments' && (
-                    <>
-                        {payments.length === 0 ? (
-                            <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
-                                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center"><CreditCard size={20} className="text-gray-400" /></div>
-                                <div className="text-gray-400">Hali to'lovlar yo'q</div>
-                            </div>
-                        ) : (
-                            <div className="space-y-2.5">
-                                {payments.map(pay => {
-                                    const amt = parseFloat(pay.amount) || 0
-                                    return (
-                                        <div key={pay.id} className="bg-white dark:bg-gray-800 p-3 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm flex items-center gap-3">
-                                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 bg-emerald-50 dark:bg-emerald-900/20">
-                                                <CheckCircle2 size={19} className="text-emerald-500" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30">
-                                                        To'lov
-                                                    </span>
-                                                    {pay.payment_method && <span className="text-[11px] text-gray-400">• {paymentMethodLabel(pay.payment_method)}</span>}
-                                                </div>
-                                                {pay.description && <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">{pay.description}</p>}
-                                                <p className="text-[12px] text-gray-400">{formatDateShort(pay.date)}</p>
-                                            </div>
-                                            <div className="text-right flex-shrink-0 pl-1">
-                                                <p className="text-[15px] font-extrabold text-emerald-600 dark:text-emerald-400 leading-none mb-0.5">-{formatCurrency(amt)}</p>
-                                                <p className="text-[12px] text-gray-400 font-normal">so'm</p>
-                                            </div>
-                                            <button onClick={() => { setSelectedMovement({ ...pay, _kind: 'payment' }); setShowHistoryOptions(true) }} className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform ml-1">
-                                                <MoreVertical size={16} className="text-gray-500" />
-                                            </button>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </>
-                )}
             </div>
 
             {/* ==================================================================

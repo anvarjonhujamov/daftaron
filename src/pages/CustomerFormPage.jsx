@@ -386,7 +386,7 @@ export default function CustomerFormPage() {
     }
 
     return (
-        <div className="px-4 py-6">
+        <div className="px-4 py-6 md:px-6 lg:py-8 md:max-w-2xl md:mx-auto">
             <div className="mb-4">
                 <Link to={isEdit ? `/customers/${id}` : '/customers'} className="text-primary-600 text-sm">
                     ← Mijozlar

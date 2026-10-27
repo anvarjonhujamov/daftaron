@@ -117,7 +117,7 @@ export default function SupportPage() {
     }
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-gray-900">
+        <div className="fixed inset-0 md:left-24 lg:left-64 z-[100] flex flex-col bg-white dark:bg-gray-900">
             {/* Header */}
             <div
                 className="shrink-0 flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700"
@@ -143,7 +143,7 @@ export default function SupportPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 md:px-[max(1.5rem,calc((100%-48rem)/2))] space-y-3">
                 {loadingHistory ? (
                     <div className="h-full flex items-center justify-center text-gray-400">
                         <Loader2 size={24} className="animate-spin" />
@@ -195,7 +195,7 @@ export default function SupportPage() {
 
             {/* Input */}
             <div
-                className="shrink-0 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3"
+                className="shrink-0 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 md:px-[max(1.5rem,calc((100%-48rem)/2))] py-3"
                 style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
             >
                 <div className="flex items-center gap-2">

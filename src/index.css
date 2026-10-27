@@ -190,6 +190,75 @@
   }
 }
 
+/* ===== RESPONSIVE: planshet va kompyuter ===== */
+
+/* Asosiy kontent kengligi: telefon 512px -> planshet 768px -> kompyuter 1024px -> keng ekran 1152px */
+.app-container {
+  width: 100%;
+  max-width: 32rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .app-container {
+    max-width: 48rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-container {
+    max-width: 64rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  .app-container {
+    max-width: 72rem;
+  }
+}
+
+/* Pastdan chiquvchi drawer'lar (vaul) katta ekranda butun kenglikka cho'zilmasin:
+   planshetda markazda 576px, kompyuterda pastdan ajralgan "suzuvchi" oyna.
+   Atribut selektori Tailwind'ning bottom-0 / rounded-t-* klasslaridan kuchliroq. */
+@media (min-width: 640px) {
+  [data-vaul-drawer][data-vaul-drawer-direction="bottom"] {
+    width: 100%;
+    max-width: 36rem;
+    margin-inline: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-vaul-drawer][data-vaul-drawer-direction="bottom"] {
+    bottom: 24px;
+    border-radius: 28px;
+    box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.3);
+  }
+
+  /* vaul drawer ostiga fon "davomi"ni chizadi: suzuvchi oynada u kerak emas */
+  [data-vaul-drawer][data-vaul-drawer-direction="bottom"]:not([data-vaul-custom-container="true"])::after {
+    content: none;
+  }
+}
+
+/* Sichqonchali qurilmalarda bosiladigan kartalarga hover holati */
+@media (hover: hover) and (pointer: fine) {
+  a.card,
+  button.card {
+    transition: box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  }
+
+  a.card:hover,
+  button.card:hover {
+    box-shadow: 0 6px 20px -6px rgba(15, 23, 42, 0.12);
+  }
+
+  .dark a.card:hover,
+  .dark button.card:hover {
+    background-color: rgb(55 65 81 / 0.55);
+  }
+}
+
 /* Bottom Navigation Bar — Liquid Glass Style */
 .bottom-bar {
   display: flex;

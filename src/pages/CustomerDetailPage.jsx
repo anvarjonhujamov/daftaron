@@ -535,390 +535,395 @@ export default function CustomerDetailPage() {
     const isDebtLimitReached = !effectiveIsUnlimited && hasKnownDebtRemaining && Number(effectiveRemaining) <= 0
 
     return (
-        <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 transition-colors overflow-x-hidden">
-            {/* Unified Hero Section */}
-            <div className="px-4 mt-2">
-                <div className="bg-white dark:bg-gray-800 pt-2 pb-4 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all">
-                    {/* Toolbar */}
-                    <div className="flex items-center justify-between px-4 py-0.5 mb-1">
-                        <button 
-                            onClick={() => navigate(-1)} 
-                            className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform"
+        <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-24 md:pb-8 md:pt-4 lg:pt-6 transition-colors overflow-x-hidden">
+            {/* Kompyuterda ikki ustun: chapda mijoz kartasi va amallar, o'ngda tarix */}
+            <div className="md:px-2 lg:grid lg:grid-cols-[24rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)] lg:items-start">
+                <div className="lg:sticky lg:top-6">
+                    {/* Unified Hero Section */}
+                    <div className="px-4 mt-2">
+                        <div className="bg-white dark:bg-gray-800 pt-2 pb-4 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all">
+                            {/* Toolbar */}
+                            <div className="flex items-center justify-between px-4 py-0.5 mb-1">
+                                <button 
+                                    onClick={() => navigate(-1)} 
+                                    className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform"
+                                >
+                                    <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" />
+                                </button>
+                                <button
+                                    onClick={() => setShowOptionsDrawer(true)}
+                                    className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform"
+                                >
+                                    <MoreVertical size={18} className="text-gray-600 dark:text-gray-300" />
+                                </button>
+                            </div>
+
+                            {/* Profile & Balance Info */}
+                            <div className="flex flex-col items-center text-center px-6">
+                                <h1 className="text-[18px] font-bold text-gray-900 dark:text-white mb-0.5 leading-tight">
+                                    {customer.name}
+                                </h1>
+                                <p className="text-gray-400 dark:text-gray-500 text-[12px] font-medium mb-2.5">
+                                    {formatPhone(customer.phone)}
+                                </p>
+
+                                <div className={`text-[28px] font-extrabold tracking-tight mb-2 ${totalDebt > 0 ? 'text-red-500' : (customerBalance > 0 ? 'text-emerald-500' : 'text-green-500')}`}>
+                                    {formatCurrency(totalDebt)} <span className="text-[14px] font-bold opacity-70">so'm</span>
+                                </div>
+
+                                <div className={`inline-flex items-center px-4 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                                    totalDebt > 0 
+                                        ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30' 
+                                        : 'bg-green-50 dark:bg-green-900/20 text-green-500 border border-green-100 dark:border-green-900/30'
+                                }`}>
+                                    {totalDebt > 0 ? 'Qarzdor' : (customerBalance > 0 ? 'Balans mavjud' : 'To\'langan')}
+                                </div>
+
+                                {customerBalance > 0 && (
+                                    <div className="mt-3 w-full px-2">
+                                        <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/40">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                                                    <Wallet size={17} className="text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className="text-[12px] text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase tracking-wider">Shaxsiy balans</p>
+                                                    <p className="text-[15px] font-extrabold text-emerald-700 dark:text-emerald-300 leading-tight">
+                                                        {formatCurrency(customerBalance)} <span className="text-[12px] opacity-70 font-bold">so'm</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <CheckCircle2 size={18} className="text-emerald-500/80" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="px-4 mt-4">
+                        <div className="flex gap-3 mb-3">
+                            <button onClick={handleCall} className="btn btn-outline flex-1 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><PhoneIcon size={18} />Qo'ng'iroq</button>
+                            <button onClick={handleMessage} className="btn btn-outline flex-1 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><MessageSquare size={18} />Xabar</button>
+                        </div>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => {
+                                    if (subStatus === 'expired') {
+                                        setBlockedType('expired')
+                                        setShowBlockedDrawer(true)
+                                    } else if (isDebtLimitReached) {
+                                        setBlockedType('limit')
+                                        setShowBlockedDrawer(true)
+                                    } else {
+                                        setShowDebtDrawer(true)
+                                    }
+                                }} 
+                                className={`btn flex-1 py-3 shadow-lg active:scale-95 transition-all ${
+                                    subStatus === 'expired' || isDebtLimitReached
+                                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 border border-gray-100 dark:border-gray-600'
+                                        : 'btn-danger shadow-red-500/20'
+                                }`}
+                            >
+                                <Plus size={18} />Nasiya
+                            </button>
+                            <button
+                                onClick={() => setShowGenericPaymentDrawer(true)}
+                                className="btn flex-1 py-3 shadow-lg active:scale-95 transition-all btn-success shadow-green-500/20"
+                            >
+                                <Plus size={18} />To'lov
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Timeline (Tarix) */}
+                <div className="px-4 mt-6 lg:mt-0">
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">Tarix</h2>
+                        <span className="text-[13px] text-gray-400">
+                            {historyTab === 'debts'
+                                ? `${debtsMeta?.total ?? debts.length} ta nasiya`
+                                : `${paymentsMeta?.total ?? customerPayments.length} ta to'lov`}
+                        </span>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-5">
+                        <button
+                            type="button"
+                            onClick={() => setHistoryTab('debts')}
+                            className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
+                                historyTab === 'debts'
+                                    ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                                    : 'text-gray-500 dark:text-gray-400'
+                            }`}
                         >
-                            <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" />
+                            <FileText size={13} className="inline mr-1 -mt-0.5" />
+                            Nasiyalar
                         </button>
                         <button
-                            onClick={() => setShowOptionsDrawer(true)}
-                            className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700/30 flex items-center justify-center active:scale-90 transition-transform"
+                            type="button"
+                            onClick={() => setHistoryTab('payments')}
+                            className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
+                                historyTab === 'payments'
+                                    ? 'bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                                    : 'text-gray-500 dark:text-gray-400'
+                            }`}
                         >
-                            <MoreVertical size={18} className="text-gray-600 dark:text-gray-300" />
+                            <CreditCard size={13} className="inline mr-1 -mt-0.5" />
+                            To'lovlar
+                            {sumPaid > 0 && (
+                                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                    {formatCurrency(sumPaid)}
+                                </span>
+                            )}
                         </button>
                     </div>
 
-                    {/* Profile & Balance Info */}
-                    <div className="flex flex-col items-center text-center px-6">
-                        <h1 className="text-[18px] font-bold text-gray-900 dark:text-white mb-0.5 leading-tight">
-                            {customer.name}
-                        </h1>
-                        <p className="text-gray-400 dark:text-gray-500 text-[12px] font-medium mb-2.5">
-                            {formatPhone(customer.phone)}
-                        </p>
-
-                        <div className={`text-[28px] font-extrabold tracking-tight mb-2 ${totalDebt > 0 ? 'text-red-500' : (customerBalance > 0 ? 'text-emerald-500' : 'text-green-500')}`}>
-                            {formatCurrency(totalDebt)} <span className="text-[14px] font-bold opacity-70">so'm</span>
-                        </div>
-
-                        <div className={`inline-flex items-center px-4 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                            totalDebt > 0 
-                                ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30' 
-                                : 'bg-green-50 dark:bg-green-900/20 text-green-500 border border-green-100 dark:border-green-900/30'
-                        }`}>
-                            {totalDebt > 0 ? 'Qarzdor' : (customerBalance > 0 ? 'Balans mavjud' : 'To\'langan')}
-                        </div>
-
-                        {customerBalance > 0 && (
-                            <div className="mt-3 w-full px-2">
-                                <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/40">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-                                            <Wallet size={17} className="text-emerald-600 dark:text-emerald-400" />
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="text-[12px] text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase tracking-wider">Shaxsiy balans</p>
-                                            <p className="text-[15px] font-extrabold text-emerald-700 dark:text-emerald-300 leading-tight">
-                                                {formatCurrency(customerBalance)} <span className="text-[12px] opacity-70 font-bold">so'm</span>
-                                            </p>
-                                        </div>
+                    {/* Nasiyalar tab */}
+                    {historyTab === 'debts' && (
+                        <>
+                            {debts.length === 0 ? (
+                                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
+                                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center">
+                                        <FileText size={20} className="text-gray-400" />
                                     </div>
-                                    <CheckCircle2 size={18} className="text-emerald-500/80" />
+                                    <div className="text-gray-400">Hali nasiya yo'q</div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="px-4 mt-4">
-                <div className="flex gap-3 mb-3">
-                    <button onClick={handleCall} className="btn btn-outline flex-1 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><PhoneIcon size={18} />Qo'ng'iroq</button>
-                    <button onClick={handleMessage} className="btn btn-outline flex-1 py-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><MessageSquare size={18} />Xabar</button>
-                </div>
-                <div className="flex gap-3">
-                    <button 
-                        onClick={() => {
-                            if (subStatus === 'expired') {
-                                setBlockedType('expired')
-                                setShowBlockedDrawer(true)
-                            } else if (isDebtLimitReached) {
-                                setBlockedType('limit')
-                                setShowBlockedDrawer(true)
-                            } else {
-                                setShowDebtDrawer(true)
-                            }
-                        }} 
-                        className={`btn flex-1 py-3 shadow-lg active:scale-95 transition-all ${
-                            subStatus === 'expired' || isDebtLimitReached
-                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 border border-gray-100 dark:border-gray-600'
-                                : 'btn-danger shadow-red-500/20'
-                        }`}
-                    >
-                        <Plus size={18} />Nasiya
-                    </button>
-                    <button
-                        onClick={() => setShowGenericPaymentDrawer(true)}
-                        className="btn flex-1 py-3 shadow-lg active:scale-95 transition-all btn-success shadow-green-500/20"
-                    >
-                        <Plus size={18} />To'lov
-                    </button>
-                </div>
-            </div>
-
-            {/* Timeline (Tarix) */}
-            <div className="px-4 mt-6">
-                <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">Tarix</h2>
-                    <span className="text-[13px] text-gray-400">
-                        {historyTab === 'debts'
-                            ? `${debtsMeta?.total ?? debts.length} ta nasiya`
-                            : `${paymentsMeta?.total ?? customerPayments.length} ta to'lov`}
-                    </span>
-                </div>
-
-                {/* Tabs */}
-                <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-gray-100 dark:bg-gray-800 mb-5">
-                    <button
-                        type="button"
-                        onClick={() => setHistoryTab('debts')}
-                        className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
-                            historyTab === 'debts'
-                                ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                                : 'text-gray-500 dark:text-gray-400'
-                        }`}
-                    >
-                        <FileText size={13} className="inline mr-1 -mt-0.5" />
-                        Nasiyalar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setHistoryTab('payments')}
-                        className={`py-2.5 rounded-xl text-[13px] font-bold transition-all ${
-                            historyTab === 'payments'
-                                ? 'bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                                : 'text-gray-500 dark:text-gray-400'
-                        }`}
-                    >
-                        <CreditCard size={13} className="inline mr-1 -mt-0.5" />
-                        To'lovlar
-                        {sumPaid > 0 && (
-                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                                {formatCurrency(sumPaid)}
-                            </span>
-                        )}
-                    </button>
-                </div>
-
-                {/* Nasiyalar tab */}
-                {historyTab === 'debts' && (
-                    <>
-                        {debts.length === 0 ? (
-                            <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
-                                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center">
-                                    <FileText size={20} className="text-gray-400" />
-                                </div>
-                                <div className="text-gray-400">Hali nasiya yo'q</div>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {debts.map(debt => {
-                                    // Return date, overdue va SMS status hisoblari
-                                    const rd = toYmd(debt.return_date) || null
-                                    let daysLeft = null
-                                    let isOverdue = false
-                                    let isDueSoon = false
-                                    if (rd && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0) {
-                                        const diffDays = diffDaysYmd(rd, todayYmd())
-                                        daysLeft = diffDays
-                                        isOverdue = diffDays < 0
-                                        isDueSoon = diffDays >= 0 && diffDays <= 3
-                                    }
-                                    // return_date_sms_status: pending | sent | failed | skipped_limit | skipped_no_phone
-                                    const smsStatus = debt.return_date_sms_status || null
-                                    const rdPassed = rd != null && rd <= todayYmd()
-                                    let smsMeta = rd
-                                        ? (smsStatus === 'sent'
-                                            ? { label: 'SMS yuborildi', cls: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100/60 dark:border-emerald-800/30', icon: <CheckCircle2 size={10} /> }
-                                            : smsStatus === 'failed'
-                                                ? { label: 'SMS xato', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <X size={10} /> }
-                                                : smsStatus === 'skipped_limit'
-                                                    ? { label: 'SMS limiti tugagan', cls: 'bg-amber-50 dark:bg-amber-900/15 text-amber-700 dark:text-amber-300 border-amber-100/60 dark:border-amber-800/30', icon: <BellOff size={10} /> }
-                                                    : smsStatus === 'skipped_no_phone'
-                                                        ? { label: "Telefon yo'q", cls: 'bg-gray-50 dark:bg-gray-700/40 text-gray-600 dark:text-gray-300 border-gray-100/60 dark:border-gray-600/40', icon: <BellOff size={10} /> }
-                                                        : smsStatus === 'pending'
-                                                            ? { label: 'Kutilmoqda', cls: 'bg-blue-50 dark:bg-blue-900/15 text-blue-700 dark:text-blue-300 border-blue-100/60 dark:border-blue-800/30', icon: <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> }
-                                                            : smsStatus == null && rdPassed
-                                                                ? { label: 'Yuborilmagan', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <AlertTriangle size={10} /> }
-                                                                : { label: null, cls: '', icon: null })
-                                        : { label: null, cls: '', icon: null }
-                                    return (
-                                    <div key={debt.id} className="card !p-4 border-0 shadow-sm bg-white dark:bg-gray-800">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                                <span className={`badge px-2 py-0.5 rounded-lg text-[12px] ${debt.status === 'closed' ? 'badge-paid' : 'badge-debtor'}`}>
-                                                    {debt.status === 'closed' ? 'Yopilgan' : 'Faol'}
-                                                </span>
-                                                {rd && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0 && (
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${
-                                                        isOverdue
-                                                            ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100/60 dark:border-red-800/30'
-                                                            : isDueSoon
-                                                                ? 'bg-amber-50 dark:bg-amber-900/15 text-amber-600 dark:text-amber-400 border-amber-100/60 dark:border-amber-800/30'
-                                                                : 'bg-indigo-50 dark:bg-indigo-900/15 text-indigo-600 dark:text-indigo-400 border-indigo-100/60 dark:border-indigo-800/30'
-                                                    }`}>
-                                                        <CalendarClock size={10} />
-                                                        {isOverdue
-                                                            ? `Kechikkan ${Math.abs(daysLeft)} kun`
-                                                            : isDueSoon
-                                                                ? daysLeft === 0 ? 'Bugun' : `${daysLeft} kun qoldi`
-                                                                : `Qaytish: ${formatDateShort(rd)}`}
+                            ) : (
+                                <div className="space-y-4">
+                                    {debts.map(debt => {
+                                        // Return date, overdue va SMS status hisoblari
+                                        const rd = toYmd(debt.return_date) || null
+                                        let daysLeft = null
+                                        let isOverdue = false
+                                        let isDueSoon = false
+                                        if (rd && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0) {
+                                            const diffDays = diffDaysYmd(rd, todayYmd())
+                                            daysLeft = diffDays
+                                            isOverdue = diffDays < 0
+                                            isDueSoon = diffDays >= 0 && diffDays <= 3
+                                        }
+                                        // return_date_sms_status: pending | sent | failed | skipped_limit | skipped_no_phone
+                                        const smsStatus = debt.return_date_sms_status || null
+                                        const rdPassed = rd != null && rd <= todayYmd()
+                                        let smsMeta = rd
+                                            ? (smsStatus === 'sent'
+                                                ? { label: 'SMS yuborildi', cls: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100/60 dark:border-emerald-800/30', icon: <CheckCircle2 size={10} /> }
+                                                : smsStatus === 'failed'
+                                                    ? { label: 'SMS xato', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <X size={10} /> }
+                                                    : smsStatus === 'skipped_limit'
+                                                        ? { label: 'SMS limiti tugagan', cls: 'bg-amber-50 dark:bg-amber-900/15 text-amber-700 dark:text-amber-300 border-amber-100/60 dark:border-amber-800/30', icon: <BellOff size={10} /> }
+                                                        : smsStatus === 'skipped_no_phone'
+                                                            ? { label: "Telefon yo'q", cls: 'bg-gray-50 dark:bg-gray-700/40 text-gray-600 dark:text-gray-300 border-gray-100/60 dark:border-gray-600/40', icon: <BellOff size={10} /> }
+                                                            : smsStatus === 'pending'
+                                                                ? { label: 'Kutilmoqda', cls: 'bg-blue-50 dark:bg-blue-900/15 text-blue-700 dark:text-blue-300 border-blue-100/60 dark:border-blue-800/30', icon: <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> }
+                                                                : smsStatus == null && rdPassed
+                                                                    ? { label: 'Yuborilmagan', cls: 'bg-red-50 dark:bg-red-900/15 text-red-700 dark:text-red-300 border-red-100/60 dark:border-red-800/30', icon: <AlertTriangle size={10} /> }
+                                                                    : { label: null, cls: '', icon: null })
+                                            : { label: null, cls: '', icon: null }
+                                        return (
+                                        <div key={debt.id} className="card !p-4 border-0 shadow-sm bg-white dark:bg-gray-800">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className={`badge px-2 py-0.5 rounded-lg text-[12px] ${debt.status === 'closed' ? 'badge-paid' : 'badge-debtor'}`}>
+                                                        {debt.status === 'closed' ? 'Yopilgan' : 'Faol'}
                                                     </span>
-                                                )}
-                                                {smsMeta.label && (
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold border ${smsMeta.cls}`}>
-                                                        {smsMeta.icon}
-                                                        {smsMeta.label}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-[12px] text-gray-400">{formatDate(debt.created_at)}</div>
-                                                {getCreatorName(debt) && (
-                                                    <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                                        {getCreatorName(debt)}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                            <div>
-                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider mb-1">Berildi</p>
-                                                <p className="text-[16px] font-bold text-gray-900 dark:text-white">
-                                                    {formatCurrency(debt.total_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-[12px] text-gray-400 uppercase tracking-wider mb-1">Qoldi</p>
-                                                <p className={`text-[16px] font-bold ${debt.remaining_amount > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                                    {formatCurrency(debt.remaining_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {debt.description && (
-                                            <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl mb-4">
-                                                <FileText size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                                                <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-tight">
-                                                    {debt.description}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {debt.status !== 'closed' && (
-                                            <button
-                                                onClick={() => {
-                                                    const rem = parseFloat(debt.remaining_amount) || 0
-                                                    setDebtPaymentForm({
-                                                        debt_id: debt.id,
-                                                        amount: rem > 0 ? formatCurrency(String(Math.round(rem))) : '',
-                                                        paid_at: '',
-                                                        send_sms: false
-                                                    })
-                                                    setDebtPaymentErrors({})
-                                                    setShowDebtPaymentDrawer(true)
-                                                }}
-                                                className="btn btn-primary w-full py-2.5 text-[14px] bg-blue-500 hover:bg-blue-600 text-white border-0"
-                                            >
-                                                <CreditCard size={16} />
-                                                To'lov qilish
-                                            </button>
-                                        )}
-
-                                        <Link
-                                            to={`/debts/${debt.id}`}
-                                            className="block text-center mt-3 text-[13px] text-blue-500 font-semibold"
-                                        >
-                                            Batafsil ko'rish
-                                        </Link>
-                                    </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                        {debtsMeta && debtsMeta.current_page < debtsMeta.last_page && (
-                            <button
-                                type="button"
-                                onClick={() => loadMoreHistory('debts')}
-                                disabled={loadingMore === 'debts'}
-                                className="w-full mt-3 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[14px] font-semibold text-blue-500 active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2"
-                            >
-                                {loadingMore === 'debts' ? <Loader2 size={16} className="animate-spin" /> : null}
-                                Ko'proq yuklash ({debtsMeta.total - debts.length} ta qoldi)
-                            </button>
-                        )}
-                    </>
-                )}
-
-                {/* To'lovlar tab */}
-                {historyTab === 'payments' && (
-                    <>
-                        {customerPayments.length === 0 ? (
-                            <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
-                                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center">
-                                    <CreditCard size={20} className="text-gray-400" />
-                                </div>
-                                <div className="text-gray-400">Hali to'lov yo'q</div>
-                            </div>
-                        ) : (
-                            <div className="space-y-2.5">
-                                {customerPayments.map(pay => {
-                                    const pType = String(pay.payment_type || '').toLowerCase()
-                                    const dId = pay.debt_id ?? pay.debtId ?? pay.debt?.id
-                                    const isBalance = pType.includes('balance') || pType.includes('customer') || pType.includes('deposit') || pType.includes('umumiy')
-                                        || (dId === null || dId === undefined || String(dId) === '0' || String(dId) === 'null')
-                                    const amt = parseFloat(pay.amount) || 0
-                                    return (
-                                        <Link
-                                            key={pay.id}
-                                            to={isBalance || !dId ? null : `/debts/${dId}`}
-                                            onClick={(e) => { if (!dId || isBalance) e.preventDefault() }}
-                                            className={`card !p-3.5 border-0 shadow-sm bg-white dark:bg-gray-800 flex items-center gap-3 active:scale-[0.99] transition-transform ${(!dId || isBalance) ? 'cursor-default' : 'cursor-pointer'}`}
-                                        >
-                                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                                                isBalance
-                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20'
-                                                    : 'bg-green-50 dark:bg-green-900/20'
-                                            }`}>
-                                                {isBalance
-                                                    ? <Wallet size={19} className="text-emerald-500" />
-                                                    : <CheckCircle2 size={19} className="text-green-500" />
-                                                }
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
-                                                        isBalance
-                                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
-                                                            : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100/60 dark:border-green-900/30'
-                                                    }`}>
-                                                        {isBalance ? 'Balansga' : (dId ? `Qarz #${dId}` : 'To\'lov')}
-                                                    </span>
-                                                    {!isBalance && dId && (
-                                                        <span className="text-[11px] text-gray-400">
-                                                            • {formatDateShort(pay.created_at || pay.paid_at)}
+                                                    {rd && debt.status !== 'closed' && Number(debt.remaining_amount || 0) > 0 && (
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${
+                                                            isOverdue
+                                                                ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100/60 dark:border-red-800/30'
+                                                                : isDueSoon
+                                                                    ? 'bg-amber-50 dark:bg-amber-900/15 text-amber-600 dark:text-amber-400 border-amber-100/60 dark:border-amber-800/30'
+                                                                    : 'bg-indigo-50 dark:bg-indigo-900/15 text-indigo-600 dark:text-indigo-400 border-indigo-100/60 dark:border-indigo-800/30'
+                                                        }`}>
+                                                            <CalendarClock size={10} />
+                                                            {isOverdue
+                                                                ? `Kechikkan ${Math.abs(daysLeft)} kun`
+                                                                : isDueSoon
+                                                                    ? daysLeft === 0 ? 'Bugun' : `${daysLeft} kun qoldi`
+                                                                    : `Qaytish: ${formatDateShort(rd)}`}
+                                                        </span>
+                                                    )}
+                                                    {smsMeta.label && (
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold border ${smsMeta.cls}`}>
+                                                            {smsMeta.icon}
+                                                            {smsMeta.label}
                                                         </span>
                                                     )}
                                                 </div>
-                                                {pay.description && (
-                                                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">
-                                                        {pay.description}
-                                                    </p>
-                                                )}
-                                                {getCreatorName(pay) && (
-                                                    <p className="text-[12px] text-gray-400 line-clamp-1">
-                                                        Qabul qilgan: <span className="font-semibold text-gray-500 dark:text-gray-300">{getCreatorName(pay)}</span>
-                                                    </p>
-                                                )}
-                                                {!getCreatorName(pay) && !pay.description && (
-                                                    <p className="text-[12px] text-gray-400">
-                                                        {formatDate(pay.paid_at || pay.created_at)}
-                                                    </p>
-                                                )}
+                                                <div className="text-right">
+                                                    <div className="text-[12px] text-gray-400">{formatDate(debt.created_at)}</div>
+                                                    {getCreatorName(debt) && (
+                                                        <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                                            {getCreatorName(debt)}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="text-right flex-shrink-0 pl-2">
-                                                <p className="text-[15px] font-extrabold text-green-600 dark:text-green-400 leading-none mb-0.5">
-                                                    +{formatCurrency(amt)}
-                                                </p>
-                                                <p className="text-[12px] text-gray-400 font-normal">so'm</p>
+
+                                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                                <div>
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider mb-1">Berildi</p>
+                                                    <p className="text-[16px] font-bold text-gray-900 dark:text-white">
+                                                        {formatCurrency(debt.total_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
+                                                    </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[12px] text-gray-400 uppercase tracking-wider mb-1">Qoldi</p>
+                                                    <p className={`text-[16px] font-bold ${debt.remaining_amount > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                        {formatCurrency(debt.remaining_amount)} <span className="text-[12px] font-normal opacity-60">so'm</span>
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </Link>
-                                    )
-                                })}
-                            </div>
-                        )}
-                        {paymentsMeta && paymentsMeta.current_page < paymentsMeta.last_page && (
-                            <button
-                                type="button"
-                                onClick={() => loadMoreHistory('payments')}
-                                disabled={loadingMore === 'payments'}
-                                className="w-full mt-3 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[14px] font-semibold text-blue-500 active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2"
-                            >
-                                {loadingMore === 'payments' ? <Loader2 size={16} className="animate-spin" /> : null}
-                                Ko'proq yuklash ({paymentsMeta.total - customerPayments.length} ta qoldi)
-                            </button>
-                        )}
-                    </>
-                )}
+
+                                            {debt.description && (
+                                                <div className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl mb-4">
+                                                    <FileText size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                                                    <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-tight">
+                                                        {debt.description}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {debt.status !== 'closed' && (
+                                                <button
+                                                    onClick={() => {
+                                                        const rem = parseFloat(debt.remaining_amount) || 0
+                                                        setDebtPaymentForm({
+                                                            debt_id: debt.id,
+                                                            amount: rem > 0 ? formatCurrency(String(Math.round(rem))) : '',
+                                                            paid_at: '',
+                                                            send_sms: false
+                                                        })
+                                                        setDebtPaymentErrors({})
+                                                        setShowDebtPaymentDrawer(true)
+                                                    }}
+                                                    className="btn btn-primary w-full py-2.5 text-[14px] bg-blue-500 hover:bg-blue-600 text-white border-0"
+                                                >
+                                                    <CreditCard size={16} />
+                                                    To'lov qilish
+                                                </button>
+                                            )}
+
+                                            <Link
+                                                to={`/debts/${debt.id}`}
+                                                className="block text-center mt-3 text-[13px] text-blue-500 font-semibold"
+                                            >
+                                                Batafsil ko'rish
+                                            </Link>
+                                        </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                            {debtsMeta && debtsMeta.current_page < debtsMeta.last_page && (
+                                <button
+                                    type="button"
+                                    onClick={() => loadMoreHistory('debts')}
+                                    disabled={loadingMore === 'debts'}
+                                    className="w-full mt-3 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[14px] font-semibold text-blue-500 active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    {loadingMore === 'debts' ? <Loader2 size={16} className="animate-spin" /> : null}
+                                    Ko'proq yuklash ({debtsMeta.total - debts.length} ta qoldi)
+                                </button>
+                            )}
+                        </>
+                    )}
+
+                    {/* To'lovlar tab */}
+                    {historyTab === 'payments' && (
+                        <>
+                            {customerPayments.length === 0 ? (
+                                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-3xl">
+                                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center">
+                                        <CreditCard size={20} className="text-gray-400" />
+                                    </div>
+                                    <div className="text-gray-400">Hali to'lov yo'q</div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {customerPayments.map(pay => {
+                                        const pType = String(pay.payment_type || '').toLowerCase()
+                                        const dId = pay.debt_id ?? pay.debtId ?? pay.debt?.id
+                                        const isBalance = pType.includes('balance') || pType.includes('customer') || pType.includes('deposit') || pType.includes('umumiy')
+                                            || (dId === null || dId === undefined || String(dId) === '0' || String(dId) === 'null')
+                                        const amt = parseFloat(pay.amount) || 0
+                                        return (
+                                            <Link
+                                                key={pay.id}
+                                                to={isBalance || !dId ? null : `/debts/${dId}`}
+                                                onClick={(e) => { if (!dId || isBalance) e.preventDefault() }}
+                                                className={`card !p-3.5 border-0 shadow-sm bg-white dark:bg-gray-800 flex items-center gap-3 active:scale-[0.99] transition-transform ${(!dId || isBalance) ? 'cursor-default' : 'cursor-pointer'}`}
+                                            >
+                                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                                                    isBalance
+                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                                                        : 'bg-green-50 dark:bg-green-900/20'
+                                                }`}>
+                                                    {isBalance
+                                                        ? <Wallet size={19} className="text-emerald-500" />
+                                                        : <CheckCircle2 size={19} className="text-green-500" />
+                                                    }
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
+                                                            isBalance
+                                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/60 dark:border-emerald-900/30'
+                                                                : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100/60 dark:border-green-900/30'
+                                                        }`}>
+                                                            {isBalance ? 'Balansga' : (dId ? `Qarz #${dId}` : 'To\'lov')}
+                                                        </span>
+                                                        {!isBalance && dId && (
+                                                            <span className="text-[11px] text-gray-400">
+                                                                • {formatDateShort(pay.created_at || pay.paid_at)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {pay.description && (
+                                                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-0.5 line-clamp-1">
+                                                            {pay.description}
+                                                        </p>
+                                                    )}
+                                                    {getCreatorName(pay) && (
+                                                        <p className="text-[12px] text-gray-400 line-clamp-1">
+                                                            Qabul qilgan: <span className="font-semibold text-gray-500 dark:text-gray-300">{getCreatorName(pay)}</span>
+                                                        </p>
+                                                    )}
+                                                    {!getCreatorName(pay) && !pay.description && (
+                                                        <p className="text-[12px] text-gray-400">
+                                                            {formatDate(pay.paid_at || pay.created_at)}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="text-right flex-shrink-0 pl-2">
+                                                    <p className="text-[15px] font-extrabold text-green-600 dark:text-green-400 leading-none mb-0.5">
+                                                        +{formatCurrency(amt)}
+                                                    </p>
+                                                    <p className="text-[12px] text-gray-400 font-normal">so'm</p>
+                                                </div>
+                                            </Link>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                            {paymentsMeta && paymentsMeta.current_page < paymentsMeta.last_page && (
+                                <button
+                                    type="button"
+                                    onClick={() => loadMoreHistory('payments')}
+                                    disabled={loadingMore === 'payments'}
+                                    className="w-full mt-3 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[14px] font-semibold text-blue-500 active:scale-[0.98] transition-transform disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    {loadingMore === 'payments' ? <Loader2 size={16} className="animate-spin" /> : null}
+                                    Ko'proq yuklash ({paymentsMeta.total - customerPayments.length} ta qoldi)
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Add Debt Drawer */}

@@ -1,27 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Users, FileText, History, Settings, Package } from 'lucide-react'
 import { useSubscription } from '../contexts/SubscriptionContext'
+import { FULL_NAV_ITEMS, BLOCKED_NAV_ITEMS } from './navItems'
 
-const FULL_NAV_ITEMS = [
-    { to: '/', icon: Home, label: 'Asosiy' },
-    { to: '/customers', icon: Users, label: 'Mijozlar' },
-    { to: '/debts', icon: FileText, label: 'Hisobot' },
-    { to: '/suppliers', icon: Package, label: "Ta'minotchi" },
-    { to: '/payments', icon: History, label: 'Tarix' },
-    { to: '/profile', icon: Settings, label: 'Sozlama' }
-]
-
-const BLOCKED_NAV_ITEMS = [
-    { to: '/subscription', icon: FileText, label: "Ta'rif" },
-    { to: '/profile', icon: Settings, label: 'Sozlama' }
-]
-
+// Faqat telefonda; planshet va kompyuterda yon menyu (Sidebar) ishlaydi
 export default function BottomNav() {
     const { blocked } = useSubscription()
     const navItems = blocked ? BLOCKED_NAV_ITEMS : FULL_NAV_ITEMS
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center md:hidden" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
             <div className="bottom-bar">
                 {navItems.map(item => {
                     const Icon = item.icon

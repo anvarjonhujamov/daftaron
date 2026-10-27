@@ -234,16 +234,16 @@ export default function SuppliersPage() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors">
-            <div className="sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-700">
-                <div className="px-4 h-[60px] flex items-center justify-between gap-3">
+        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-8 transition-colors">
+            <div className="sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-700 md:static md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:border-0">
+                <div className="px-4 md:px-6 lg:px-8 h-[60px] md:h-auto md:pt-6 lg:pt-8 md:pb-2 flex items-center justify-between gap-3">
                     <button
                         onClick={handleBack}
-                        className="w-10 h-10 -ml-2 rounded-xl flex items-center justify-center active:bg-gray-100 dark:active:bg-gray-700 transition-colors"
+                        className="w-10 h-10 -ml-2 rounded-xl flex md:hidden items-center justify-center active:bg-gray-100 dark:active:bg-gray-700 transition-colors"
                     >
                         <ArrowLeft size={22} className="text-gray-700 dark:text-gray-300" />
                     </button>
-                    <h1 className="flex-1 text-[18px] font-extrabold text-gray-900 dark:text-white truncate">
+                    <h1 className="flex-1 text-[18px] md:text-[28px] font-extrabold md:font-bold text-gray-900 dark:text-white truncate">
                         Ta'minotchi
                     </h1>
                     <button
@@ -258,7 +258,7 @@ export default function SuppliersPage() {
                 </div>
             </div>
 
-            <div className="p-4 flex-1 space-y-4">
+            <div className="p-4 md:px-6 lg:px-8 flex-1 space-y-4">
                 {unsynced.length > 0 && (
                     <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-900/15 dark:border-amber-800/40 text-amber-800 dark:text-amber-200">
                         <p className="font-bold text-[14px] mb-1">{unsynced.length} ta yozuv serverga yuborilmadi</p>
@@ -370,7 +370,7 @@ export default function SuppliersPage() {
                         )}
                     </div>
                 ) : (
-                    <div className="grid gap-4">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {filteredSuppliers.map((s, index) => {
                             const balance = getSupplierBalance(s)
                             const hasDebt = balance > 0

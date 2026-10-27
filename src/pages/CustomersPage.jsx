@@ -235,7 +235,7 @@ export default function CustomersPage() {
     }
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
+        <div className="px-4 py-6 md:px-6 lg:px-8 lg:py-8 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Mijozlar</h1>
@@ -248,55 +248,59 @@ export default function CustomersPage() {
                             setShowAddDrawer(true)
                         }
                     }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform ${
-                        subStatus === 'expired' ? 'bg-gray-400' : 'bg-blue-500'
+                    className={`w-10 h-10 md:w-auto md:px-4 md:gap-2 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform ${
+                        subStatus === 'expired' ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
                     }`}
+                    title="Mijoz qo'shish"
                 >
                     <Plus size={22} strokeWidth={2.5} />
+                    <span className="hidden md:inline text-[14px] font-semibold">Mijoz qo'shish</span>
                 </button>
             </div>
 
-            {/* Search */}
-            <div className="relative mb-4">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                    type="text"
-                    className="input pl-11"
-                    placeholder="Mijoz qidirish..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-                {search && (
-                    <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                        <X size={18} />
-                    </button>
-                )}
-            </div>
+            <div className="lg:flex lg:items-center lg:gap-4 mb-4">
+                {/* Search */}
+                <div className="relative mb-4 lg:mb-0 lg:flex-1">
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        className="input pl-11"
+                        placeholder="Mijoz qidirish..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                    {search && (
+                        <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            <X size={18} />
+                        </button>
+                    )}
+                </div>
 
-            {/* Filter Pills */}
-            <div className="flex gap-1 mb-4">
-                {(
-                    isStaff
-                        ? [
-                            { value: '', label: 'Barchasi' },
-                            { value: 'debtors', label: 'Qarzdor' },
-                            { value: 'paid', label: "To'langan" }
-                        ]
-                        : [
-                            { value: '', label: 'Barchasi' },
-                            { value: 'debtors', label: 'Qarzdor' },
-                            { value: 'paid', label: "To'langan" },
-                            { value: 'overdue', label: "Muddati o'tgan" }
-                        ]
-                ).map(tab => (
-                    <button
-                        key={tab.value}
-                        onClick={() => setFilter(tab.value)}
-                        className={`flex-1 py-2 rounded-full text-[12px] font-semibold transition-all text-center ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
+                {/* Filter Pills */}
+                <div className="flex gap-1 lg:shrink-0">
+                    {(
+                        isStaff
+                            ? [
+                                { value: '', label: 'Barchasi' },
+                                { value: 'debtors', label: 'Qarzdor' },
+                                { value: 'paid', label: "To'langan" }
+                            ]
+                            : [
+                                { value: '', label: 'Barchasi' },
+                                { value: 'debtors', label: 'Qarzdor' },
+                                { value: 'paid', label: "To'langan" },
+                                { value: 'overdue', label: "Muddati o'tgan" }
+                            ]
+                    ).map(tab => (
+                        <button
+                            key={tab.value}
+                            onClick={() => setFilter(tab.value)}
+                            className={`flex-1 md:flex-none md:px-5 py-2 md:py-2.5 rounded-full text-[12px] md:text-[13px] font-semibold transition-all text-center ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Overdue Tab Content */}
@@ -325,8 +329,8 @@ export default function CustomersPage() {
                             description={`${overdueDays} kundan oshgan ochiq nasiyalar topilmadi`}
                         />
                     ) : (
-                        <div className="space-y-2">
-                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-2">
+                        <div className="grid gap-2 lg:grid-cols-2 items-start">
+                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-2 lg:col-span-2">
                                 {overdueList.length} ta qarzdor
                             </p>
                             {overdueList.map((item, idx) => (
@@ -440,7 +444,7 @@ export default function CustomersPage() {
                             )}
                         />
                     ) : (
-                        <div className="space-y-2">
+                        <div className="grid gap-2 lg:grid-cols-2">
                             {filteredCustomers.map((customer) => (
                                 <Link
                                     key={customer.id}

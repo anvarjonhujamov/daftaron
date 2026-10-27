@@ -99,7 +99,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="px-4 py-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors relative overflow-x-hidden">
+        <div className="px-4 py-6 md:px-6 lg:px-8 lg:py-8 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors relative overflow-x-hidden">
             {/* Header */}
             <div className="relative flex items-center justify-between mb-6 h-10 min-h-[40px]">
                 {isSearchActive ? (
@@ -107,7 +107,7 @@ export default function DashboardPage() {
                         <button onClick={() => { setIsSearchActive(false); setSearchQuery(''); }} className="p-2 -ml-2 text-gray-500 rounded-full active:bg-gray-200 dark:active:bg-gray-800 transition-colors">
                             <ArrowLeft size={22} />
                         </button>
-                        <div className="flex-1 relative">
+                        <div className="flex-1 md:flex-none md:w-[28rem] relative">
                             <input
                                 type="text"
                                 autoFocus
@@ -128,7 +128,7 @@ export default function DashboardPage() {
                         
                         {/* Search Dropdown */}
                         {searchQuery && (
-                            <div className="fixed top-[88px] left-4 right-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-30 animate-in fade-in slide-in-from-top-2">
+                            <div className="absolute top-full mt-2 left-0 right-0 md:left-[38px] md:right-auto md:w-[28rem] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-30 animate-in fade-in slide-in-from-top-2">
                                 {searchResults.length > 0 ? (
                                     <div className="max-h-[300px] overflow-y-auto w-full">
                                         {searchResults.map(user => (
@@ -163,7 +163,7 @@ export default function DashboardPage() {
                     <>
                         {isStaff ? (
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center shrink-0">
+                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex md:hidden items-center justify-center shrink-0">
                                     <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
                                 </div>
                                 <h1 className="text-[20px] xs:text-[24px] font-bold text-gray-900 dark:text-white truncate">
@@ -172,7 +172,7 @@ export default function DashboardPage() {
                             </div>
                         ) : (
                             <Link to="/shops" state={{ from: location.pathname }} className="flex items-center gap-3 overflow-hidden active:opacity-70 transition-opacity flex-1 min-w-0 mr-2" title="Do'konni o'zgartirish">
-                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center shrink-0">
+                                <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex md:hidden items-center justify-center shrink-0">
                                     <img src="/logo.png" alt="Daftaron" className="w-7 h-7 object-contain" />
                                 </div>
                                 <h1 className="text-[20px] xs:text-[24px] font-bold text-gray-900 dark:text-white truncate flex items-center gap-1">
@@ -183,6 +183,15 @@ export default function DashboardPage() {
                         )}
 
                         <div className="flex gap-1.5 shrink-0">
+                            {/* Planshet/kompyuterda asosiy amal sarlavhada (telefonda pastda qotirilgan) */}
+                            <Link
+                                to="/customers"
+                                state={{ openAddDrawer: true }}
+                                className="hidden md:inline-flex items-center gap-2 h-10 px-4 mr-1 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-[14px] font-semibold shadow-lg shadow-blue-500/25 active:scale-95 transition-all"
+                            >
+                                <UserPlus size={18} />
+                                Yangi mijoz
+                            </Link>
                             <button
                                 onClick={() => setIsSearchActive(true)}
                                 className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
@@ -205,7 +214,7 @@ export default function DashboardPage() {
                             {!isStaff && (
                                 <Link
                                     to="/staff"
-                                    className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
+                                    className="w-10 h-10 flex md:hidden items-center justify-center bg-white dark:bg-gray-800 rounded-full shadow-sm text-gray-500 active:scale-95 transition-all"
                                     title="Xodimlar"
                                 >
                                     <UserCog size={22} />
@@ -217,7 +226,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Main Stats Grid — ASLI 3c74c86 committagi original gradient rang sxemasi */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
                 {/* 1. JAMI NASIYA SONI */}
                 <div className="relative overflow-hidden rounded-[20px] p-4 h-[100px] bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
                     <div className="relative z-10 flex flex-col justify-between h-full text-white">
@@ -358,8 +367,8 @@ export default function DashboardPage() {
                 }
             </div>
 
-            {/* Action Button - Fixed at bottom */}
-            <div className="fixed bottom-20 left-0 right-0 p-4 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md z-40 border-t border-gray-100 dark:border-gray-700 max-w-lg mx-auto">
+            {/* Action Button - Fixed at bottom (faqat telefonda) */}
+            <div className="fixed bottom-20 left-0 right-0 p-4 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md z-40 border-t border-gray-100 dark:border-gray-700 max-w-lg mx-auto md:hidden">
                 <Link
                     to="/customers"
                     state={{ openAddDrawer: true }}
@@ -371,7 +380,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Spacing for fixed button */}
-            <div className="h-24" />
+            <div className="h-24 md:hidden" />
         </div>
     )
 }

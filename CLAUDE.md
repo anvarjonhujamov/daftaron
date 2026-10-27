@@ -66,6 +66,17 @@ index.html            # Telegram SDK shartli yuklash shu yerda
 Hammasi `App.jsx`da. Ochiq: `/login`, `/register`, `/forgot-password`, `/terms`, `/delete-account`. Qolganlari `PrivateRoute > Layout` ichida (pastki menyu `BottomNav`). Noma'lum yo'l → `/`.
 `LoginPage` va `DashboardPage` asosiy bundle'da, qolganlari `lazyPage()` bilan (deploydan keyin eski chunk topilmasa sahifani bir marta qayta yuklaydi). Yangi sahifa qo'shsangiz `lazyPage` ishlating.
 
+## Responsive (telefon / planshet / kompyuter)
+
+- Breakpoint'lar Tailwind standarti: telefon `< md`, planshet `md` (768px), kompyuter `lg` (1024px). Avval telefon uchun yoziladi, keyin `md:` / `lg:` qo'shiladi.
+- Navigatsiya: telefonda `BottomNav` (`md:hidden`), planshetda tor panel, kompyuterda to'liq yon menyu (`Sidebar`, `md:w-24 lg:w-64`). Bo'limlar `components/navItems.js`da — yangi bo'limni shu yerga qo'shing.
+- Kontent kengligi `.app-container` (`index.css`): 512 → 768 → 1024 → 1152px. Sahifa ildizi: `px-4 py-6 md:px-6 lg:px-8 lg:py-8`.
+- Ro'yxatlar: `grid gap-2 lg:grid-cols-2` (kartalar 2–3 ustun). Batafsil sahifalar kompyuterda ikki ustun: chapda `lg:sticky lg:top-6` karta va amallar, o'ngda tarix. Formalar/sozlamalar: `md:max-w-2xl md:mx-auto`.
+- Telefondagi pastda qotirilgan tugmalar `md:hidden` bo'ladi, planshet/kompyuterda amal sarlavhaga chiqadi.
+- vaul drawer'lar `index.css`dagi global qoida bilan planshetda markazlashadi, kompyuterda suzuvchi oyna bo'ladi — har drawer'ga alohida klass kerak emas.
+- Sticky ishlashi uchun ota elementlarda `overflow-x-hidden` emas, `clip` bo'lishi kerak (`.min-h-screen` uchun `index.css`da shunday).
+- Tekshirish: telefon 390px, planshet 820px va 1180px (landshaft), kompyuter 1440px.
+
 ## Kod uslubi
 
 - 4 bo'shliq, nuqta-vergulsiz, bitta qo'shtirnoq, funksional komponentlar + hook'lar, `export default function XxxPage()`.
