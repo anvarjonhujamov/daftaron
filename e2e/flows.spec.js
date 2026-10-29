@@ -80,3 +80,15 @@ test('22.10 Sozlamalar: eslatmalarni saqlash', async ({ page, isMobile }) => {
     await expect(page.getByText('Saqlandi')).toBeVisible()
     expect(calls.find((c) => c.method === 'PUT' && c.path === '/settings/notifications').body).toMatchObject({ sms_on_payment: true, reminder_time: '09:00' })
 })
+
+test("Do'kon nomi: /auth/me active_tenant bo'sh kelsa ham ko'rinadi", async ({ page, isMobile }) => {
+    await mockApi(page, {
+        overrides: {
+            // Prod'dagi xato: do'konlar id'siz keladi, active_tenant — null
+            'GET /auth/me': (route, { f }) => route.fulfill({ json: { user: f.user, active_tenant: null, available_tenants: [{ name: 'Barkamol Market', owner_id: 7 }] } })
+        }
+    })
+    await page.goto('/')
+    const place = isMobile ? page.getByRole('link', { name: /Barkamol Market/ }) : page.locator('aside').getByText('Barkamol Market')
+    await expect(place).toBeVisible()
+})

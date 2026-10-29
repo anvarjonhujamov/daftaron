@@ -139,7 +139,9 @@ export default function HomePage() {
             <div className="grid grid-cols-3 gap-2 md:grid-cols-4 md:gap-4">
                 <KpiCard className="hidden md:block" label="Sizga qarzdorlar" value={s.remaining_debt} hint={`${formatNumber(s.total_customers)} mijoz`} />
                 <KpiCard className="hidden md:block" label="Muddati o'tgan" value={summary?.total_amount ?? null} tone="debt"
-                    hint={<>{formatNumber(summary?.count ?? 0)} mijoz · <Link to="/overdue" className="font-semibold text-brand-strong">Hammasini eslatish</Link></>} />
+                    hint={summary?.count > 0
+                        ? <>{formatNumber(summary.count)} mijoz · <Link to="/overdue" className="font-semibold text-brand-strong">Hammasini eslatish</Link></>
+                        : 'Qaytarish sanasi o\'tganlar yo\'q'} />
                 <KpiCard label={<><span className="md:hidden">Nasiya</span><span className="hidden md:inline">Bugun nasiya</span></>} value={s.today_debts} tone="debt" icon={ArrowDown} iconTone="bg-debt-soft text-debt md:hidden" />
                 <KpiCard label={<><span className="md:hidden">To'lov</span><span className="hidden md:inline">Bugun to'lov</span></>} value={s.today_payments} tone="pay" icon={ArrowUp} iconTone="bg-pay-soft text-pay md:hidden" />
                 <KpiCard className="md:hidden" label="Ta'minotchiga" value={s.today_supplier_payments} tone="supp" icon={Wallet} iconTone="bg-supp-soft text-supp" />

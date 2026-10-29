@@ -77,12 +77,15 @@ export function SessionProvider({ children }) {
 
     const value = useMemo(() => {
         const user = state.user || getUser()
+        // /auth/me → active_tenant bo'sh kelishi mumkin (backend select'ida id yo'q edi): /settings → shop zaxira
+        const tenant = state.tenant || (state.settings?.shop ? { id: state.settings.shop.id, name: state.settings.shop.name } : null)
         const permissions = state.settings?.permissions || (state.settings ? [] : null)
         const sub = state.subscription
         const trial = sub?.trial_info || {}
         return {
             ...state,
             user,
+            tenant,
             loading,
             unread,
             setUnread,

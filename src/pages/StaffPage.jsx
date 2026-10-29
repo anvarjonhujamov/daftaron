@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Pause, Pencil, Play, Plus, Trash2, UserCog } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { staffApi } from '../api/staff.api'
+import { shopsApi } from '../api/shops.api'
 import { useSession } from '../app/session'
 import { useResource } from '../lib/hooks'
 import { errorMessage, fieldErrors } from '../lib/errors'
@@ -33,6 +34,7 @@ export default function StaffPage() {
     const session = useSession()
     const res = useResource(() => staffApi.list(), [], { cacheKey: 'staff', enabled: session.can('staff.manage') })
     const catalog = useResource(() => staffApi.permissions(), [], { cacheKey: 'staff_catalog', enabled: session.can('staff.manage') })
+    const shops = useResource(() => shopsApi.overview(), [], { cacheKey: 'shops', enabled: session.can('staff.manage') })
     const [form, setForm] = useState(null) // {} — yangi, staff — tahrirlash
     const [details, setDetails] = useState(null)
     const [confirm, setConfirm] = useState(null)
@@ -89,7 +91,7 @@ export default function StaffPage() {
             )}
             <p className="mt-4 text-[13px] text-ink-2">Xodim o'z raqami bilan kod orqali kiradi. Ko'rsatkichlar — joriy oy.</p>
 
-            <StaffFormSheet open={!!form} staff={form?.id ? form : null} catalog={catalog.data} tenants={session.tenants || []} userId={session.user?.id} activeTenantId={session.user?.tenant_id}
+            <StaffFormSheet open={!!form} staff={form?.id ? form : null} catalog={catalog.data} tenants={shops.data?.data || []} activeTenantId={session.user?.tenant_id}
                 onClose={() => setForm(null)} onSaved={() => { setForm(null); res.reload() }} />
             <StaffDetailsSheet staff={details} onClose={() => setDetails(null)} />
             <Confirm open={!!confirm} onClose={() => setConfirm(null)} danger={confirm?.kind === 'remove'}
@@ -105,7 +107,7 @@ export default function StaffPage() {
     )
 }
 
-function StaffFormSheet({ open, staff, catalog, tenants, userId, activeTenantId, onClose, onSaved }) {
+function StaffFormSheet({ open, staff, catalog, tenants, activeTenantId, onClose, onSaved }) {
     const editing = !!staff
     const [name, setName] = useState('')
     const [phone, setPhone] = useState('')
@@ -131,7 +133,7 @@ function StaffFormSheet({ open, staff, catalog, tenants, userId, activeTenantId,
         setPassword('')
     }, [open, staff])
 
-    const ownShops = tenants.filter((t) => !t.owner_id || t.owner_id === userId)
+    const ownShops = tenants.filter((t) => t.is_owner !== false)
     const permissions = (catalog?.permissions || []).filter((p) => !OWNER_ONLY.includes(p.key))
 
     const submit = async () => {
