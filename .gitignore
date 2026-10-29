@@ -6,3 +6,11 @@ node_modules
 
 # vite-plugin-pwa dev rejimida yaratadi (npm run dev), prod build emas
 /dev-dist/
+e2e/.dist
+e2e/.shots
+test-results
+playwright-report
+
+# Mahalliy muhit sozlamalari
+.env.local
+.env.*.local

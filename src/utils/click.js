@@ -2,7 +2,7 @@
 // Uses Vite env variables:
 // - VITE_CLICK_SERVICE_ID
 // - VITE_CLICK_MERCHANT_ID
-// - VITE_CLICK_RETURN_URL (optional, defaults to current origin + /payments)
+// - VITE_CLICK_RETURN_URL (optional, defaults to current origin + /subscription)
 
 export function buildClickUrl(user, amount) {
   const baseUrl = 'https://my.click.uz/services/pay'
@@ -11,7 +11,7 @@ export function buildClickUrl(user, amount) {
   const serviceId = import.meta.env.VITE_CLICK_SERVICE_ID ?? 96745
   const merchantId = import.meta.env.VITE_CLICK_MERCHANT_ID ?? 57186
   const returnUrl =
-    import.meta.env.VITE_CLICK_RETURN_URL || `${window.location.origin}/payments`
+    import.meta.env.VITE_CLICK_RETURN_URL || `${window.location.origin}/subscription`
 
   if (!user) {
     throw new Error("Foydalanuvchi ma'lumotlari topilmadi.")

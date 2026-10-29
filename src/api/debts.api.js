@@ -1,92 +1,30 @@
-import api from './axios'
+import api, { clean, data } from './client'
 
 export const debtsApi = {
-    getDebts: async (params = {}) => {
-        const response = await api.get('/debts', { params })
-        return response.data
-    },
-
-    getDebt: async (id) => {
-        const response = await api.get(`/debts/${id}`)
-        return response.data
-    },
-
-    createDebt: async (data) => {
-        const payload = {
-            customer_id: data.customer_id,
-            total_amount: data.total_amount,
-            description: data.description || null
-        }
-
-        // TZ va OpenAPI bo'yicha ixtiyoriy fieldlar
-        if (data.debt_date) {
-            payload.debt_date = data.debt_date
-        }
-        // Yangi: Qaytarish sanasi (return_date) - overdue SMS uchun
-        if (data.return_date) {
-            payload.return_date = data.return_date
-        }
-        if (typeof data.send_sms === 'boolean') {
-            payload.send_sms = data.send_sms
-        }
-
-        const response = await api.post('/debts', payload)
-        return response.data
-    },
-
-    updateDebt: async (id, data) => {
-        const payload = {
-            customer_id: data.customer_id,
-            total_amount: data.total_amount
-        }
-        if ('description' in data) {
-            payload.description = data.description || null
-        }
-        if (data.debt_date) {
-            payload.debt_date = data.debt_date
-        }
-        // return_date: kalit yo'q -> sana o'zgarmaydi, null -> o'chiriladi, "YYYY-MM-DD" -> yangi sana
-        if ('return_date' in data) {
-            payload.return_date = data.return_date || null
-        }
-
-        const response = await api.put(`/debts/${id}`, payload)
-        return response.data
-    },
-
-    deleteDebt: async (id) => {
-        const response = await api.delete(`/debts/${id}`)
-        return response.data
-    },
-
-    closeDebt: async (id) => {
-        const response = await api.patch(`/debts/${id}/close`)
-        return response.data
-    },
-
-    getOverdue: async (params = {}) => {
-        const response = await api.get('/debts/overdue', { params })
-        return response.data
-    },
-
-    sendOverdueSms: async (customerId, days = 10) => {
-        const response = await api.post(`/debts/overdue/${customerId}/send-sms`, null, {
-            params: { days }
-        })
-        return response.data
-    },
-
-    // Yangi: return_date kelgan nasiyaga SMS yuborish
-    sendReturnDateSms: async (debtId) => {
-        const response = await api.post(`/debts/${debtId}/send-return-sms`)
-        return response.data
-    },
-
-    // Yangi: Biriktirilgan SMS statusini olish (yuborildi / yuborilmadi / limit tugadi)
-    getDebtSmsStatus: async (debtId) => {
-        const response = await api.get(`/debts/${debtId}/sms-status`)
-        return response.data
-    }
+    list: (params = {}) => data(api.get('/debts', { params: clean({ page: 1, per_page: 50, ...params }) })),
+    get: (id) => data(api.get(`/debts/${id}`)),
+    // 422 limit_exceeded {can_force, exceeded_by...} — force: true bilan qayta yuboriladi
+    create: (payload) => data(api.post('/debts', payload)),
+    update: (id, payload) => data(api.put(`/debts/${id}`, payload)),
+    extend: (id, due_date, reason) => data(api.post(`/debts/${id}/extend`, { due_date, reason })),
+    writeOff: (id, reason) => data(api.post(`/debts/${id}/write-off`, { reason })),
+    cancel: (id, reason) => data(api.post(`/debts/${id}/cancel`, { reason })),
+    reminders: (id) => data(api.get(`/debts/${id}/reminders`))
 }
 
-export default debtsApi
+export const paymentsApi = {
+    // Butun kvitansiya bekor qilinadi, nasiyalar qayta ochiladi
+    cancel: (id, reason) => data(api.post(`/payments/${id}/cancel`, { reason }))
+}
+
+export const overdueApi = {
+    // days: 1-7 | 8-30 | 30+; sms_status: sent | not_sent | failed
+    list: (params = {}) => data(api.get('/overdue', { params: clean(params) })),
+    bulkSms: (customer_ids, dry_run) => data(api.post('/overdue/bulk-sms', { customer_ids, dry_run }))
+}
+
+export const smsApi = {
+    list: (params = {}) => data(api.get('/sms', { params: clean({ page: 1, per_page: 30, ...params }) })),
+    quota: () => data(api.get('/sms/quota')),
+    retry: (id) => data(api.post(`/sms/${id}/retry`))
+}

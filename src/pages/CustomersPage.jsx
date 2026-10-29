@@ -1,558 +1,129 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { Drawer } from 'vaul'
+import { useEffect, useState } from 'react'
+import { Link, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Plus, Search, Users } from 'lucide-react'
 import { customersApi } from '../api/customers.api'
-import { debtsApi } from '../api/debts.api'
-import { Search, Plus, ChevronRight, Users, User, Phone, X, Loader2, Clock, MessageSquare, Edit2 } from 'lucide-react'
-import LoadingSpinner from '../components/LoadingSpinner'
-import { CustomersSkeleton } from '../components/Skeleton'
-import EmptyState from '../components/EmptyState'
-import toast from 'react-hot-toast'
-import { PHONE_PREFIX, formatPhoneNumber, getRawPhoneNumber } from '../utils/phoneMask'
-import { formatCurrency } from '../utils/format'
-import { useSubscription } from '../contexts/SubscriptionContext'
-import { AlertCircle, Zap, RefreshCw } from 'lucide-react'
-import { staffApi } from '../api/staff.api'
-import { isUserStaff } from '../utils/roleHelper'
+import { useSession } from '../app/session'
+import { useDebounced, useOnChange, useResource } from '../lib/hooks'
+import { Avatar, EmptyState, ErrorState, List, ListSkeleton, Money, PageHeader, Pill, Row, Table } from '../ui/display'
+import { Button, Chips, cx } from '../ui/controls'
+import { formatDate } from '../utils/date'
+import { formatNumber } from '../utils/format'
+import { formatPhone } from '../utils/phone'
 
+const SORTS = [
+    { value: 'debt', label: "Qarz bo'yicha, ko'pdan kamga" },
+    { value: 'overdue_first', label: "Muddati o'tganlar avval" },
+    { value: 'last_activity', label: 'Oxirgi amal' },
+    { value: 'newest', label: "Yangi qo'shilgan" },
+    { value: 'name', label: 'Ism (A–Z)' }
+]
+
+const status = (c) => c.overdue_debt > 0
+    ? <Pill tone="danger">Muddati o'tgan</Pill>
+    : c.total_debt > 0 ? null : <Pill tone="success">To'langan</Pill>
+
+// /customers — ro'yxat; /customers/:id — planshetda (900px+) chapda ro'yxat, o'ngda karta; kompyuterda karta to'liq
 export default function CustomersPage() {
-    const location = useLocation()
-    const [customers, setCustomers] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [search, setSearch] = useState('')
-    const [filter, setFilter] = useState('')
-    const [showAddDrawer, setShowAddDrawer] = useState(false)
-    const [submitting, setSubmitting] = useState(false)
-    const [errors, setErrors] = useState({})
-    const { status: subStatus, remaining, sms_remaining } = useSubscription()
-    const [showBlockedDrawer, setShowBlockedDrawer] = useState(false)
-    const [blockedType, setBlockedType] = useState(null) // 'limit' | 'expired'
-    const [form, setForm] = useState({ name: '', phone: PHONE_PREFIX })
+    const { id } = useParams()
+    const navigate = useNavigate()
+    const session = useSession()
+    const [params, setParams] = useSearchParams()
+    const [q, setQ] = useState(params.get('q') || '')
+    const filter = params.get('filter') || 'all'
+    const sort = params.get('sort') || 'debt'
+    const query = useDebounced(q.trim(), 300)
+    const [pages, setPages] = useState(1)
+    const [extra, setExtra] = useState([])
 
-    // Overdue tab state
-    const [overdueList, setOverdueList] = useState([])
-    const [overdueLoading, setOverdueLoading] = useState(false)
-    const [overdueDays, setOverdueDays] = useState(10)
-    const [sendingSms, setSendingSms] = useState(null)
-    const [isStaff, setIsStaff] = useState(false)
+    const setParam = (key, value) => setParams((p) => {
+        const next = new URLSearchParams(p)
+        value ? next.set(key, value) : next.delete(key)
+        return next
+    }, { replace: true })
 
-    useEffect(() => {
-        const params = new URLSearchParams(location.search)
-        const filterParam = params.get('filter')
-        if (filterParam) setFilter(filterParam)
-        if (location.state?.openAddDrawer) {
-            if (subStatus === 'expired') {
-                setBlockedType('expired')
-                setShowBlockedDrawer(true)
-            } else {
-                setShowAddDrawer(true)
-            }
-            window.history.replaceState({}, document.title)
-        }
-    }, [location.search])
+    useEffect(() => { setParam('q', query) }, [query])
 
-    useEffect(() => {
-        const check = async () => {
-            try {
-                const staffUser = await isUserStaff(staffApi)
-                setIsStaff(staffUser)
+    const res = useResource(
+        () => customersApi.list({ q: query || undefined, sort, with_debt: filter === 'debt' ? 1 : undefined, page: 1 }),
+        [query, sort, filter],
+        { cacheKey: !query && filter === 'all' && sort === 'debt' ? 'customers_first' : undefined }
+    )
+    useOnChange(() => res.reload())
+    useEffect(() => { setPages(1); setExtra([]) }, [query, sort, filter])
 
-                if (staffUser) {
-                    const params = new URLSearchParams(location.search)
-                    if (params.get('filter') === 'overdue') {
-                        setFilter('')
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to check staff status:', err)
-            }
-        }
-
-        check()
-    }, [])
-
-    // Load overdue when tab switches to 'overdue'
-    useEffect(() => {
-        if (!isStaff && filter === 'overdue') loadOverdue()
-    }, [filter, overdueDays])
-
-    const loadOverdue = async () => {
-        setOverdueLoading(true)
-        try {
-            const data = await debtsApi.getOverdue({ days: overdueDays, order: 'desc' })
-            setOverdueList(Array.isArray(data) ? data : (data.data || []))
-        } catch (err) {
-            console.error('Failed to load overdue:', err)
-        } finally {
-            setOverdueLoading(false)
-        }
+    const loadMore = async () => {
+        const next = pages + 1
+        const r = await customersApi.list({ q: query || undefined, sort, with_debt: filter === 'debt' ? 1 : undefined, page: next })
+        setExtra((e) => [...e, ...(r.data || [])])
+        setPages(next)
     }
 
-    useEffect(() => {
-        const query = search.trim()
-        const delay = query ? 400 : 0
-        const t = setTimeout(() => loadCustomers(query), delay)
-        return () => clearTimeout(t)
-    }, [search])
+    const list = [...(res.data?.data || []), ...extra]
+    const meta = res.data?.meta
+    const hasMore = meta && pages < meta.last_page
+    const split = !!id
 
-    const loadCustomers = async (searchQuery = '') => {
-        setLoading(true)
-        try {
-            const params = searchQuery.trim() ? { q: searchQuery.trim() } : {}
-            const data = await customersApi.getCustomers(params)
-            setCustomers(Array.isArray(data) ? data : (data.data || []))
-        } catch (err) {
-            console.error('Failed to load customers:', err)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const filteredCustomers = useMemo(() => {
-        let result = [...customers]
-
-        if (filter === 'debtors') {
-            result = result.filter(c => {
-                const debt = parseFloat(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.total_debt ?? 0)
-                return debt > 0
-            })
-        } else if (filter === 'paid') {
-            result = result.filter(c => {
-                const debt = parseFloat(c.remaining_amount ?? c.remaining_debts ?? c.debt_sum ?? c.total_debt ?? 0)
-                return debt <= 0
-            })
-        }
-
-        if (search.trim()) {
-            const query = search.toLowerCase().trim()
-            result = result.filter(c => {
-                const name = c.name || c.customer_name || '';
-                const nameMatch = name.toLowerCase().includes(query)
-                const phoneStr = c.phone || c.customer_phone || '';
-                const phone = phoneStr.replace(/\D/g, '') || ''
-                const last4 = phone.slice(-4)
-                const phoneMatch = last4.includes(query) || phone.includes(query)
-                return nameMatch || phoneMatch
-            })
-        }
-
-        return result
-    }, [customers, filter, search])
-
-    const handleSendSms = async (item) => {
-        const customerId = item.id || item.customer_id
-        if (!customerId) {
-            toast.error('Mijoz ID si topilmadi')
-            return
-        }
-
-        if (subStatus === 'expired') {
-            setBlockedType('expired')
-            setShowBlockedDrawer(true)
-            return
-        }
-
-        setSendingSms(customerId)
-        try {
-            await debtsApi.sendOverdueSms(customerId, overdueDays)
-            toast.success('SMS muvaffaqiyatli yuborildi')
-            // Refresh overdue list to update "last sent" info
-            loadOverdue()
-        } catch (err) {
-            console.error('Failed to send SMS:', err)
-            toast.error(err.response?.data?.message || 'SMS yuborishda xatolik yuz berdi')
-        } finally {
-            setSendingSms(null)
-        }
-    }
-
-    const handleAddCustomer = async (e) => {
-        e.preventDefault()
-        if (!form.name.trim()) return
-
-        setSubmitting(true)
-        setErrors({})
-        try {
-            const rawPhone = getRawPhoneNumber(form.phone)
-            await customersApi.createCustomer({
-                name: form.name.trim(),
-                phone: rawPhone !== '+998' ? rawPhone : null
-            })
-            setForm({ name: '', phone: PHONE_PREFIX })
-            setErrors({})
-            setShowAddDrawer(false)
-            toast.success('Mijoz qo\'shildi')
-            loadCustomers()
-        } catch (err) {
-            if (err.response?.status === 422 && err.response?.data?.errors) {
-                setErrors(err.response.data.errors)
-            } else {
-                toast.error(err.response?.data?.message || 'Xatolik yuz berdi')
-            }
-        } finally {
-            setSubmitting(false)
-        }
-    }
-
-    const highlightText = (text, query) => {
-        if (!query.trim() || !text) return text
-        const lowerText = text.toLowerCase()
-        const lowerQuery = query.toLowerCase().trim()
-        const index = lowerText.indexOf(lowerQuery)
-        if (index === -1) return text
-        return (
-            <>
-                {text.slice(0, index)}
-                <span className="bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 rounded px-0.5">
-                    {text.slice(index, index + lowerQuery.length)}
-                </span>
-                {text.slice(index + lowerQuery.length)}
-            </>
-        )
-    }
-
-    const highlightPhone = (phone, query) => {
-        if (!query.trim() || !phone) return phone
-        const cleanPhone = phone.replace(/\D/g, '')
-        const last4 = cleanPhone.slice(-4)
-        const lowerQuery = query.trim()
-        if (last4.includes(lowerQuery)) {
-            const displayPhone = phone
-            const index = displayPhone.lastIndexOf(lowerQuery)
-            if (index !== -1) {
-                return (
+    const listView = (
+        <>
+            <label className="flex h-12 items-center gap-2.5 rounded-ctl border-[1.5px] border-line-2 bg-card px-3.5 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+                <Search size={20} className="shrink-0 text-ink-3" aria-hidden />
+                <input data-search value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ism, telefon yoki oxirgi 4 raqam" aria-label="Mijozni qidirish"
+                    className="w-full min-w-0 bg-transparent text-base outline-none placeholder:text-ink-3" />
+            </label>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Chips size="sm" ariaLabel="Filtr" value={filter} onChange={(v) => setParam('filter', v === 'all' ? '' : v)} className="flex-none"
+                    options={[{ value: 'all', label: 'Barchasi' }, { value: 'debt', label: 'Qarzdor' }]} wrap />
+                <Link to="/overdue" className="inline-flex h-9 items-center rounded-xl border-[1.5px] border-line-2 bg-card px-3.5 text-sm font-semibold hover:bg-soft">Muddati o'tgan</Link>
+                <select value={sort} onChange={(e) => setParam('sort', e.target.value)} aria-label="Saralash"
+                    className={cx('h-9 rounded-xl border-[1.5px] border-line-2 bg-card px-2 text-sm font-semibold text-ink', !split && 'md:ml-auto')}>
+                    {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+            </div>
+            <div className="mt-3">
+                {res.error && !res.data ? <ErrorState onRetry={res.reload} /> : res.loading && !res.data ? <ListSkeleton /> : list.length === 0 ? (
+                    <EmptyState icon={Users} title={query ? 'Mijoz topilmadi' : "Hali mijoz yo'q"}
+                        text={query ? "Boshqa ism yoki raqam bilan qidirib ko'ring." : "Birinchi mijozni qo'shing — keyin unga nasiya yozasiz."}
+                        action={session.can('customer.edit') && <Button icon={Plus} onClick={() => navigate('/customers/new')}>Mijoz qo'shish</Button>} />
+                ) : (
                     <>
-                        {displayPhone.slice(0, index)}
-                        <span className="bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 rounded px-0.5">
-                            {displayPhone.slice(index, index + lowerQuery.length)}
-                        </span>
-                        {displayPhone.slice(index + lowerQuery.length)}
+                        <List className={cx(!split && 'lg:hidden')}>
+                            {list.map((c) => (
+                                <Row key={c.id} to={`/customers/${c.id}${window.location.search}`} left={<Avatar name={c.name} />} title={c.name} subtitle={formatPhone(c.phone)}
+                                    className={cx(String(c.id) === id && 'bg-brand-soft')}
+                                    right={<>{c.total_debt > 0 && <Money value={c.total_debt} tone="debt" className="block text-[15px]" />}{status(c)}</>} />
+                            ))}
+                        </List>
+                        {!split && (
+                            <Table
+                                className="hidden lg:block"
+                                rows={list}
+                                onRowClick={(c) => navigate(`/customers/${c.id}`)}
+                                columns={[
+                                    { key: 'name', label: 'Mijoz', render: (c) => <span className="flex items-center gap-3 font-bold"><Avatar name={c.name} size={32} />{c.name}</span> },
+                                    { key: 'phone', label: 'Telefon', render: (c) => <span className="text-ink-2">{formatPhone(c.phone)}</span> },
+                                    { key: 'total_debt', label: "Qarz, so'm", align: 'right', render: (c) => c.total_debt > 0 ? <Money value={c.total_debt} tone="debt" /> : <span className="text-ink-3">0</span> },
+                                    { key: 'overdue_debt', label: "Muddati o'tgan", align: 'right', render: (c) => c.overdue_debt > 0 ? <Money value={c.overdue_debt} tone="debt" /> : <span className="text-ink-3">—</span> },
+                                    { key: 'last', label: 'Oxirgi amal', render: (c) => <span className="text-ink-2">{formatDate(c.last_activity_at)}</span> }
+                                ]}
+                            />
+                        )}
+                        {hasMore && <Button variant="secondary" block className="mt-3" onClick={loadMore}>Yana ko'rsatish</Button>}
                     </>
-                )
-            }
-        }
-        return phone
-    }
+                )}
+            </div>
+        </>
+    )
 
     return (
-        <div className="px-4 py-6 md:px-6 lg:px-8 lg:py-8 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors overflow-x-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-[28px] font-bold text-gray-900 dark:text-white">Mijozlar</h1>
-                <button
-                    onClick={() => {
-                        if (subStatus === 'expired') {
-                            setBlockedType('expired')
-                            setShowBlockedDrawer(true)
-                        } else {
-                            setShowAddDrawer(true)
-                        }
-                    }}
-                    className={`w-10 h-10 md:w-auto md:px-4 md:gap-2 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform ${
-                        subStatus === 'expired' ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
-                    }`}
-                    title="Mijoz qo'shish"
-                >
-                    <Plus size={22} strokeWidth={2.5} />
-                    <span className="hidden md:inline text-[14px] font-semibold">Mijoz qo'shish</span>
-                </button>
-            </div>
-
-            <div className="lg:flex lg:items-center lg:gap-4 mb-4">
-                {/* Search */}
-                <div className="relative mb-4 lg:mb-0 lg:flex-1">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                        type="text"
-                        className="input pl-11"
-                        placeholder="Mijoz qidirish..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                    {search && (
-                        <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                            <X size={18} />
-                        </button>
-                    )}
-                </div>
-
-                {/* Filter Pills */}
-                <div className="flex gap-1 lg:shrink-0">
-                    {(
-                        isStaff
-                            ? [
-                                { value: '', label: 'Barchasi' },
-                                { value: 'debtors', label: 'Qarzdor' },
-                                { value: 'paid', label: "To'langan" }
-                            ]
-                            : [
-                                { value: '', label: 'Barchasi' },
-                                { value: 'debtors', label: 'Qarzdor' },
-                                { value: 'paid', label: "To'langan" },
-                                { value: 'overdue', label: "Muddati o'tgan" }
-                            ]
-                    ).map(tab => (
-                        <button
-                            key={tab.value}
-                            onClick={() => setFilter(tab.value)}
-                            className={`flex-1 md:flex-none md:px-5 py-2 md:py-2.5 rounded-full text-[12px] md:text-[13px] font-semibold transition-all text-center ${filter === tab.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'}`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Overdue Tab Content */}
-            {!isStaff && filter === 'overdue' ? (
-                <>
-                    {/* Days filter */}
-                    <div className="flex items-center gap-3 mb-4">
-                        <span className="text-[13px] text-gray-500 dark:text-gray-400">Kundan:</span>
-                        <select
-                            value={overdueDays}
-                            onChange={(e) => setOverdueDays(Number(e.target.value))}
-                            className="input !w-auto !py-1.5 !px-3 text-[13px]"
-                        >
-                            {[5, 7, 10, 15, 20, 30].map(d => (
-                                <option key={d} value={d}>{d} kun</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {overdueLoading ? (
-                        <CustomersSkeleton />
-                    ) : overdueList.length === 0 ? (
-                        <EmptyState
-                            icon={Clock}
-                            title="Muddati o'tgan qarzlar yo'q"
-                            description={`${overdueDays} kundan oshgan ochiq nasiyalar topilmadi`}
-                        />
-                    ) : (
-                        <div className="grid gap-2 lg:grid-cols-2 items-start">
-                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-2 lg:col-span-2">
-                                {overdueList.length} ta qarzdor
-                            </p>
-                            {overdueList.map((item, idx) => (
-                                <div
-                                    key={item.customer_id || idx}
-                                    className="card dark:bg-gray-800 active:scale-[0.98] transition-transform"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="avatar avatar-sm bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                                            {(item.name || item.customer_name || '?').charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
-                                                {item.name || item.customer_name || 'Ism yo\'q'}
-                                            </h3>
-                                            <p className="text-[12px] text-gray-400">{item.phone || item.customer_phone || 'Telefon yo\'q'}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[14px] font-bold text-red-500">
-                                                {formatCurrency(item.total_remaining || item.remaining_amount || 0)}
-                                            </p>
-                                            <p className="text-[12px] text-orange-500 font-medium">
-                                                {item.days_overdue || item.overdue_days || '?'} kun
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {(item.sms_count !== undefined || item.sent_sms_count !== undefined || item.overdue_sms_count !== undefined) && (
-                                        <div className="flex justify-between items-center mt-3 mb-2 px-1">
-                                            <span className="text-[12px] text-gray-500 dark:text-gray-400">
-                                                {(item.sms_count ?? item.sent_sms_count ?? item.overdue_sms_count ?? 0) === 0
-                                                    ? "SMS jo'natilmagan"
-                                                    : `Jo'natilgan SMS: ${item.sms_count ?? item.sent_sms_count ?? item.overdue_sms_count} ta`
-                                                }
-                                            </span>
-                                            {(item.last_sms_date || item.last_sms || item.overdue_sms_last_sent_at) && (
-                                                <span className="text-[12px] text-gray-500 dark:text-gray-400">
-                                                    Oxirgi marta: {
-                                                        (() => {
-                                                            const rawDate = item.last_sms_date || item.last_sms || item.overdue_sms_last_sent_at;
-                                                            if (!rawDate) return '';
-                                                            const d = new Date(rawDate);
-                                                            return isNaN(d) ? rawDate : `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                                                        })()
-                                                    }
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                    {(item.phone || item.customer_phone) && (
-                                                <div className="flex gap-2 mt-3">
-                                                    <Link
-                                                        to={`/customers/${item.customer_id || item.id}/edit`}
-                                                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-[#1e293b] dark:text-gray-200 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium"
-                                                        title="Mijozni tahrirlash"
-                                                    >
-                                                        <Edit2 size={16} />
-                                                        Tahrirlash
-                                                    </Link>
-                                                    <button
-                                                        disabled={sendingSms === (item.id || item.customer_id)}
-                                                        onClick={(e) => {
-                                                            e.preventDefault()
-                                                            handleSendSms(item)
-                                                        }}
-                                                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-[#1e293b] dark:text-blue-400 dark:hover:bg-[#273549] transition-colors text-[14px] font-medium disabled:opacity-50"
-                                                    >
-                                                        {sendingSms === (item.id || item.customer_id) ? (
-                                                            <Loader2 size={16} className="animate-spin" />
-                                                        ) : (
-                                                            <MessageSquare size={16} />
-                                                        )}
-                                                        SMS yuborish
-                                                    </button>
-                                                </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </>
-            ) : (
-                <>
-                    {/* Count */}
-                    <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-3">
-                        {filteredCustomers.length} ta mijoz
-                    </p>
-
-                    {/* Customer List */}
-                    {loading ? (
-                        <CustomersSkeleton />
-                    ) : filteredCustomers.length === 0 ? (
-                        <EmptyState
-                            icon={Users}
-                            title={
-                                search ? "Topilmadi" :
-                                    filter === 'paid' ? "To'langan mijozlar yo'q" :
-                                        filter === 'debtors' ? "Qarzdor mijozlar yo'q" :
-                                            "Mijozlar yo'q"
-                            }
-                            description={
-                                search ? `"${search}" bo'yicha natija yo'q` :
-                                    filter === 'paid' ? "Hali to'langan mijozlar mavjud emas" :
-                                        filter === 'debtors' ? "Hozirda barcha qarzdorlar to'lov qildi" :
-                                            "Hali mijoz qo'shilmagan"
-                            }
-                            action={!search && !filter && (
-                                <button onClick={() => setShowAddDrawer(true)} className="btn btn-primary mt-4">
-                                    <Plus size={18} />
-                                    Yangi mijoz qo'shish
-                                </button>
-                            )}
-                        />
-                    ) : (
-                        <div className="grid gap-2 lg:grid-cols-2">
-                            {filteredCustomers.map((customer) => (
-                                <Link
-                                    key={customer.id}
-                                    to={`/customers/${customer.id}`}
-                                    className="card flex items-center gap-3 !py-3 active:scale-[0.98] transition-transform"
-                                >
-                                    <div className="avatar avatar-sm">
-                                        {(customer.name || customer.customer_name || '?').charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
-                                            {search ? highlightText(customer.name || customer.customer_name || 'Ism yo\'q', search) : (customer.name || customer.customer_name || 'Ism yo\'q')}
-                                        </h3>
-                                        <p className="text-[12px] text-gray-400">
-                                            {search && /^\d+$/.test(search.trim())
-                                                ? highlightPhone(customer.phone || customer.customer_phone || 'Telefon yo\'q', search)
-                                                : (customer.phone || customer.customer_phone || 'Telefon yo\'q')}
-                                        </p>
-                                    </div>
-                                    <div className="text-right shrink-0">
-                                        {(() => {
-                                            const currentDebt = parseFloat(
-                                                customer.remaining_amount ??
-                                                customer.remaining_debts ??
-                                                customer.debt_sum ??
-                                                customer.total_debt ?? 0
-                                            );
-                                            return (
-                                                <>
-                                                    {currentDebt > 0 && (
-                                                        <div className="text-[14px] font-bold text-red-500">
-                                                            {formatCurrency(currentDebt)} so'm
-                                                        </div>
-                                                    )}
-                                                    <span className={`badge text-[11px] ${currentDebt > 0 ? 'badge-debtor' : 'badge-paid'}`}>
-                                                        {currentDebt > 0 ? 'Qarzdor' : "To'langan"}
-                                                    </span>
-                                                </>
-                                            );
-                                        })()}
-                                    </div>
-                                    <Link
-                                        to={`/customers/${customer.id}/edit`}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="w-9 h-9 rounded-xl flex items-center justify-center bg-gray-100/70 dark:bg-gray-800/70 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors shrink-0"
-                                        title="Mijozni tahrirlash"
-                                    >
-                                        <Edit2 size={15} />
-                                    </Link>
-                                    <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </>
-            )}
-
-            {/* Add Customer Drawer */}
-            <Drawer.Root open={showAddDrawer} onOpenChange={(open) => {
-                setShowAddDrawer(open)
-                if (!open) {
-                    setErrors({})
-                    setTimeout(() => setForm({ name: '', phone: PHONE_PREFIX }), 300)
-                }
-            }} repositionInputs={false}>
-                <Drawer.Portal>
-                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl z-50">
-                        <div className="p-4 pb-8">
-                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
-                            <div className="flex items-center justify-between mb-6">
-                                <div>
-                                    <Drawer.Title className="text-[20px] font-bold text-gray-900 dark:text-white">
-                                        Mijoz qo'shish
-                                    </Drawer.Title>
-                                    <Drawer.Description className="text-gray-400 text-[14px]">
-                                        Yangi mijoz ma'lumotlarini kiriting
-                                    </Drawer.Description>
-                                </div>
-                                <button onClick={() => setShowAddDrawer(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                    <X size={18} className="text-gray-500" />
-                                </button>
-                            </div>
-                            <form onSubmit={handleAddCustomer} className="space-y-4">
-                                <div>
-                                    <label className="label">Mijoz ismi</label>
-                                    <div className="relative">
-                                        <User size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${errors.name ? 'text-red-400' : 'text-gray-400'}`} />
-                                        <input type="text" className={`input pl-11 ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`} placeholder="Ism kiriting..." value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); if (errors.name) setErrors({ ...errors, name: null }); }} required autoFocus />
-                                    </div>
-                                    {errors.name && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{errors.name[0]}</p>}
-                                </div>
-                                <div>
-                                    <label className="label">Telefon raqami (ixtiyoriy)</label>
-                                    <div className="relative">
-                                        <Phone size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${errors.phone ? 'text-red-400' : 'text-gray-400'}`} />
-                                        <input type="tel" inputMode="tel" autoComplete="tel" className={`input pl-11 ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10' : ''}`} placeholder="+998 XX XXX XX XX" value={form.phone} onChange={(e) => { setForm({ ...form, phone: formatPhoneNumber(e.target.value) }); if (errors.phone) setErrors({ ...errors, phone: null }); }} />
-                                    </div>
-                                    {errors.phone && <p className="text-red-500 text-[13px] mt-1.5 ml-1">{errors.phone[0]}</p>}
-                                </div>
-                                <button type="submit" className="btn btn-primary w-full" disabled={submitting || !form.name.trim()}>
-                                    {submitting ? <Loader2 size={20} className="animate-spin" /> : 'Mijoz qo\'shish'}
-                                </button>
-                            </form>
-                        </div>
-                    </Drawer.Content>
-                </Drawer.Portal>
-            </Drawer.Root>
+        <div className={cx('page', split && 'min-[900px]:flex min-[900px]:max-w-none min-[900px]:gap-6 lg:block lg:max-w-6xl')}>
+            <section className={cx(split && 'hidden min-[900px]:block min-[900px]:w-[300px] min-[900px]:shrink-0 lg:hidden')} aria-label="Mijozlar ro'yxati">
+                <PageHeader
+                    title={<>Mijozlar {meta?.total !== undefined && <span className="text-ink-3">{formatNumber(meta.total)}</span>}</>}
+                    actions={session.can('customer.edit') && <Button icon={Plus} onClick={() => navigate('/customers/new')}>Mijoz</Button>}
+                />
+                {listView}
+            </section>
+            {split && <section className="min-w-0 flex-1"><Outlet /></section>}
         </div>
     )
 }

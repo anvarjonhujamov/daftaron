@@ -1,209 +1,137 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { notificationsApi } from '../api/notifications.api'
-import LoadingSpinner from '../components/LoadingSpinner'
-import { CustomersSkeleton } from '../components/Skeleton'
-import EmptyState from '../components/EmptyState'
-import { ArrowLeft, Bell, CreditCard, ShoppingBag, Wallet, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
-import { formatCurrency } from '../utils/format'
+import { AlarmClock, ArrowDown, ArrowUp, Bell, CreditCard, MessageSquareWarning, Send, Info } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { notificationsApi } from '../api/reports.api'
+import { useSession } from '../app/session'
+import { errorMessage } from '../lib/errors'
+import { Card, EmptyState, ErrorState, ListSkeleton, PageHeader } from '../ui/display'
+import { Button, Chips, cx } from '../ui/controls'
+import { dayTitle, formatTime, toYmd } from '../utils/date'
 
-const NOTIF_ICONS = {
-    debt_created: { icon: ShoppingBag, color: 'text-red-500', bg: 'bg-red-100 dark:bg-red-900/30' },
-    debt_payment: { icon: CreditCard, color: 'text-green-500', bg: 'bg-green-100 dark:bg-green-900/30' },
-    balance_topped_up: { icon: Wallet, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30' },
-    subscription_purchased: { icon: ShoppingBag, color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30' },
-    default: { icon: Bell, color: 'text-gray-400', bg: 'bg-gray-100 dark:bg-gray-700' }
+const CATEGORY = {
+    overdue_today: { icon: AlarmClock, cls: 'bg-debt-soft text-debt' },
+    payment_received: { icon: ArrowUp, cls: 'bg-pay-soft text-pay' },
+    debt_created: { icon: ArrowDown, cls: 'bg-debt-soft text-debt' },
+    sms_failed: { icon: MessageSquareWarning, cls: 'bg-warn-soft text-warn' },
+    balance_low: { icon: CreditCard, cls: 'bg-warn-soft text-warn' },
+    subscription_renewal: { icon: CreditCard, cls: 'bg-brand-soft text-brand-strong' },
+    balance_topped_up: { icon: CreditCard, cls: 'bg-pay-soft text-pay' },
+    digest_sent: { icon: Send, cls: 'bg-brand-soft text-brand-strong' },
+    system: { icon: Info, cls: 'bg-soft text-ink-2' }
 }
 
-function getNotifMeta(n) {
-    const dataType = n.data?.type || ''
-    return NOTIF_ICONS[dataType] || NOTIF_ICONS.default
+const FILTERS = [
+    { value: '', label: 'Hammasi' },
+    { value: 'overdue_today', label: "Muddati o'tgan" },
+    { value: 'payment_received', label: "To'lovlar" },
+    { value: 'debt_created', label: 'Nasiyalar' },
+    { value: 'sms_failed', label: 'SMS' },
+    { value: 'balance_low', label: 'Balans' },
+    { value: 'subscription_renewal', label: 'Obuna' }
+]
+
+const target = (link) => {
+    if (!link) return null
+    switch (link.type) {
+        case 'debt': return link.id ? `/debts/${link.id}` : null
+        case 'customer': return link.id ? `/customers/${link.id}` : null
+        case 'overdue': return '/overdue'
+        case 'subscription': return '/subscription'
+        case 'sms': return '/history?type=sms'
+        default: return null
+    }
 }
 
 export default function NotificationsPage() {
     const navigate = useNavigate()
+    const session = useSession()
+    const [type, setType] = useState('')
+    const [items, setItems] = useState([])
+    const [page, setPage] = useState(1)
+    const [meta, setMeta] = useState(null)
     const [loading, setLoading] = useState(true)
-    const [notifications, setNotifications] = useState([])
-    const [error, setError] = useState('')
-    const [expandedId, setExpandedId] = useState(null)
-    const [readingId, setReadingId] = useState(null)
+    const [error, setError] = useState(null)
 
-    useEffect(() => {
-        loadNotifications()
-    }, [])
-
-    const loadNotifications = async () => {
+    const load = async (p = 1) => {
         setLoading(true)
+        setError(null)
         try {
-            const data = await notificationsApi.getNotifications()
-            setNotifications(Array.isArray(data) ? data : (data.data || []))
+            const r = await notificationsApi.list({ type, page: p })
+            setItems((prev) => (p === 1 ? r.data || [] : [...prev, ...(r.data || [])]))
+            setMeta(r.meta)
+            setPage(p)
+            if (r.unread_count !== undefined) session.setUnread(r.unread_count)
         } catch (err) {
-            setError(err.response?.data?.message || 'Bildirishnomalarni yuklashda xatolik')
+            setError(err)
         } finally {
             setLoading(false)
         }
     }
+    useEffect(() => { load(1) }, [type])
 
-    const handleView = async (n) => {
-        if (expandedId === n.id) {
-            setExpandedId(null)
-            return
-        }
-        setExpandedId(n.id)
-
-        // Mark as read by viewing detail
-        if (!n.read_at) {
-            setReadingId(n.id)
-            try {
-                await notificationsApi.getNotification(n.id)
-                setNotifications(prev =>
-                    prev.map(item => item.id === n.id ? { ...item, read_at: new Date().toISOString() } : item)
-                )
-            } catch {
-                // ignore
-            } finally {
-                setReadingId(null)
-            }
+    const markAll = async () => {
+        try {
+            await notificationsApi.markRead('all')
+            setItems((x) => x.map((n) => ({ ...n, is_read: true })))
+            session.setUnread(0)
+        } catch (err) {
+            toast.error(errorMessage(err))
         }
     }
 
-    const formatDate = (dateString) => {
-        if (!dateString) return ''
-        const date = new Date(dateString)
-        const dd = String(date.getDate()).padStart(2, '0')
-        const mm = String(date.getMonth() + 1).padStart(2, '0')
-        const yyyy = date.getFullYear()
-        const hh = String(date.getHours()).padStart(2, '0')
-        const min = String(date.getMinutes()).padStart(2, '0')
-        return `${dd}.${mm}.${yyyy} ${hh}:${min}`
+    const open = (n) => {
+        if (!n.is_read) {
+            notificationsApi.markRead([n.id]).then(() => session.refreshUnread()).catch(() => {})
+            setItems((x) => x.map((i) => (i.id === n.id ? { ...i, is_read: true } : i)))
+        }
+        const to = target(n.link)
+        if (to) navigate(to)
     }
 
-    const formatRelativeTime = (dateString) => {
-        if (!dateString) return ''
-        const now = new Date()
-        const date = new Date(dateString)
-        const diffMs = now - date
-        const diffMin = Math.floor(diffMs / 60000)
-        const diffHrs = Math.floor(diffMs / 3600000)
-        const diffDays = Math.floor(diffMs / 86400000)
-
-        if (diffMin < 1) return 'Hozirgina'
-        if (diffMin < 60) return `${diffMin} daqiqa oldin`
-        if (diffHrs < 24) return `${diffHrs} soat oldin`
-        if (diffDays < 7) return `${diffDays} kun oldin`
-        return formatDate(dateString)
+    // Kun bo'yicha guruhlash
+    const groups = []
+    for (const n of items) {
+        const day = toYmd(n.created_at)
+        const last = groups[groups.length - 1]
+        if (last?.day === day) last.items.push(n)
+        else groups.push({ day, items: [n] })
     }
-
-    const unreadCount = notifications.filter(n => !n.read_at).length
 
     return (
-        <div className="px-4 py-6 md:px-6 lg:py-8 md:max-w-3xl md:mx-auto bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
-            <div className="flex items-center gap-3 mb-5">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
-                >
-                    <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
-                </button>
-                <h1 className="text-[22px] font-bold text-gray-900 dark:text-white flex-1">
-                    Bildirishnomalar
-                </h1>
-                {unreadCount > 0 && (
-                    <span className="bg-red-500 text-white text-[12px] font-bold px-2.5 py-0.5 rounded-full">
-                        {unreadCount}
-                    </span>
+        <div className="page md:max-w-3xl">
+            <PageHeader back title="Bildirishnomalar" actions={session.unread > 0 && <Button size="sm" variant="ghost" onClick={markAll}>Hammasini o'qish</Button>} />
+            <Chips size="sm" ariaLabel="Turi" value={type} onChange={setType} options={FILTERS} />
+            <div className="mt-4">
+                {error && !items.length ? <ErrorState onRetry={() => load(1)} /> : loading && !items.length ? <ListSkeleton /> : items.length === 0 ? (
+                    <EmptyState icon={Bell} title="Bildirishnoma yo'q" text="Muddati o'tgan qarzlar, to'lovlar va SMS holati shu yerda ko'rinadi." />
+                ) : (
+                    <div className="space-y-4">
+                        {groups.map((g) => (
+                            <section key={g.day}>
+                                <h2 className="mb-2 section-label">{dayTitle(g.day)}</h2>
+                                <Card className="divide-y divide-line overflow-hidden">
+                                    {g.items.map((n) => {
+                                        const c = CATEGORY[n.category] || CATEGORY.system
+                                        return (
+                                            <button key={n.id} type="button" onClick={() => open(n)}
+                                                className={cx('flex w-full items-start gap-3 px-3.5 py-3 text-left hover:bg-soft/60', !n.is_read && 'bg-brand-soft/50')}>
+                                                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${c.cls}`}><c.icon size={17} aria-hidden /></span>
+                                                <span className="min-w-0 flex-1 text-[15px] leading-snug">
+                                                    <span className={cx('block', !n.is_read ? 'font-bold' : 'font-medium')}>{n.message || n.data?.message || 'Bildirishnoma'}</span>
+                                                    <span className="text-[13px] text-ink-3">{formatTime(n.created_at)}</span>
+                                                </span>
+                                                {!n.is_read && <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-brand" aria-label="O'qilmagan" />}
+                                            </button>
+                                        )
+                                    })}
+                                </Card>
+                            </section>
+                        ))}
+                        {meta && page < meta.last_page && <Button variant="secondary" block loading={loading} onClick={() => load(page + 1)}>Yana ko'rsatish</Button>}
+                    </div>
                 )}
             </div>
-
-            {error && (
-                <div className="mb-4 p-3 rounded-2xl text-[14px] bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400">
-                    {error}
-                </div>
-            )}
-
-            {loading ? (
-                <CustomersSkeleton />
-            ) : notifications.length === 0 ? (
-                <EmptyState
-                    icon={Bell}
-                    title="Bildirishnomalar yo'q"
-                    description="Yangi bildirishnomalar bu yerda ko'rinadi"
-                />
-            ) : (
-                <div className="space-y-2">
-                    {notifications.map((n) => {
-                        const meta = getNotifMeta(n)
-                        const Icon = meta.icon
-                        const isExpanded = expandedId === n.id
-                        const isUnread = !n.read_at
-
-                        return (
-                            <div
-                                key={n.id}
-                                className={`card dark:bg-gray-800 transition-all ${isUnread ? 'border-l-4 border-blue-500' : ''}`}
-                            >
-                                <button
-                                    onClick={() => handleView(n)}
-                                    className="w-full flex items-center gap-3 text-left"
-                                >
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${meta.bg}`}>
-                                        <Icon size={18} className={meta.color} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-[14px] line-clamp-1 ${isUnread ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
-                                            {n.data?.message || 'Bildirishnoma'}
-                                        </p>
-                                        <p className="text-[12px] text-gray-400 mt-0.5">
-                                            {formatRelativeTime(n.created_at)}
-                                        </p>
-                                    </div>
-                                    <div className="shrink-0 text-gray-300">
-                                        {readingId === n.id ? (
-                                            <LoadingSpinner size="sm" />
-                                        ) : isExpanded ? (
-                                            <ChevronUp size={16} />
-                                        ) : (
-                                            <ChevronDown size={16} />
-                                        )}
-                                    </div>
-                                </button>
-
-                                {/* Expanded detail */}
-                                {isExpanded && (
-                                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                                        <p className="text-[14px] text-gray-700 dark:text-gray-300 mb-2">
-                                            {n.data?.message || 'Bildirishnoma'}
-                                        </p>
-
-                                        {/* Detail data */}
-                                        <div className="space-y-1 text-[13px] text-gray-500 dark:text-gray-400">
-                                            {n.data?.customer_name && (
-                                                <p>Mijoz: <span className="font-medium text-gray-700 dark:text-gray-300">{n.data.customer_name}</span></p>
-                                            )}
-                                            {n.data?.tenant_name && (
-                                                <p>Do'kon: <span className="font-medium text-gray-700 dark:text-gray-300">{n.data.tenant_name}</span></p>
-                                            )}
-                                            {n.data?.amount && (
-                                                <p>Summa: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(n.data.amount)} so'm</span></p>
-                                            )}
-                                            {n.data?.plan_name && (
-                                                <p>Ta'rif: <span className="font-medium text-gray-700 dark:text-gray-300">{n.data.plan_name}</span></p>
-                                            )}
-                                            {n.data?.source && (
-                                                <p>Manba: <span className="font-medium text-gray-700 dark:text-gray-300">{n.data.source}</span></p>
-                                            )}
-                                        </div>
-
-                                        <p className="text-[12px] text-gray-400 mt-2">
-                                            {formatDate(n.created_at)}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        )
-                    })}
-                </div>
-            )}
         </div>
     )
 }

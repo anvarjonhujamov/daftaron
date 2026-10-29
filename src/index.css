@@ -2,487 +2,166 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dizayn tokenlari (DaftarOn 2.0). Tailwind ranglari shu o'zgaruvchilardan (tailwind.config.js).
+   *-soft — fon, asosiy nom — matn. Tungi rejimda matn ranglari kontrast uchun ochroq. */
+:root {
+    --bg: 246 247 251;
+    --card: 255 255 255;
+    --soft: 241 245 249;
+    --ink: 15 23 42;
+    --ink-2: 71 85 105;
+    --ink-3: 100 116 139;
+    --line: 226 232 240;
+    --line-2: 203 213 225;
+    --brand: 37 99 235;
+    --brand-strong: 29 78 216;
+    --brand-soft: 239 246 255;
+    --debt: 220 38 38;
+    --debt-soft: 254 226 226;
+    --pay: 21 128 61;
+    --pay-strong: 21 128 61;
+    --pay-soft: 220 252 231;
+    --supp: 194 65 12;
+    --supp-strong: 154 52 18;
+    --supp-soft: 255 237 213;
+    --warn: 180 83 9;
+    --warn-soft: 254 243 199;
+    --night: 15 23 42;
+    --danger: 220 38 38;
+    color-scheme: light;
+}
+
+.dark {
+    --bg: 11 18 32;
+    --card: 22 32 51;
+    --soft: 30 41 59;
+    --ink: 241 245 249;
+    --ink-2: 148 163 184;
+    --ink-3: 148 163 184;
+    --line: 35 48 74;
+    --line-2: 51 65 85;
+    --brand: 37 99 235;
+    --brand-strong: 147 197 253;
+    --brand-soft: 30 58 138;
+    --debt: 252 165 165;
+    --debt-soft: 69 10 10;
+    --pay: 134 239 172;
+    --pay-strong: 21 128 61;
+    --pay-soft: 5 46 22;
+    --supp: 253 186 116;
+    --supp-strong: 251 146 60;
+    --supp-soft: 67 20 7;
+    --warn: 252 211 77;
+    --warn-soft: 69 26 3;
+    --night: 241 245 249;
+    color-scheme: dark;
+}
+
 @layer base {
-  html {
-    -webkit-tap-highlight-color: transparent;
-    /* Android/iOS brauzer shriftlarni o'zicha kattalashtirib-kichraytirmasin */
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
+    html {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
 
-  /* Biror element (drawer, toast, uzun matn) ekrandan chiqsa, mobil brauzer butun sahifani
-     kichraytirib ko'rsatadi -> shriftlar "ba'zan kichik bo'lib qoladi". Gorizontal toshishni butunlay kesamiz. */
-  html,
-  body {
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
-  @supports (overflow: clip) {
+    /* Gorizontal toshish mobil brauzerda butun sahifani kichraytiradi. clip — sticky'ni buzmaydi */
     html,
     body {
-      overflow-x: clip;
+        max-width: 100%;
+        overflow-x: hidden;
     }
-  }
 
-  body {
-    @apply antialiased bg-gray-50 text-gray-900;
-    @apply dark:bg-gray-900 dark:text-white;
-    font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  }
+    @supports (overflow: clip) {
+        html,
+        body {
+            overflow-x: clip;
+        }
+    }
+
+    body {
+        @apply bg-bg text-ink antialiased;
+        font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        font-feature-settings: 'tnum' 1;
+    }
+
+    :focus-visible {
+        outline: 2px solid rgb(var(--brand));
+        outline-offset: 2px;
+    }
+
+    input,
+    textarea,
+    select {
+        font-size: 16px; /* iOS kattalashtirmasin */
+    }
+
+    input[type='date']::-webkit-calendar-picker-indicator {
+        opacity: 0.6;
+    }
+
+    .dark input[type='date']::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+    }
 }
 
 @layer components {
+    .card {
+        @apply rounded-card bg-card;
+    }
 
-  /* Buttons */
-  .btn {
-    @apply px-5 py-3.5 rounded-2xl font-semibold text-[15px] transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
-  }
+    .section-label {
+        @apply text-[13px] font-bold uppercase tracking-[0.04em] text-ink-2;
+    }
 
-  .btn-primary {
-    @apply bg-blue-500 text-white;
-  }
-
-  .btn-primary:hover {
-    @apply bg-blue-600;
-  }
-
-  .btn-secondary {
-    @apply bg-white text-gray-700 border border-gray-200;
-    @apply dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700;
-  }
-
-  .btn-danger {
-    @apply bg-red-500 text-white;
-  }
-
-  .btn-success {
-    @apply bg-green-500 text-white;
-  }
-
-  .btn-orange {
-    @apply bg-orange-500 text-white;
-  }
-
-  .btn-outline {
-    @apply bg-white text-gray-600 border border-gray-200;
-    @apply dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700;
-  }
-
-  .btn-outline-danger {
-    @apply bg-white text-red-500 border border-red-200;
-    @apply dark:bg-gray-800 dark:border-red-800;
-  }
-
-  .btn-outline-success {
-    @apply bg-white text-green-500 border border-green-200;
-    @apply dark:bg-gray-800 dark:border-green-800;
-  }
-
-  /* Input */
-  .input {
-    @apply w-full px-4 py-3.5 bg-white rounded-2xl text-[16px] border border-gray-200 placeholder:text-gray-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all duration-200;
-    @apply dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-blue-500 dark:focus:ring-blue-900/50;
-  }
-
-  /* Avoid duplicate password-eye icons on Windows (Edge/WebView). */
-  input[type="password"]::-ms-reveal,
-  input[type="password"]::-ms-clear {
-    display: none;
-  }
-
-  /* Cards */
-  .card {
-    @apply bg-white rounded-2xl p-4 shadow-sm;
-    @apply dark:bg-gray-800 dark:shadow-none;
-  }
-
-  /* Labels */
-  .label {
-    @apply block text-[13px] font-medium text-gray-500 mb-2;
-    @apply dark:text-gray-400;
-  }
-
-  /* Badge */
-  .badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-[12px] font-semibold;
-  }
-
-  .badge-debtor {
-    @apply bg-red-50 text-red-500;
-    @apply dark:bg-red-900/30 dark:text-red-400;
-  }
-
-  .badge-paid {
-    @apply bg-green-50 text-green-500;
-    @apply dark:bg-green-900/30 dark:text-green-400;
-  }
-
-  /* Filter Pills */
-  .pill {
-    @apply px-5 py-2.5 rounded-full text-[14px] font-medium transition-all duration-200;
-  }
-
-  .pill-active {
-    @apply bg-blue-500 text-white;
-  }
-
-  .pill-inactive {
-    @apply bg-white text-gray-600 border border-gray-200;
-    @apply dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700;
-  }
-
-  /* Avatar */
-  .avatar {
-    @apply rounded-full bg-green-500 flex items-center justify-center text-white font-semibold;
-  }
-
-  .avatar-sm {
-    @apply w-10 h-10 text-[14px];
-  }
-
-  .avatar-md {
-    @apply w-12 h-12 text-[16px];
-  }
-
-  .avatar-lg {
-    @apply w-20 h-20 text-[28px];
-  }
-
-  /* Gradient Card */
-  .gradient-card {
-    @apply rounded-2xl p-5 text-white;
-    background: linear-gradient(135deg, #4F8EF7 0%, #3B7AE4 100%);
-  }
-
-  /* Stat Card */
-  .stat-card {
-    @apply bg-white rounded-2xl p-4 flex-1;
-    @apply dark:bg-gray-800;
-  }
-
-  /* Section Title */
-  .section-title {
-    @apply text-[12px] font-semibold text-gray-500 uppercase tracking-wider mb-3;
-    @apply dark:text-gray-400;
-  }
-
-  /* iOS Switch */
-  .ios-switch {
-    @apply relative inline-flex h-[31px] w-[51px] shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none;
-    background-color: #E9E9EB;
-  }
-
-  .dark .ios-switch {
-    background-color: #39393D;
-  }
-
-  .ios-switch[data-state="checked"] {
-    background-color: #007AFF !important;
-  }
-
-  .ios-switch-thumb {
-    @apply pointer-events-none block h-[27px] w-[27px] rounded-full bg-white shadow-md ring-0 transition-transform duration-200 transform translate-x-0.5;
-  }
-
-  .ios-switch[data-state="checked"] .ios-switch-thumb {
-    @apply translate-x-[22px];
-  }
+    .page {
+        @apply mx-auto w-full max-w-6xl px-4 pb-28 pt-4 md:px-6 md:pb-10 lg:px-8 lg:pt-8;
+    }
 }
 
-/* ===== RESPONSIVE: planshet va kompyuter ===== */
+/* Telefonning pastki chizig'i (iPhone home indicator) */
+.pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
 
-/* Asosiy kontent kengligi: telefon 512px -> planshet 768px -> kompyuter 1024px -> keng ekran 1152px */
-.app-container {
-  width: 100%;
-  max-width: 32rem;
-  margin-inline: auto;
+/* Modal oyna: telefonda pastdan chiquvchi panel, planshet/kompyuterda markazda */
+dialog.sheet {
+    @apply m-0 mt-auto w-full max-w-none bg-transparent p-0 text-ink;
+    max-height: 100dvh;
+}
+
+dialog.sheet::backdrop {
+    background: rgb(15 23 42 / 0.55);
 }
 
 @media (min-width: 768px) {
-  .app-container {
-    max-width: 48rem;
-  }
+    dialog.sheet {
+        @apply m-auto;
+        max-width: var(--sheet-w, 640px);
+        max-height: calc(100dvh - 48px);
+    }
 }
 
-@media (min-width: 1024px) {
-  .app-container {
-    max-width: 64rem;
-  }
+@media (prefers-reduced-motion: no-preference) {
+    dialog.sheet[open] > div {
+        animation: sheet-in 0.18s ease-out;
+    }
 }
 
-@media (min-width: 1536px) {
-  .app-container {
-    max-width: 72rem;
-  }
+@keyframes sheet-in {
+    from {
+        transform: translateY(24px);
+        opacity: 0;
+    }
+    to {
+        transform: none;
+        opacity: 1;
+    }
 }
 
-/* Pastdan chiquvchi drawer'lar (vaul) katta ekranda butun kenglikka cho'zilmasin:
-   planshetda markazda 576px, kompyuterda pastdan ajralgan "suzuvchi" oyna.
-   Atribut selektori Tailwind'ning bottom-0 / rounded-t-* klasslaridan kuchliroq. */
-@media (min-width: 640px) {
-  [data-vaul-drawer][data-vaul-drawer-direction="bottom"] {
-    width: 100%;
-    max-width: 36rem;
-    margin-inline: auto;
-  }
+.no-scrollbar {
+    scrollbar-width: none;
 }
 
-@media (min-width: 1024px) {
-  [data-vaul-drawer][data-vaul-drawer-direction="bottom"] {
-    bottom: 24px;
-    border-radius: 28px;
-    box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.3);
-  }
-
-  /* vaul drawer ostiga fon "davomi"ni chizadi: suzuvchi oynada u kerak emas */
-  [data-vaul-drawer][data-vaul-drawer-direction="bottom"]:not([data-vaul-custom-container="true"])::after {
-    content: none;
-  }
-}
-
-/* Sichqonchali qurilmalarda bosiladigan kartalarga hover holati */
-@media (hover: hover) and (pointer: fine) {
-  a.card,
-  button.card {
-    transition: box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
-  }
-
-  a.card:hover,
-  button.card:hover {
-    box-shadow: 0 6px 20px -6px rgba(15, 23, 42, 0.12);
-  }
-
-  .dark a.card:hover,
-  .dark button.card:hover {
-    background-color: rgb(55 65 81 / 0.55);
-  }
-}
-
-/* Bottom Navigation Bar — Liquid Glass Style */
-.bottom-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px;
-  margin: 0 auto;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.08),
-    0 1px 3px rgba(0, 0, 0, 0.03);
-  width: calc(100% - 32px);
-  max-width: 400px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  -webkit-overflow-scrolling: touch;
-}
-.bottom-bar::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-.dark .bottom-bar {
-  background: rgba(30, 41, 59, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.4),
-    0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.bottom-bar-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 9999px;
-  color: #6b7280;
-  text-decoration: none;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-}
-
-.dark .bottom-bar-item {
-  color: #94a3b8;
-}
-
-.bottom-bar-item:not(.bottom-bar-item-active) {
-  flex: 1 1 0%;
-  min-width: 0;
-}
-
-.bottom-bar-item-active {
-  background: #2563eb;
-  color: #ffffff;
-  padding: 10px 14px;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
-  flex: 0 0 auto;
-}
-
-.dark .bottom-bar-item-active {
-  background: #3b82f6;
-  color: #ffffff;
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.35);
-}
-
-.bottom-bar-label {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-
-@media (max-width: 380px) {
-  .bottom-bar {
-    padding: 6px;
-    gap: 4px;
-    width: calc(100% - 20px);
-  }
-  .bottom-bar-item {
-    padding: 8px 10px;
-    gap: 4px;
-  }
-  .bottom-bar-item-active {
-    padding: 8px 11px;
-  }
-  .bottom-bar-label {
-    font-size: 11px;
-  }
-  .bottom-bar-item svg {
-    width: 16px;
-    height: 16px;
-  }
-}
-
-/* Safe area padding */
-.pb-safe {
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
-}
-
-.pt-safe {
-  padding-top: max(16px, env(safe-area-inset-top));
-}
-
-/* Animations */
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-  }
-
-  to {
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-up {
-  animation: slideUp 0.3s ease-out;
-}
-
-/* ===== MOBILE ADAPTIVE FIXES ===== */
-
-/* Fix date input overflow on mobile */
-input[type="date"] {
-  max-width: 100%;
-  box-sizing: border-box;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-/* Fix select dropdown arrow in dark mode */
-.dark select {
-  color-scheme: dark;
-}
-
-/* Prevent horizontal overflow globally.
-   clip scroll-konteyner yaratmaydi, shuning uchun sticky headerlar ishlaydi; eski brauzerlarda hidden */
-#root,
-.min-h-screen {
-  overflow-x: hidden;
-}
-
-#root {
-  width: 100%;
-}
-
-@supports (overflow: clip) {
-  #root,
-  .min-h-screen {
-    overflow-x: clip;
-  }
-}
-
-/* Fix grid overflow on very small screens */
-@media (max-width: 360px) {
-  /* Reduce font size for currency values on tiny screens */
-  .text-\[18px\] {
-    font-size: 16px;
-  }
-
-  .text-\[24px\] {
-    font-size: 20px;
-  }
-
-  .text-\[28px\] {
-    font-size: 24px;
-  }
-
-  .text-\[32px\] {
-    font-size: 26px;
-  }
-
-  /* Smaller card padding */
-  .card {
-    padding: 12px;
-  }
-
-  /* Tighter page padding */
-  .px-4 {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-}
-
-/* Ensure proper sizing on mobile  */
-@media (max-width: 480px) {
-  input[type="date"] {
-    font-size: 16px;
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-
-  /* Ensure tables and grids don't overflow */
-  .grid {
-    max-width: 100%;
-  }
-
-  /* Truncate long text in buttons */
-  .btn {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-
-/* Fix for iOS input zoom (font-size < 16px causes zoom) */
-@media screen and (max-width: 768px) {
-  select,
-  textarea {
-    font-size: 16px !important;
-  }
-}
-
-/* Scrollbar hide utility */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
 }

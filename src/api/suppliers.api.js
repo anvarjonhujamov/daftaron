@@ -1,115 +1,49 @@
-import api from './axios'
+import api, { clean, data, openFile } from './client'
 import { todayYmd, toYmd } from '../utils/date'
 
-// Ta'minotchilar API (OpenAPI v1.3.0). Faqat hujjatlashtirilgan endpointlar:
-//   /suppliers, /suppliers/{id}, /suppliers/{id}/transactions, /suppliers/{id}/debt,
-//   /suppliers/{id}/payment, /supplier-transactions, /supplier-transactions/{id}/cancel
+const unwrapList = (res) => (Array.isArray(res) ? res : (res?.data || []))
+const unwrapSupplier = (res) => res?.supplier || res?.data || res
 
-const unwrapList = (data) => (Array.isArray(data) ? data : (data?.data || []))
-const unwrapSupplier = (data) => data?.supplier || data?.data || data
-
-const cleanParams = (params = {}) => {
-    const out = {}
-    Object.entries(params).forEach(([k, v]) => {
-        if (v !== undefined && v !== null && v !== '') out[k] = v
-    })
-    return out
+// Xarid/to'lov: faktura rasmi bo'lsa multipart, aks holda JSON
+const transactionBody = (payload) => {
+    const files = payload.attachments || []
+    const fields = clean({ ...payload, attachments: undefined })
+    if (!files.length) return fields
+    const form = new FormData()
+    Object.entries(fields).forEach(([k, v]) => form.append(k, v))
+    files.forEach((f) => form.append('attachments[]', f))
+    return form
 }
 
 export const suppliersApi = {
-    getSuppliers: async (params = {}) => {
-        const res = await api.get('/suppliers', { params: cleanParams(params) })
-        const list = unwrapList(res.data)
-        return { data: list, meta: res.data?.meta || null, total: res.data?.meta?.total ?? list.length }
+    list: async (params = {}) => {
+        const res = await data(api.get('/suppliers', { params: clean(params) }))
+        return unwrapList(res)
     },
-
-    getSupplier: async (id) => {
-        const res = await api.get(`/suppliers/${id}`)
-        return unwrapSupplier(res.data)
-    },
-
-    getStatistics: async () => {
-        const res = await api.get('/suppliers/statistics')
-        return res.data
-    },
-
-    createSupplier: async (data) => {
-        const res = await api.post('/suppliers', {
-            name: data.name,
-            company_name: data.company_name || null,
-            phone: data.phone || null,
-            address: data.address || null,
-            note: data.note || null,
-            ...(data.status ? { status: data.status } : {})
-        })
-        return unwrapSupplier(res.data)
-    },
-
-    updateSupplier: async (id, data) => {
-        const res = await api.put(`/suppliers/${id}`, {
-            name: data.name,
-            company_name: data.company_name || null,
-            phone: data.phone || null,
-            address: data.address || null,
-            note: data.note || null,
-            ...(data.status ? { status: data.status } : {})
-        })
-        return unwrapSupplier(res.data)
-    },
-
-    deleteSupplier: async (id) => {
-        const res = await api.delete(`/suppliers/${id}`)
-        return res.data
-    },
-
-    // type: 'debt' | 'payment'; from/to: 'YYYY-MM-DD'
-    getTransactions: async (supplierId, { type, from, to } = {}) => {
-        const res = await api.get(`/suppliers/${supplierId}/transactions`, { params: cleanParams({ type, from, to }) })
-        return unwrapList(res.data)
-    },
-
-    // Barcha ta'minotchilar bo'yicha bitta so'rov (har yozuvda supplier: {id, name, company_name, phone})
-    getAllTransactions: async ({ type, from, to, supplier_id } = {}) => {
-        const res = await api.get('/supplier-transactions', { params: cleanParams({ type, from, to, supplier_id }) })
-        return unwrapList(res.data)
-    },
-
-    // Qarzga xarid (kreditorlik oshadi)
-    createDebt: async (supplierId, { amount, transaction_date, due_date, description }) => {
-        const res = await api.post(`/suppliers/${supplierId}/debt`, cleanParams({
-            amount,
-            transaction_date,
-            due_date,
-            description: description || undefined
-        }))
-        return res.data
-    },
-
-    // To'lov: server FIFO taqsimlaydi, ortiqcha to'lov 422 qaytaradi
-    createPayment: async (supplierId, { amount, transaction_date, description }) => {
-        const res = await api.post(`/suppliers/${supplierId}/payment`, cleanParams({
-            amount,
-            transaction_date,
-            description: description || undefined
-        }))
-        return res.data
-    },
-
-    cancelTransaction: async (transactionId) => {
-        const res = await api.patch(`/supplier-transactions/${transactionId}/cancel`)
-        return res.data
-    }
+    get: async (id) => unwrapSupplier(await data(api.get(`/suppliers/${id}`))),
+    statistics: () => data(api.get('/suppliers/statistics')),
+    // name, phone, company_name, address, note, inn, product_type, opening_balance, opening_direction
+    create: async (payload) => unwrapSupplier(await data(api.post('/suppliers', clean(payload)))),
+    update: async (id, payload) => unwrapSupplier(await data(api.put(`/suppliers/${id}`, payload))),
+    remove: (id) => data(api.delete(`/suppliers/${id}`)),
+    transactions: async (id, params = {}) =>
+        unwrapList(await data(api.get(`/suppliers/${id}/transactions`, { params: clean(params) }))),
+    allTransactions: async (params = {}) =>
+        unwrapList(await data(api.get('/supplier-transactions', { params: clean(params) }))),
+    // Xarid (biz qarzdor bo'lamiz): amount, transaction_date, due_date, payment_method, doc_number, description, attachments
+    addPurchase: (id, payload) => data(api.post(`/suppliers/${id}/debt`, transactionBody(payload))),
+    // To'lov: server FIFO taqsimlaydi, qarzdan ortig'i 422
+    addPayment: (id, payload) => data(api.post(`/suppliers/${id}/payment`, transactionBody(payload))),
+    cancelTransaction: (id) => data(api.patch(`/supplier-transactions/${id}/cancel`)),
+    openAttachment: (transactionId, index) => openFile(`/supplier-transactions/${transactionId}/attachments/${index}`)
 }
 
-/* =====================================================================
-   Eski versiyadan qolgan, faqat telefonda saqlangan xarid/to'lovlarni
-   bir marta serverga yuborish (supplier_{id}_purchases / _payments)
-   ===================================================================== */
+/* Eski versiyada faqat telefonda saqlangan xarid/to'lovlarni (supplier_{id}_purchases / _payments)
+   bir marta serverga yuborish. Yuborilmaganlari FAILED_KEY da foydalanuvchiga ko'rsatiladi. */
 
 const LEGACY_KEY_RE = /^supplier_(\d+)_(purchases|payments)$/
 const FAILED_KEY = 'supplier_unsynced_v1'
 export const SUPPLIER_MIGRATION_EVENT = 'supplier-migration-done'
-const LEGACY_CACHE_KEYS = ['suppliers_page_balances_cache_v1', 'suppliers_page_list_v1']
 
 const readJson = (key, fallback) => {
     try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback } catch { return fallback }
@@ -139,7 +73,6 @@ export const clearUnsyncedSupplierRecords = () => {
     try { localStorage.removeItem(FAILED_KEY) } catch { /* ignore */ }
 }
 
-// Qaytaradi: { synced, failed } — failed yozuvlar FAILED_KEY da foydalanuvchiga ko'rsatish uchun qoladi
 export const migrateLegacySupplierRecords = async () => {
     let keys = []
     try {
@@ -150,19 +83,18 @@ export const migrateLegacySupplierRecords = async () => {
     } catch {
         return { synced: 0, failed: 0 }
     }
-    LEGACY_CACHE_KEYS.forEach((k) => { try { localStorage.removeItem(k) } catch { /* ignore */ } })
     if (keys.length === 0) return { synced: 0, failed: 0 }
 
     // Faqat shu do'konning ta'minotchilari (boshqa akkaunt yozuvlariga tegmaymiz)
     let ownIds
     try {
-        const { data } = await suppliersApi.getSuppliers()
-        ownIds = new Map(data.map((s) => [String(s.id), s.name]))
+        const list = await suppliersApi.list()
+        ownIds = new Map(list.map((s) => [String(s.id), s.name]))
     } catch {
         return { synced: 0, failed: 0 }
     }
 
-    // Avval xaridlar (qarz), keyin to'lovlar: aks holda to'lov "ortiqcha" bo'lib qoladi
+    // Avval xaridlar, keyin to'lovlar: aks holda to'lov "ortiqcha" bo'lib qoladi
     keys = keys
         .filter((k) => ownIds.has(k.match(LEGACY_KEY_RE)[1]))
         .sort((a, b) => (a.endsWith('_purchases') === b.endsWith('_purchases') ? 0 : a.endsWith('_purchases') ? -1 : 1))
@@ -183,8 +115,8 @@ export const migrateLegacySupplierRecords = async () => {
             const description = legacyDescription(row)
             try {
                 if (amount > 0) {
-                    if (kind === 'purchases') await suppliersApi.createDebt(supplierId, { amount, transaction_date, description })
-                    else await suppliersApi.createPayment(supplierId, { amount, transaction_date, description })
+                    if (kind === 'purchases') await suppliersApi.addPurchase(supplierId, { amount, transaction_date, description })
+                    else await suppliersApi.addPayment(supplierId, { amount, transaction_date, description })
                     synced++
                 }
             } catch (err) {
@@ -213,9 +145,6 @@ export const migrateLegacySupplierRecords = async () => {
     try {
         if (failed.length) localStorage.setItem(FAILED_KEY, JSON.stringify(failed))
     } catch { /* ignore */ }
-    // Ochiq sahifalar (Ta'minotchilar) yangi qarzdorlik va yuborilmaganlar ro'yxatini qayta o'qisin
     if (synced || failed.length) window.dispatchEvent(new Event(SUPPLIER_MIGRATION_EVENT))
     return { synced, failed: failed.length }
 }
-
-export default suppliersApi

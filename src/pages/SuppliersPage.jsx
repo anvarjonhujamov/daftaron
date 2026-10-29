@@ -1,487 +1,98 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { suppliersApi, getUnsyncedSupplierRecords, clearUnsyncedSupplierRecords, SUPPLIER_MIGRATION_EVENT } from '../api/suppliers.api'
-import {
-    Building2, UserPlus, ArrowLeft, MoreVertical,
-    Trash2, Edit2, AlertCircle, Loader2, Search,
-    Phone, User, Hash, TrendingDown, TrendingUp, Package, RefreshCw
-} from 'lucide-react'
-import toast from 'react-hot-toast'
-import LoadingSpinner from '../components/LoadingSpinner'
-import SupplierModal from '../components/SupplierModal'
-import { parseCurrency, formatCurrency } from '../utils/format'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Package, Plus, Search, AlertTriangle } from 'lucide-react'
+import { suppliersApi, clearUnsyncedSupplierRecords, getUnsyncedSupplierRecords, SUPPLIER_MIGRATION_EVENT } from '../api/suppliers.api'
+import { useSession } from '../app/session'
+import { useOnChange, useResource } from '../lib/hooks'
+import { SupplierFormSheet, SupplierTxSheet } from '../features/SupplierSheets'
+import { Avatar, Card, EmptyState, ErrorState, KpiCard, List, ListSkeleton, Money, PageHeader, Row, Table } from '../ui/display'
+import { Button } from '../ui/controls'
+import { formatDate } from '../utils/date'
+import { formatNumber } from '../utils/format'
+import { formatPhone } from '../utils/phone'
+import { useEffect } from 'react'
+
+const balance = (s) => (Number(s.current_debt) > 0
+    ? <><Money value={s.current_debt} tone="supp" className="block text-[15px]" /><span className="text-xs text-ink-2">{s.is_overdue ? <span className="font-semibold text-debt">muddati o'tgan</span> : 'qarzimiz'}</span></>
+    : <span className="text-sm font-semibold text-ink-2">Hisob teng</span>)
 
 export default function SuppliersPage() {
     const navigate = useNavigate()
-    const location = useLocation()
-    const [suppliers, setSuppliers] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [isModalOpen, setIsModalOpen] = useState(false)
-    const [editingSupplier, setEditingSupplier] = useState(null)
-    const [deletingId, setDeletingId] = useState(null)
-    const [searchQuery, setSearchQuery] = useState('')
-    const [errorState, setErrorState] = useState(null)
-
-    const pickStr = (obj, keys, fallback = null) => {
-        if (!obj || typeof obj !== 'object') return fallback
-        for (const k of keys) {
-            const v = obj[k]
-            if (v !== undefined && v !== null && String(v).trim() !== '') return v
-            if (k.includes('.')) {
-                const parts = k.split('.')
-                let cur = obj
-                for (const p of parts) { cur = cur?.[p]; if (cur === undefined) break }
-                if (cur !== undefined && cur !== null && String(cur).trim() !== '') return cur
-            }
-        }
-        return fallback
-    }
-
-    const pickNum = (obj, keys, fallback = 0) => {
-        if (!obj || typeof obj !== 'object') return fallback
-        for (const k of keys) {
-            const v = obj[k]
-            if (v === undefined || v === null || v === '') continue
-            const n = Number(v)
-            if (!Number.isNaN(n)) return n
-        }
-        return fallback
-    }
-
-    const normalizeSupplier = (raw) => {
-        if (!raw) return raw
-        return {
-            ...raw,
-            id: raw.id ?? raw.supplier_id ?? raw.uuid ?? raw._id,
-            name: pickStr(raw, ['name', 'company_name', 'full_name', 'title', 'organization_name', 'supplier_name', 'partner_name']),
-            company_name: pickStr(raw, ['company_name', 'name', 'organization']),
-            phone: pickStr(raw, ['phone', 'tel', 'mobile', 'telephone', 'phone_number', 'contact_phone']),
-            contact_person: pickStr(raw, ['contact_person', 'contact', 'manager_name', 'responsible', 'representative', 'person', 'owner', 'contact_name']),
-            inn: pickStr(raw, ['inn', 'stir', 'tin', 'inn_stir', 'tin_inn', 'tax_id', 'taxpayer_id']),
-            stir: pickStr(raw, ['stir', 'inn', 'tin']),
-            address: pickStr(raw, ['address', 'location', 'region_name', 'full_address']),
-            note: pickStr(raw, ['note', 'notes', 'comment', 'description', 'extra']),
-            status: pickStr(raw, ['status', 'state', 'active_status'], 'active'),
-            balance: pickNum(raw, ['balance', 'current_debt', 'debt', 'debt_amount', 'remaining', 'remaining_amount', 'payable', 'total_debt', 'overdue_amount']),
-            current_debt: pickNum(raw, ['current_debt', 'debt', 'balance', 'debt_amount']),
-            total_bought: pickNum(raw, ['total_bought', 'purchased', 'total_purchase', 'amount_bought']),
-            total_paid: pickNum(raw, ['total_paid', 'paid', 'payment_total', 'amount_paid']),
-            created_at: raw.created_at ?? raw.createdAt ?? raw.date ?? null,
-            updated_at: raw.updated_at ?? raw.updatedAt ?? null
-        }
-    }
-
-    const getActiveTenantId = () => {
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}')
-            return user?.tenant_id || null
-        } catch {
-            return null
-        }
-    }
-
+    const session = useSession()
+    const list = useResource(() => suppliersApi.list(), [], { cacheKey: 'suppliers' })
+    const stats = useResource(() => suppliersApi.statistics(), [], { cacheKey: 'suppliers_stats' })
+    const [q, setQ] = useState('')
+    const [form, setForm] = useState(false)
+    const [purchaseFor, setPurchaseFor] = useState(null)
     const [unsynced, setUnsynced] = useState(getUnsyncedSupplierRecords)
-
+    useOnChange(() => { list.reload(); stats.reload() })
     useEffect(() => {
-        loadSuppliers()
-        const onMigrated = () => {
-            setUnsynced(getUnsyncedSupplierRecords())
-            loadSuppliers()
-        }
-        window.addEventListener(SUPPLIER_MIGRATION_EVENT, onMigrated)
-        return () => window.removeEventListener(SUPPLIER_MIGRATION_EVENT, onMigrated)
+        const h = () => { setUnsynced(getUnsyncedSupplierRecords()); list.reload(); stats.reload() }
+        window.addEventListener(SUPPLIER_MIGRATION_EVENT, h)
+        return () => window.removeEventListener(SUPPLIER_MIGRATION_EVENT, h)
     }, [])
 
-    // Qarzdorlik har bir ta'minotchida serverdan keladi: current_debt, total_bought, total_paid
-    const loadSuppliers = async () => {
-        setLoading(true)
-        setErrorState(null)
-        try {
-            const response = await suppliersApi.getSuppliers()
-            const raw = Array.isArray(response) ? response : (response?.data || [])
-            setSuppliers(raw.map((r) => {
-                const s = normalizeSupplier(r)
-                return {
-                    ...s,
-                    computed_total_bought: Number(r.total_bought) || 0,
-                    computed_total_paid: Number(r.total_paid) || 0,
-                    computed_balance: Number(r.current_debt) || 0
-                }
-            }))
-        } catch (err) {
-            console.error('Failed to load suppliers:', err)
-            const status = err.response?.status || 0
-            const msg = err.response?.data?.message || err.message || "Ta'minotchilar yuklanmadi"
-            setErrorState({ code: status, message: msg })
-            setSuppliers([])
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const pickSupplierField = (s, fields) => {
-        if (!s) return null
-        for (const k of fields) {
-            const v = s[k]
-            if (typeof v === 'string' && v.length > 0) return v
-            if (typeof v === 'number' && !isNaN(v)) return String(v)
-            if (v && typeof v === 'object') {
-                for (const nk of fields) {
-                    const nv = v[nk]
-                    if (typeof nv === 'string' && nv.length > 0) return nv
-                }
-            }
-        }
-        return null
-    }
-
-    const getSupplierBalance = (s) => {
-        if (!s) return 0
-        if (s.computed_balance !== undefined && s.computed_balance !== null && !isNaN(Number(s.computed_balance))) {
-            return Number(s.computed_balance)
-        }
-        const raw = pickSupplierField(s, ['balance', 'total_balance', 'current_balance', 'debt', 'debt_amount', 'amount_due', 'remaining_amount'])
-        const num = Number(raw)
-        return isNaN(num) ? 0 : num
-    }
-
-    const stats = useMemo(() => {
-        const total = suppliers.length
-        let totalOurDebt = 0    // computed_balance > 0 → biz ularga to'laymiz (bizda qarz bor) → label: "Qarz" (qizil)
-        let totalTheyOweUs = 0  // computed_balance < 0 → ular bizga berishadi (ularda qarz bor bizda haq) → label: "Bizga qarz" (yashil)
-        suppliers.forEach(s => {
-            const bal = getSupplierBalance(s)
-            if (bal > 0) totalOurDebt += bal
-            if (bal < 0) totalTheyOweUs += Math.abs(bal)
-        })
-        return { total, totalDebt: totalOurDebt, totalCredit: totalTheyOweUs }
-    }, [suppliers])
-
-    const filteredSuppliers = useMemo(() => {
-        const q = searchQuery.trim().toLowerCase()
-        if (!q) return suppliers
-        return suppliers.filter(s => {
-            const haystack = [
-                s.name, s.phone, s.contact_person, s.contactName,
-                s.address, s.inn, s.stir, s.note
-            ].filter(Boolean).join(' ').toLowerCase()
-            return haystack.includes(q)
-        })
-    }, [suppliers, searchQuery])
-
-    const handleSaveSupplier = async (formData) => {
-        try {
-            if (editingSupplier) {
-                const updated = await suppliersApi.updateSupplier(editingSupplier.id, formData)
-                const normalized = normalizeSupplier({ ...editingSupplier, ...updated, ...formData, id: editingSupplier.id })
-                setSuppliers(prev => prev.map(s => s.id === editingSupplier.id ? normalized : s))
-                toast.success("Ta'minotchi muvaffaqiyatli tahrirlandi")
-            } else {
-                const tenantId = getActiveTenantId()
-                const payload = {
-                    ...formData,
-                    ...(tenantId ? { tenant_id: tenantId } : {})
-                }
-                const created = await suppliersApi.createSupplier(payload)
-                const normalized = normalizeSupplier({ ...payload, ...created })
-                if (normalized && normalized.id) {
-                    setSuppliers(prev => [normalized, ...(prev || [])])
-                }
-                toast.success("Yangi ta'minotchi muvaffaqiyatli qo'shildi")
-            }
-            try { await loadSuppliers() } catch {}
-        } catch (err) {
-            console.error('Failed to save supplier:', err)
-            throw err
-        }
-    }
-
-    const handleBack = () => {
-        const from = location.state?.from
-        if (from) {
-            navigate(from)
-            return
-        }
-        if (window.history.length > 1) {
-            navigate(-1)
-            return
-        }
-        navigate('/')
-    }
-
-    const handleDeleteSupplier = async (id) => {
-        if (!window.confirm("Haqiqatan ham ushbu ta'minotchini o'chirib tashlamoqchimisiz?")) return
-
-        setDeletingId(id)
-        try {
-            await suppliersApi.deleteSupplier(id)
-            toast.success("Ta'minotchi o'chirildi")
-            setSuppliers(prev => prev.filter(s => s.id !== id))
-        } catch (err) {
-            console.error('Failed to delete supplier:', err)
-            throw err
-        } finally {
-            setDeletingId(null)
-        }
-    }
-
-    if (loading && suppliers.length === 0) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <LoadingSpinner />
-            </div>
-        )
-    }
+    const canManage = session.can('suppliers.manage') && !session.readOnly
+    const s = stats.data || {}
+    const rows = useMemo(() => {
+        const term = q.trim().toLowerCase()
+        const digits = term.replace(/\D/g, '')
+        return (list.data || [])
+            .filter((x) => !term || x.name?.toLowerCase().includes(term) || (digits && (String(x.phone || '').includes(digits) || String(x.inn || '').includes(digits))))
+            .sort((a, b) => Number(b.current_debt || 0) - Number(a.current_debt || 0))
+    }, [list.data, q])
 
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-8 transition-colors">
-            <div className="sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-700 md:static md:bg-transparent md:dark:bg-transparent md:backdrop-blur-none md:border-0">
-                <div className="px-4 md:px-6 lg:px-8 h-[60px] md:h-auto md:pt-6 lg:pt-8 md:pb-2 flex items-center justify-between gap-3">
-                    <button
-                        onClick={handleBack}
-                        className="w-10 h-10 -ml-2 rounded-xl flex md:hidden items-center justify-center active:bg-gray-100 dark:active:bg-gray-700 transition-colors"
-                    >
-                        <ArrowLeft size={22} className="text-gray-700 dark:text-gray-300" />
-                    </button>
-                    <h1 className="flex-1 text-[18px] md:text-[28px] font-extrabold md:font-bold text-gray-900 dark:text-white truncate">
-                        Ta'minotchi
-                    </h1>
-                    <button
-                        onClick={() => {
-                            setEditingSupplier(null)
-                            setIsModalOpen(true)
-                        }}
-                        className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl flex items-center justify-center active:scale-90 transition-transform shadow-lg shadow-orange-500/20"
-                    >
-                        <UserPlus size={20} />
-                    </button>
-                </div>
+        <div className="page">
+            <PageHeader back title="Ta'minotchilar" actions={canManage && <Button icon={Plus} onClick={() => setForm(true)}>Qo'shish</Button>} />
+
+            {unsynced.length > 0 && (
+                <Card className="mb-4 border-[1.5px] border-warn p-4">
+                    <p className="flex items-center gap-2 font-bold text-warn"><AlertTriangle size={18} aria-hidden /> {unsynced.length} ta eski yozuv serverga yuborilmadi</p>
+                    <ul className="mt-2 space-y-1 text-sm text-ink-2">
+                        {unsynced.slice(0, 5).map((r, i) => <li key={i}>{r.supplier_name || `#${r.supplier_id}`}: {r.kind === 'debt' ? 'xarid' : "to'lov"} {formatNumber(r.amount)} ({formatDate(r.transaction_date)}) — {r.reason}</li>)}
+                    </ul>
+                    <Button size="sm" variant="secondary" className="mt-2" onClick={() => { clearUnsyncedSupplierRecords(); setUnsynced([]) }}>Ko'rdim, yashirish</Button>
+                </Card>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 md:gap-4 lg:grid-cols-4">
+                <KpiCard label="Bizning qarzimiz" value={s.total_debt ?? null} tone="supp" hint={`${formatNumber(s.in_debt_suppliers ?? 0)} ta ta'minotchiga`} />
+                <KpiCard label="Muddati o'tgan" value={s.overdue_debt ?? null} tone="debt" hint={`${formatNumber(s.overdue_suppliers ?? 0)} ta`} />
+                <KpiCard label="7 kunda to'lash kerak" value={s.due_soon_amount ?? null} hint={s.due_soon_count !== undefined ? `${s.due_soon_count} ta` : undefined} />
+                <KpiCard label="Jami xarid" value={s.total_bought ?? null} hint={`To'langan: ${formatNumber(s.total_paid)}`} />
             </div>
 
-            <div className="p-4 md:px-6 lg:px-8 flex-1 space-y-4">
-                {unsynced.length > 0 && (
-                    <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-900/15 dark:border-amber-800/40 text-amber-800 dark:text-amber-200">
-                        <p className="font-bold text-[14px] mb-1">{unsynced.length} ta yozuv serverga yuborilmadi</p>
-                        <p className="text-[12px] opacity-80 mb-2">Ular eski versiyada faqat shu telefonda saqlangan edi. Kerak bo'lsa qo'lda qayta kiriting.</p>
-                        <ul className="space-y-1.5 mb-3">
-                            {unsynced.map((r, i) => (
-                                <li key={i} className="text-[12px] leading-snug">
-                                    <b>{r.supplier_name || `#${r.supplier_id}`}</b> · {r.kind === 'debt' ? 'Xarid' : "To'lov"} · {formatCurrency(r.amount)} so'm · {r.transaction_date}
-                                    {r.description ? ` · ${r.description}` : ''}
-                                    <span className="block opacity-70">{r.reason}</span>
-                                </li>
-                            ))}
-                        </ul>
-                        <button
-                            type="button"
-                            onClick={() => { clearUnsyncedSupplierRecords(); setUnsynced([]) }}
-                            className="px-3 py-1.5 rounded-xl bg-amber-500 text-white text-[12px] font-bold"
-                        >
-                            Tushunarli, ro'yxatni yopish
-                        </button>
-                    </div>
-                )}
-                <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 p-6 rounded-[24px] text-white shadow-xl shadow-orange-500/20 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
-                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-amber-400/20 rounded-full -ml-12 -mb-12 blur-2xl" />
-                    
-                    <div className="relative z-10">
-                        <div className="flex justify-between items-start mb-5">
-                            <div>
-                                <h2 className="text-[20px] font-bold mb-1">Ta'minotchi boshqaruvi</h2>
-                                <p className="text-[13px] text-white/80">
-                                    Hamkorlaringiz va ular bilan qarzdorlikni kuzating
-                                </p>
-                            </div>
-                            <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md">
-                                <Package size={24} className="text-white" />
-                            </div>
-                        </div>
-                        
-                        <div className={`grid gap-3 ${
-                            (stats.totalDebt > 0 && stats.totalCredit > 0) ? 'grid-cols-3'
-                                : (stats.totalDebt > 0 || stats.totalCredit > 0) ? 'grid-cols-2'
-                                    : 'grid-cols-1'
-                        }`}>
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
-                                <p className="text-[12px] text-white/70 uppercase font-bold tracking-wider mb-1">Jami</p>
-                                <p className="text-[24px] font-black leading-none">{stats.total}</p>
-                            </div>
-                            {stats.totalDebt > 0 && (
-                                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
-                                    <div className="flex items-center gap-1 mb-1">
-                                        <TrendingUp size={10} className="text-red-200" />
-                                        <p className="text-[11px] text-white/70 uppercase font-bold tracking-wider">Qarz</p>
-                                    </div>
-                                    <p className="text-[15px] font-black leading-none truncate text-red-50 dark:text-red-100">
-                                        {formatCurrency(stats.totalDebt)}
-                                    </p>
-                                </div>
-                            )}
-                            {stats.totalCredit > 0 && (
-                                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3">
-                                    <div className="flex items-center gap-1 mb-1">
-                                        <TrendingDown size={10} className="text-green-200" />
-                                        <p className="text-[11px] text-white/70 uppercase font-bold tracking-wider">Bizga qarz</p>
-                                    </div>
-                                    <p className="text-[15px] font-black leading-none truncate text-green-50 dark:text-green-100">
-                                        {formatCurrency(stats.totalCredit)}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+            <label className="mt-4 flex h-12 items-center gap-2.5 rounded-ctl border-[1.5px] border-line-2 bg-card px-3.5 focus-within:border-brand">
+                <Search size={20} className="text-ink-3" aria-hidden />
+                <input data-search value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nomi, telefon yoki INN" aria-label="Qidirish" className="w-full bg-transparent text-base outline-none" />
+            </label>
 
-                <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors z-10">
-                        <Search size={18} />
-                    </div>
-                    <input
-                        type="text"
-                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 text-gray-900 dark:text-white placeholder-gray-400 outline-none transition-all text-[14px]"
-                        placeholder="Nom, telefon, INN orqali qidirish..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-
-                {filteredSuppliers.length === 0 && !loading ? (
-                    <div className="flex flex-col items-center justify-center pt-16 px-4 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-[32px] flex items-center justify-center mb-6 border-4 border-white dark:border-gray-700 shadow-sm">
-                            <Building2 size={40} className="text-gray-400" />
-                        </div>
-                        <h3 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">
-                            {searchQuery ? "Hech narsa topilmadi" : "Hozircha ta'minotchilar yo'q"}
-                        </h3>
-                        <p className="text-[14px] text-gray-500 dark:text-gray-400 max-w-[280px] mb-8 leading-relaxed">
-                            {searchQuery
-                                ? "Boshqa kalit so'z bilan qidirib ko'ring."
-                                : "Siz hali birorta ham hamkor qo'shmagansiz. Yangi ta'minotchi qo'shib biznesingizni kengaytiring."
-                            }
-                        </p>
-                        {!searchQuery && (
-                            <button 
-                                onClick={() => setIsModalOpen(true)}
-                                className="px-8 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-[15px] shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
-                            >
-                                Birinchi ta'minotchini qo'shish
-                            </button>
-                        )}
-                    </div>
+            <div className="mt-3">
+                {list.error && !list.data ? <ErrorState onRetry={list.reload} /> : list.loading && !list.data ? <ListSkeleton /> : rows.length === 0 ? (
+                    <EmptyState icon={Package} title={q ? 'Topilmadi' : "Hali ta'minotchi yo'q"} text={!q && "Mol oladigan ta'minotchilarni qo'shing — kimga qancha qarzingiz borligi ko'rinib turadi."}
+                        action={canManage && !q && <Button icon={Plus} onClick={() => setForm(true)}>Ta'minotchi qo'shish</Button>} />
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {filteredSuppliers.map((s, index) => {
-                            const balance = getSupplierBalance(s)
-                            const hasDebt = balance > 0
-                            const hasCredit = balance < 0
-                            const absBalance = Math.abs(balance)
-                            const phone = pickSupplierField(s, ['phone', 'telefon', 'tel', 'mobile'])
-                            const contactPerson = pickSupplierField(s, ['contact_person', 'contactName', 'contact_name', 'manager', 'fio'])
-                            const address = pickSupplierField(s, ['address', 'manzil', 'location'])
-                            const inn = pickSupplierField(s, ['inn', 'stir', 'tin'])
-                            const note = pickSupplierField(s, ['note', 'comment', 'izoh', 'description'])
-
-                            return (
-                                <div 
-                                    key={s.id} 
-                                    onClick={() => navigate(`/suppliers/${s.id}`)}
-                                    className="min-w-0 bg-white dark:bg-gray-800 p-5 rounded-[24px] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all animate-in fade-in slide-in-from-bottom-4 cursor-pointer active:scale-[0.99]"
-                                    style={{ animationDelay: `${index * 40}ms` }}
-                                >
-                                    <div className="flex items-start gap-4 justify-between mb-4">
-                                        <div className="flex items-start gap-4 min-w-0 flex-1">
-                                            <div className="w-14 h-14 bg-gradient-to-tr from-orange-100 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center text-xl font-black shadow-inner shrink-0">
-                                                <Building2 size={22} />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-[16px] font-bold text-gray-900 dark:text-white leading-tight mb-2 truncate">{s.name}</p>
-                                                
-                                                <div className="flex flex-col gap-1.5">
-                                                    {phone && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Phone size={12} className="text-gray-400 shrink-0" />
-                                                            <p className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">{phone}</p>
-                                                        </div>
-                                                    )}
-                                                    {contactPerson && (
-                                                        <div className="flex items-center gap-2">
-                                                            <User size={12} className="text-gray-400 shrink-0" />
-                                                            <p className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">{contactPerson}</p>
-                                                        </div>
-                                                    )}
-                                                    {inn && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Hash size={12} className="text-gray-400 shrink-0" />
-                                                            <p className="text-[12px] text-gray-400 dark:text-gray-500 font-mono">INN: {inn}</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-center gap-1 shrink-0">
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    setEditingSupplier(s)
-                                                    setIsModalOpen(true)
-                                                }}
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
-                                            >
-                                                <Edit2 size={18} />
-                                            </button>
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    handleDeleteSupplier(s.id)
-                                                }}
-                                                disabled={deletingId === s.id}
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                            >
-                                                {deletingId === s.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className={`rounded-2xl p-3 ${balance !== 0 ? (hasDebt ? 'bg-red-50/70 dark:bg-red-900/10' : hasCredit ? 'bg-emerald-50/70 dark:bg-emerald-900/10' : 'bg-gray-50/50 dark:bg-gray-700/30') : 'bg-gray-50/50 dark:bg-gray-700/30'}`}>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                                {hasDebt
-                                                    ? <TrendingUp size={13} className="text-red-500" />
-                                                    : hasCredit
-                                                        ? <TrendingDown size={13} className="text-emerald-500" />
-                                                        : <Package size={13} className="text-gray-400" />
-                                                }
-                                                <span className={`text-[12px] font-bold uppercase tracking-wider ${
-                                                    hasDebt ? 'text-red-500' : hasCredit ? 'text-emerald-500' : 'text-gray-400'
-                                                }`}>
-                                                    {hasDebt ? "QARZ" : hasCredit ? "BIZGA QARZ" : "BALANS NOL"}
-                                                </span>
-                                            </div>
-                                            <span className={`text-[15px] font-black ${
-                                                hasDebt ? 'text-red-600 dark:text-red-400' : hasCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-300'
-                                            }`}>
-                                                {absBalance === 0 ? '0' : `${formatCurrency(absBalance)} so'm`}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
+                    <>
+                        <List className="lg:hidden">
+                            {rows.map((x) => (
+                                <Row key={x.id} to={`/suppliers/${x.id}`} left={<Avatar name={x.name} />} title={x.name}
+                                    subtitle={[formatPhone(x.phone), x.product_type].filter((v) => v && v !== '—').join(' · ')} right={balance(x)} />
+                            ))}
+                        </List>
+                        <Table className="hidden lg:block" rows={rows} onRowClick={(x) => navigate(`/suppliers/${x.id}`)} columns={[
+                            { key: 'name', label: "Ta'minotchi", render: (x) => <span className="flex items-center gap-3 font-bold"><Avatar name={x.name} size={32} />{x.name}</span> },
+                            { key: 'phone', label: 'Telefon', render: (x) => <span className="text-ink-2">{formatPhone(x.phone)}</span> },
+                            { key: 'inn', label: 'INN', render: (x) => <span className="text-ink-2">{x.inn || '—'}</span> },
+                            { key: 'product', label: 'Mahsulot', render: (x) => <span className="text-ink-2">{x.product_type || '—'}</span> },
+                            { key: 'debt', label: "Qarzimiz, so'm", align: 'right', render: balance }
+                        ]} />
+                    </>
                 )}
             </div>
 
-            <SupplierModal 
-                isOpen={isModalOpen}
-                onClose={() => {
-                    setIsModalOpen(false)
-                    setEditingSupplier(null)
-                }}
-                onSave={handleSaveSupplier}
-                supplier={editingSupplier}
-            />
+            <SupplierFormSheet open={form} onClose={() => setForm(false)} onSaved={(saved, andPurchase) => andPurchase ? setPurchaseFor(saved) : navigate(`/suppliers/${saved.id}`)} />
+            <SupplierTxSheet open={!!purchaseFor} supplier={purchaseFor} onClose={() => setPurchaseFor(null)} />
         </div>
     )
 }

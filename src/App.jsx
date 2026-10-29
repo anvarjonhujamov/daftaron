@@ -1,16 +1,15 @@
 import { useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import Layout from './components/Layout'
-import PrivateRoute from './components/PrivateRoute'
-import ScrollToTop from './components/ScrollToTop'
-import { initTelegramWebApp } from './utils/telegram'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { SubscriptionProvider } from './contexts/SubscriptionContext'
-import { LoginSkeleton } from './components/Skeleton'
+import { Loader2 } from 'lucide-react'
+import Layout from './app/Layout'
+import { SessionProvider, useSession } from './app/session'
+import { getToken, getUser } from './lib/session'
+import { initTelegramWebApp } from './utils/telegram'
 
-// Login va Dashboard asosiy bundle'da, qolgan sahifalar kerak bo'lganda yuklanadi
+// Kirish va bosh sahifa asosiy bundle'da, qolganlari kerak bo'lganda yuklanadi
 import LoginPage from './pages/LoginPage'
-import DashboardPage from './pages/DashboardPage'
+import HomePage from './pages/HomePage'
 
 // Yangi deploydan keyin eski chunk topilmasa sahifani bir marta yangilaymiz
 const lazyPage = (factory) => lazy(() => factory().catch((err) => {
@@ -22,33 +21,48 @@ const lazyPage = (factory) => lazy(() => factory().catch((err) => {
     throw err
 }))
 
-// Auth pages
-const RegisterPage = lazyPage(() => import('./pages/RegisterPage'))
 const ForgotPasswordPage = lazyPage(() => import('./pages/ForgotPasswordPage'))
-const TermsPage = lazyPage(() => import('./pages/TermsPage'))
+const TelegramLoginPage = lazyPage(() => import('./pages/TelegramLoginPage'))
+const OnboardingPage = lazyPage(() => import('./pages/OnboardingPage'))
+const InstallPage = lazyPage(() => import('./pages/InstallPage'))
+const LegalPage = lazyPage(() => import('./pages/LegalPage'))
 const DeleteAccountPage = lazyPage(() => import('./pages/DeleteAccountPage'))
-
-// App pages
 const CustomersPage = lazyPage(() => import('./pages/CustomersPage'))
-const CustomerDetailPage = lazyPage(() => import('./pages/CustomerDetailPage'))
+const CustomerPage = lazyPage(() => import('./pages/CustomerPage'))
 const CustomerFormPage = lazyPage(() => import('./pages/CustomerFormPage'))
-const DebtsPage = lazyPage(() => import('./pages/DebtsPage'))
-const DebtDetailPage = lazyPage(() => import('./pages/DebtDetailPage'))
-const HistoryPage = lazyPage(() => import('./pages/HistoryPage'))
-const ProfilePage = lazyPage(() => import('./pages/ProfilePage'))
-const SubscriptionPage = lazyPage(() => import('./pages/SubscriptionPage'))
+const DebtPage = lazyPage(() => import('./pages/DebtPage'))
 const OverduePage = lazyPage(() => import('./pages/OverduePage'))
-const NotificationsPage = lazyPage(() => import('./pages/NotificationsPage'))
-const PrivacyPolicyPage = lazyPage(() => import('./pages/PrivacyPolicyPage'))
-const LegalManagementPage = lazyPage(() => import('./pages/LegalManagementPage'))
-const ShopsPage = lazyPage(() => import('./pages/ShopsPage'))
-const StaffPage = lazyPage(() => import('./pages/StaffPage'))
+const HistoryPage = lazyPage(() => import('./pages/HistoryPage'))
+const ReportsPage = lazyPage(() => import('./pages/ReportsPage'))
 const SuppliersPage = lazyPage(() => import('./pages/SuppliersPage'))
-const SupplierDetailPage = lazyPage(() => import('./pages/SupplierDetailPage'))
+const SupplierPage = lazyPage(() => import('./pages/SupplierPage'))
+const StaffPage = lazyPage(() => import('./pages/StaffPage'))
+const ShopsPage = lazyPage(() => import('./pages/ShopsPage'))
+const NotificationsPage = lazyPage(() => import('./pages/NotificationsPage'))
+const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
+const SubscriptionPage = lazyPage(() => import('./pages/SubscriptionPage'))
 const SupportPage = lazyPage(() => import('./pages/SupportPage'))
+const MorePage = lazyPage(() => import('./pages/MorePage'))
+
+const Spinner = () => (
+    <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="animate-spin text-ink-3" aria-label="Yuklanmoqda" />
+    </div>
+)
+
+// Token bo'lmasa — kirish; do'kon hali yaratilmagan bo'lsa — onboarding
+function Private({ children, onboarding }) {
+    const location = useLocation()
+    const session = useSession()
+    if (!getToken()) return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />
+    if (session.loading && !session.user) return <Spinner />
+    const user = session.user || getUser()
+    const hasShop = !!user?.tenant_id || (session.tenants || []).length > 0
+    if (!onboarding && !hasShop) return <Navigate to="/onboarding" replace />
+    return children
+}
 
 export default function App() {
-
     useEffect(() => {
         // SDK async yuklanadi: hali tayyor bo'lmasa, yuklangach ishga tushiramiz
         if (initTelegramWebApp()) return
@@ -57,62 +71,56 @@ export default function App() {
     }, [])
 
     return (
-        <SubscriptionProvider>
+        <SessionProvider>
             <Toaster
                 position="top-center"
-                toastOptions={{
-                    duration: 4000,
-                    style: {
-                        borderRadius: '16px',
-                        background: '#333',
-                        color: '#fff',
-                        fontSize: '14px'
-                    },
-                }}
+                toastOptions={{ duration: 4000, style: { borderRadius: '14px', background: '#0F172A', color: '#fff', fontSize: '15px' } }}
             />
-            <ScrollToTop />
-            <Suspense fallback={<LoginSkeleton />}>
+            <Suspense fallback={<Spinner />}>
                 <Routes>
-                    {/* Public routes */}
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                    <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/telegram/web-login" element={<TelegramLoginPage />} />
+                    <Route path="/install" element={<InstallPage />} />
+                    <Route path="/legal/:type" element={<LegalPage />} />
                     <Route path="/delete-account" element={<DeleteAccountPage />} />
+                    <Route path="/register" element={<Navigate to="/login" replace />} />
+                    <Route path="/terms" element={<Navigate to="/legal/offer" replace />} />
+                    <Route path="/privacy-policy" element={<Navigate to="/legal/privacy" replace />} />
 
-                    {/* Protected routes */}
-                    <Route
-                        element={
-                            <PrivateRoute>
-                                <Layout />
-                            </PrivateRoute>
-                        }
-                    >
-                        <Route path="/" element={<DashboardPage />} />
-                        <Route path="/customers" element={<CustomersPage />} />
+                    <Route path="/onboarding" element={<Private onboarding><OnboardingPage /></Private>} />
+
+                    <Route element={<Private><Layout /></Private>}>
+                        <Route path="/" element={<HomePage />} />
                         <Route path="/customers/new" element={<CustomerFormPage />} />
                         <Route path="/customers/:id/edit" element={<CustomerFormPage />} />
-                        <Route path="/customers/:id" element={<CustomerDetailPage />} />
-                        <Route path="/debts" element={<DebtsPage />} />
-                        <Route path="/debts/:id" element={<DebtDetailPage />} />
-                        <Route path="/payments" element={<HistoryPage />} />
-                        <Route path="/overdue" element={<Navigate to="/customers?filter=overdue" replace />} />
-                        <Route path="/notifications" element={<NotificationsPage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
-                        <Route path="/subscription" element={<SubscriptionPage />} />
-                        <Route path="/shops" element={<ShopsPage />} />
-                        <Route path="/staff" element={<StaffPage />} />
+                        <Route path="/customers" element={<CustomersPage />}>
+                            <Route path=":id" element={<CustomerPage />} />
+                        </Route>
+                        <Route path="/debts/:id" element={<DebtPage />} />
+                        <Route path="/overdue" element={<OverduePage />} />
+                        <Route path="/history" element={<HistoryPage />} />
+                        <Route path="/reports" element={<ReportsPage />} />
                         <Route path="/suppliers" element={<SuppliersPage />} />
-                        <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
+                        <Route path="/suppliers/:id" element={<SupplierPage />} />
+                        <Route path="/staff" element={<StaffPage />} />
+                        <Route path="/shops" element={<ShopsPage />} />
+                        <Route path="/notifications" element={<NotificationsPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/settings/:section" element={<SettingsPage />} />
+                        <Route path="/subscription" element={<SubscriptionPage />} />
                         <Route path="/support" element={<SupportPage />} />
-                        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-                        <Route path="/admin/legal" element={<LegalManagementPage />} />
+                        <Route path="/more" element={<MorePage />} />
+                        {/* Eski manzillar (xatcho'plar, bildirishnomalardagi havolalar) */}
+                        <Route path="/debts" element={<Navigate to="/history" replace />} />
+                        <Route path="/payments" element={<Navigate to="/history" replace />} />
+                        <Route path="/profile" element={<Navigate to="/settings" replace />} />
+                        <Route path="/admin/legal" element={<Navigate to="/settings/documents" replace />} />
                     </Route>
 
-                    {/* 404 */}
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </Suspense>
-        </SubscriptionProvider>
+        </SessionProvider>
     )
 }

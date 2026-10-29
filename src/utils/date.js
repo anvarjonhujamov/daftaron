@@ -49,3 +49,41 @@ export const diffDaysYmd = (a, b) => {
     }
     return Math.round((toUtc(a) - toUtc(b)) / 86400000)
 }
+
+// "YYYY-MM-DD" yoki ISO -> "dd.mm.yyyy"
+export const formatDate = (value) => {
+    const ymd = toYmd(value)
+    if (!ymd) return '—'
+    const [y, m, d] = ymd.split('-')
+    return `${d}.${m}.${y}`
+}
+
+// ISO vaqt -> "HH:MM" (Toshkent)
+export const formatTime = (value) => {
+    if (!value) return ''
+    const dt = new Date(value)
+    if (isNaN(dt.getTime())) return ''
+    const shifted = new Date(dt.getTime() + TASHKENT_OFFSET_MS)
+    return `${String(shifted.getUTCHours()).padStart(2, '0')}:${String(shifted.getUTCMinutes()).padStart(2, '0')}`
+}
+
+export const formatDateTime = (value) => {
+    const t = formatTime(value)
+    return t ? `${formatDate(value)}, ${t}` : formatDate(value)
+}
+
+// Qaytarish sanasigacha: "Bugun", "3 kun qoldi", "5 kun o'tdi" va holati (rang uchun)
+export const dueInfo = (dueYmd) => {
+    if (!dueYmd) return null
+    const days = diffDaysYmd(toYmd(dueYmd), todayYmd())
+    if (days === 0) return { days, tone: 'warn', label: 'Bugun' }
+    if (days > 0) return { days, tone: days <= 3 ? 'warn' : 'muted', label: `${days} kun qoldi` }
+    return { days, tone: 'danger', label: `${-days} kun o'tdi` }
+}
+
+// Kun sarlavhasi: "BUGUN · 29.10.2026", "KECHA · ..."
+export const dayTitle = (ymd) => {
+    const diff = diffDaysYmd(todayYmd(), toYmd(ymd))
+    const label = diff === 0 ? 'Bugun' : diff === 1 ? 'Kecha' : null
+    return label ? `${label} · ${formatDate(ymd)}` : formatDate(ymd)
+}

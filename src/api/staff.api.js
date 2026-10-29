@@ -1,28 +1,13 @@
-import axios from './axios'
+import api, { clean, data } from './client'
 
 export const staffApi = {
-    getStaff: async (params = {}) => {
-        const response = await axios.get('/workers', { params })
-        return response.data
-    },
-
-    getStaffById: async (id) => {
-        const response = await axios.get(`/workers/${id}`)
-        return response.data
-    },
-
-    createStaff: async (data) => {
-        const response = await axios.post('/workers', data)
-        return response.data
-    },
-
-    updateStaff: async (id, data) => {
-        const response = await axios.put(`/workers/${id}`, data)
-        return response.data
-    },
-
-    deleteStaff: async (id) => {
-        const response = await axios.delete(`/workers/${id}`)
-        return response.data
-    }
+    permissions: () => data(api.get('/staff/permissions')),
+    list: (params = {}) => data(api.get('/staff', { params: clean(params) })),
+    get: (id) => data(api.get(`/staff/${id}`)),
+    // 402 plan_limit — ta'rifdagi xodimlar soni tugagan
+    invite: (payload) => data(api.post('/staff', payload)),
+    update: (id, payload) => data(api.put(`/staff/${id}`, payload)),
+    suspend: (id) => data(api.post(`/staff/${id}/suspend`)),
+    activate: (id) => data(api.post(`/staff/${id}/activate`)),
+    remove: (id) => data(api.delete(`/staff/${id}`))
 }

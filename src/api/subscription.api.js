@@ -1,39 +1,14 @@
-import api from './axios'
+import api, { clean, data } from './client'
 
-/**
- * Subscription API — `/subscription/status` and `/subscription/choose/{plan}`
- * Matches TZ.md & UserFlow-Mobile.md.
- */
 export const subscriptionApi = {
-    /**
-     * GET /subscription/status
-     * Returns: { balance, trial_info, plans, transactions }
-     */
-    getStatus: async () => {
-        const response = await api.get('/subscription/status')
-        return response.data
-    },
-
-    choosePlan: async (planId, promoCode = null) => {
-        const body = promoCode ? { promo_code: promoCode } : {}
-        const response = await api.post(`/subscription/choose/${planId}`, body)
-        return response.data
-    },
-
-    checkPromoCode: async (code) => {
-        const response = await api.post('/promo-codes/check', { code })
-        return response.data
-    },
-
-    /**
-     * POST /subscription/buy-extra/{packageId}
-     * Returns: { message, balance, ... }
-     */
-    buyExtraPackage: async (packageId) => {
-        const response = await api.post(`/subscription/buy-extra/${packageId}`)
-        return response.data
-    }
+    // { balance, trial_info, usage, plans, extra_packages, ... }
+    status: () => data(api.get('/subscription/status')),
+    // months: 12 — yillik (10 oy narxi)
+    choose: (planId, { months, promo_code } = {}) =>
+        data(api.post(`/subscription/choose/${planId}`, clean({ months, promo_code }))),
+    buyExtra: (packageId) => data(api.post(`/subscription/buy-extra/${packageId}`)),
+    checkPromo: (code) => data(api.post('/promo-codes/check', { code })),
+    setAutoRenew: (enabled) => data(api.put('/subscription/auto-renew', { enabled })),
+    transactions: (params = {}) =>
+        data(api.get('/subscription/transactions', { params: clean({ page: 1, per_page: 20, ...params }) }))
 }
-
-export default subscriptionApi
-
