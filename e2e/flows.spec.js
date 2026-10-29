@@ -23,6 +23,34 @@ test('22.1 Kirish: SMS-kod bilan (yangi raqam → onboarding)', async ({ page })
     expect(calls.find((c) => c.path === '/auth/otp/verify').body).toMatchObject({ phone: '+998901234567', code: '4821' })
 })
 
+test('22.1 Kirish: Telegram bot orqali (tg_login kodi → token, manzildan olib tashlanadi)', async ({ page }) => {
+    const { calls } = await mockApi(page, {
+        loggedIn: false,
+        overrides: {
+            'POST /auth/telegram/exchange': (route, { f }) => route.fulfill({ json: { token: '6|tg', user: f.user, is_new_user: false, onboarding: { step: 'done', completed: true } } })
+        }
+    })
+    await page.goto('/login?tg_login=ABC123')
+    await expect(page).toHaveURL(/\/$/)
+    expect(calls.find((c) => c.path === '/auth/telegram/exchange').body).toMatchObject({ code: 'ABC123' })
+})
+
+test('22.1 Kirish: Telegram havolasi eskirgan (410) — qayta kirish tugmasi', async ({ page }) => {
+    const { calls } = await mockApi(page, {
+        loggedIn: false,
+        overrides: {
+            'POST /auth/telegram/exchange': (route) => route.fulfill({ status: 410, json: { message: 'Kirish havolasi eskirgan', reason: 'telegram_login_expired' } }),
+            'POST /auth/telegram/start': (route) => route.fulfill({ json: { ticket: 't1', bot_url: '/install', expires_in: 900 } })
+        }
+    })
+    await page.goto('/login?tg_login=OLD')
+    await expect(page.getByRole('alert')).toContainText('eskirgan')
+    expect(page.url()).not.toContain('tg_login')
+    await page.getByRole('button', { name: 'Telegram orqali qayta kirish' }).click()
+    await expect(page).toHaveURL(/\/install$/)
+    expect(calls.find((c) => c.path === '/auth/telegram/start').body.return_url).toMatch(/\/login$/)
+})
+
 test("22.2 Mijoz ichidan nasiya: kechagi sana va izoh bilan", async ({ page, isMobile }) => {
     const { calls } = await mockApi(page)
     await page.goto('/customers/31')

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { authApi } from '../api/auth.api'
 import { useSession } from '../app/session'
 import { deviceName, getToken } from '../lib/session'
-import { errorMessage } from '../lib/errors'
+import { errorMessage, errorReason } from '../lib/errors'
 import { Button, Input, PhoneInput, cx } from '../ui/controls'
 import { formatPhone, isValidPhone, toApiPhone } from '../utils/phone'
 import { requestTelegramContact, telegramInitData, waitTelegram } from '../utils/telegram'
@@ -87,6 +87,9 @@ export function useCountdown(initial = 0) {
     return [left, setLeft]
 }
 
+// tg_login kodi bir martalik: StrictMode effektni ikki marta ishga tushirsa ham bir marta yuboriladi
+let exchangedCode = null
+
 const fmtTimer = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
 export default function LoginPage() {
@@ -102,6 +105,8 @@ export default function LoginPage() {
     const [error, setError] = useState('')
     const [busy, setBusy] = useState(false)
     const [telegramBusy, setTelegramBusy] = useState(false)
+    const [botBusy, setBotBusy] = useState(false)
+    const [botExpired, setBotExpired] = useState(false)
     const [resendIn, setResendIn] = useCountdown(0)
 
     const finish = async (res) => {
@@ -111,9 +116,40 @@ export default function LoginPage() {
         else navigate(location.state?.from || '/', { replace: true })
     }
 
+    // Botdan qaytish: ?tg_login=<kod> ni token bilan almashtiramiz
+    useEffect(() => {
+        const params = new URLSearchParams(location.search)
+        const tgCode = params.get('tg_login')
+        if (!tgCode) return
+        // Kod bir martalik: avval manzildan olib tashlaymiz (yangilashda qayta yuborilmasin)
+        params.delete('tg_login')
+        navigate({ search: params.toString() ? `?${params}` : '' }, { replace: true, state: location.state })
+        if (getToken() || exchangedCode === tgCode) return
+        exchangedCode = tgCode
+        setTelegramBusy(true)
+        authApi.telegramExchange(tgCode, deviceName())
+            .then(finish)
+            .catch((err) => {
+                if (errorReason(err) === 'telegram_login_expired') setBotExpired(true)
+                else toast.error(errorMessage(err))
+            })
+            .finally(() => setTelegramBusy(false))
+    }, [])
+
+    const loginWithBot = async () => {
+        setBotBusy(true)
+        try {
+            const res = await authApi.telegramStart(`${window.location.origin}/login`)
+            window.location.href = res.bot_url
+        } catch (err) {
+            toast.error(errorMessage(err))
+            setBotBusy(false)
+        }
+    }
+
     // Telegram Mini App: imzolangan init_data bilan avtomatik kirish (CLAUDE.md, 1-vazifa)
     useEffect(() => {
-        if (getToken()) return
+        if (getToken() || new URLSearchParams(location.search).has('tg_login')) return
         let alive = true
         waitTelegram().then(async (app) => {
             const initData = app && telegramInitData()
@@ -293,10 +329,14 @@ export default function LoginPage() {
             <div className="my-5 flex items-center gap-3 text-sm text-ink-3">
                 <div className="h-px flex-1 bg-line" />yoki<div className="h-px flex-1 bg-line" />
             </div>
-            <a href={BOT_URL} target="_blank" rel="noopener noreferrer"
-                className="flex h-14 items-center justify-center gap-2.5 rounded-ctl border-[1.5px] border-line-2 text-base font-semibold hover:bg-soft md:h-12">
-                <Send size={20} aria-hidden /> Telegram bot orqali kirish
-            </a>
+            {botExpired && (
+                <p role="alert" className="mb-3 rounded-ctl bg-warn-soft p-3 text-[15px] font-semibold text-warn">
+                    Kirish havolasi eskirgan yoki ishlatilgan. Telegram orqali qayta kiring.
+                </p>
+            )}
+            <Button size="lg" variant="secondary" block icon={Send} loading={botBusy} onClick={loginWithBot}>
+                {botExpired ? 'Telegram orqali qayta kirish' : 'Telegram bot orqali kirish'}
+            </Button>
             <button type="button" onClick={() => { setStep('password'); setError('') }} className="mt-4 text-[15px] font-semibold text-brand-strong">
                 Parol bilan kirish
             </button>

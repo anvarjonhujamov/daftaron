@@ -10,6 +10,9 @@ export const authApi = {
     verify: (phone, code, type) => data(api.post('/auth/verify', { phone, code, type })),
     // Telegram: imzolangan init_data yoki bot havolasi (phone + ts + sig)
     telegramLogin: (payload) => data(api.post('/auth/telegram-login', payload)),
+    // Brauzerdan bot orqali kirish: chipta → bot_url; bot <return_url>?tg_login=<kod> ni ochadi (10 daqiqa, bir martalik)
+    telegramStart: (return_url) => data(api.post('/auth/telegram/start', { return_url })),
+    telegramExchange: (code, device_name) => data(api.post('/auth/telegram/exchange', { code, device_name })),
     forgotPassword: (phone) => data(api.post('/auth/password/forgot', { phone })),
     verifyPasswordReset: (phone, code) => data(api.post('/auth/password/verify', { phone, code })),
     resetPassword: (reset_token, password, password_confirmation) =>
