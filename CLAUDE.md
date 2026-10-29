@@ -13,97 +13,106 @@ Backend alohida repo: `/Applications/MAMP/htdocs/daftaron` (Laravel 12), API `ht
 ## Stek
 
 - React 19 + Vite 6, JavaScript (TypeScript yo'q), `react-router-dom` 7 (`BrowserRouter`)
-- Tailwind 3 (`darkMode: 'class'`, ranglar `tailwind.config.js`da: `primary`, `success`, `danger`...), shrift `@fontsource-variable/inter`
-- `axios`, `react-hot-toast` (xabarlar), `lucide-react` (ikonlar), `vaul` (pastki drawer'lar)
+- Tailwind 3 (`darkMode: 'class'`), shrift `@fontsource-variable/inter`
+- `axios`, `react-hot-toast` (xabarlar), `lucide-react` (ikonlar)
 - `vite-plugin-pwa` (workbox, `autoUpdate`)
-- State kutubxonasi yo'q: `useState`/`useEffect` + `localStorage`, bitta context — `SubscriptionContext`
-- i18n yo'q: barcha UI matnlari to'g'ridan-to'g'ri o'zbekcha (lotin) yozilgan
+- State kutubxonasi yo'q: hook'lar + `localStorage` keshi, kontekstlar — `app/session.jsx` (sessiya) va `app/actions.jsx` (nasiya/to'lov oynalari)
+- i18n yo'q: UI matnlari o'zbekcha (lotin). Sozlamalardagi til tanlovi faqat backend'ga saqlanadi (SMS/bot uchun)
 
 ## Buyruqlar
 
 ```bash
-npm run dev       # http://localhost:5173 (host: true), prod API'ga ulanadi
+npm run dev       # http://localhost:5173 (host: true)
 npm run build     # dist/ ga
 npm run preview
+npm run test:e2e  # Playwright: build + API to'liq mock (e2e/mock-api.js), telefon 390px va kompyuter 1440px
 ```
 
-Lint va test **yo'q** (ESLint, Vitest sozlanmagan). O'zgarishdan keyin kamida `npm run build` o'tishini tekshiring.
-Dev server ham **prod backend**'ga so'rov yuboradi (`baseURL` qattiq yozilgan): dev'da yaratilgan mijoz/nasiya/to'lov haqiqiy bazaga tushadi, nasiya SMS'i haqiqiy mijozga ketadi.
+ESLint yo'q. O'zgarishdan keyin kamida `npm run build`, katta o'zgarishda `npm run test:e2e`.
+API manzili `.env.local` dagi `VITE_API_URL` (namuna `.env.example`), bo'lmasa **prod**. Dev'ni prod'ga ulasangiz,
+yaratilgan mijoz/nasiya/to'lov haqiqiy bazaga tushadi va mijozlarga haqiqiy SMS ketadi.
 
 ## Tuzilma
 
 ```
 src/
   main.jsx            # BrowserRouter, PWA SW ro'yxatdan o'tkazish (soatda bir yangilanish tekshiruvi)
-  App.jsx             # barcha route'lar, lazyPage(), Telegram SDK init
-  api/                # har bir resurs uchun <resurs>.api.js; axios.js — umumiy instance
+  App.jsx             # barcha route'lar, lazyPage(), Private (token / onboarding tekshiruvi)
+  app/                # session.jsx (me+settings+subscription, huquqlar), Layout, nav.js, actions.jsx, LegalAcceptSheet
+  api/                # client.js (axios) + <resurs>.api.js; funksiya nomlari openapi operationId'ga yaqin
+  features/           # bir necha sahifada ishlatiladigan oynalar: DebtSheet, PaymentSheet, CustomerPicker, SupplierSheets, TopUpSheet...
   pages/              # sahifalar (<Nom>Page.jsx), bittasi = bitta route
-  components/         # Layout, BottomNav, PrivateRoute, drawer/modal'lar, Skeleton
-  contexts/           # SubscriptionContext
-  utils/              # date.js, format.js, phoneMask.js, roleHelper.js, telegram.js, click.js, payme.js
-public/               # ikonlar, logo (dist'ga nusxalanadi)
-index.html            # Telegram SDK shartli yuklash shu yerda
+  ui/                 # dizayn tizimi: controls.jsx (Button, Input, MoneyInput, PhoneInput, Chips, Toggle...), display.jsx (Card, KpiCard, Row, Table, EmptyState...), Sheet.jsx (modal, Confirm, AmountPad)
+  lib/                # session.js (token, chiqishda tozalash), cache.js, hooks.js (useResource...), errors.js, sanitize.js
+  utils/              # date.js, format.js, phone.js, telegram.js, click.js, payme.js
+public/boot.js        # tungi rejim (chaqnashsiz) va Telegram SDK'ni shartli yuklash — CSP sabab inline emas
+e2e/                  # Playwright testlari (UserFlow bandlari bo'yicha nomlangan)
 ```
+
+## Dizayn tizimi (DaftarOn 2.0)
+
+- Manba: claude.ai artifact «DaftarOn 2.0 — sodda UI» (58 ekran). Logotip — `public/logo.png`, o'zgartirilmaydi.
+- Ranglar faqat tokenlar orqali: `bg-bg`, `bg-card`, `bg-soft`, `text-ink`/`ink-2`/`ink-3`, `border-line`/`line-2`, `brand` (asosiy), `debt` (qarz, qizil), `pay` (to'lov, yashil), `supp` (ta'minotchi, to'q sariq), `warn`, `danger`. Har birida `-soft` (fon) varianti bor.
+  Qiymatlar `src/index.css` dagi CSS o'zgaruvchilarida, tungi rejim — `.dark` bloki. **Komponentga hex va `dark:` yozilmaydi** — tokenlar o'zi almashadi.
+- Matn rangi tokenlari tungi rejimda ochroq (kontrast AA). Tugma foni uchun `bg-pay-strong`, `bg-brand`, `bg-danger`; `text-debt`/`text-pay` — faqat matn.
+- O'lchamlar: karta `rounded-card` (18px), input/tugma `rounded-ctl` (14px); telefonda asosiy tugma/input 56px (`size="lg"`), kompyuterda 48px.
+- Formatlar: sana `dd.mm.yyyy` (`formatDate`), summa `1 250 000 so'm` (`formatMoney`/`<Money>`), telefon `+998 90 123 45 67` (`formatPhone`, kiritish — `<PhoneInput>`). Qiymat yo'q bo'lsa `—`, hech qachon `NaN`.
+- Har sahifada: yuklanish (`ListSkeleton`), bo'sh holat (`EmptyState` + birinchi amal), xato (`ErrorState` + qayta urinish). Oflayn banner — `Layout`da.
 
 ## API qatlami (`src/api/`)
 
-- `axios.js`: `baseURL` = prod API. Request interceptor `localStorage.token` → `Authorization: Bearer`, `localStorage.user.tenant_id` → `X-Tenant-Id` (tenant selector, backend TZ 2.2 / 4.3). 401 → token va user o'chiriladi, `window.location.href = '/login'`.
-- Komponentlar `axios`ni to'g'ridan-to'g'ri chaqirmaydi, faqat `xxxApi` obyektlari orqali (`debtsApi.getDebts(params)`).
-- Javob shakli turlicha bo'lgan joylarda unwrap qilinadi (`resp?.payment || resp?.data || resp`); yangi kodda backend TZ'dagi aniq shaklga tayaning.
-- Ro'yxatlar: `per_page` faqat `page` bilan birga ishlaydi (max 100), `page`siz `per_page` → 422. `page` berilganda javob `{ data, meta: { current_page, per_page, total, last_page } }`.
-- `/api/public/settings` v1 prefiksisiz: `app.api.js` `baseURL`dan `/v1`ni olib tashlaydi.
-- 404/405 bo'lsa `PATCH`/`_method=delete` ga qayta urinadigan eski fallback'lar bor (`tenants`, `customers`, `payments`). Yangi kodda qo'shmang.
+- `client.js`: `Authorization: Bearer` va `X-Tenant-Id` (`user.tenant_id`). 401 → `clearLocalData()` va `/login`. Fayllar (Excel, faktura) `downloadFile`/`openFile` bilan blob orqali — token URL'ga qo'yilmaydi.
+- Komponentlar `axios`ni to'g'ridan-to'g'ri chaqirmaydi, faqat `xxxApi` orqali. Xato matni — `lib/errors.js` (`errorMessage`, `fieldErrors`, javobdagi `reason`).
+- Ro'yxatlar: `per_page` faqat `page` bilan (max 100); javob `{ data, meta }`. Tarix va mijoz tarixi — kursor (`next_cursor`).
+- Saqlashdan keyin `emitChange()` (`lib/hooks.js`) — ochiq sahifalar `useOnChange` bilan qayta yuklaydi.
+- `/api/public/settings` (oferta, maxfiylik) v1 prefiksisiz: `settingsApi.publicSettings`.
 
-## Auth, rol, tenant
+## Auth, huquqlar, do'kon
 
-- Token va user `localStorage`da (`token`, `user`). Login: `LoginPage` → `authApi.login` → saqlab `/` ga.
-- `PrivateRoute`: token bo'lmasa `/login`. Bo'lsa `/auth/me` va `/subscription/status` parallel: `user` yangilanadi, obuna holati `SubscriptionContext`ga (keshi `subscription_cache_v1`, token bilan bog'langan). Obuna bloklangan bo'lsa faqat `/subscription` va `/profile` ochiladi.
-- Rollar: `shop_owner` / `shop_worker` (`/auth/me` → `roles`); `utils/roleHelper.js` (`isStaffFromUser`).
-- Active do'kon: `user.tenant_id` (`ShopsPage`da almashtiriladi) → `X-Tenant-Id` header.
+- Kirish: kod bilan (`otpRequest` → `otpVerify`), ikkilamchi — parol (`/auth/login`, kerak bo'lsa SMS tasdiq). Yangi raqam → `/onboarding`.
+- Telegram: Mini App ichida `LoginPage` `init_data` bilan avtomatik kiradi (kerak bo'lsa `requestContact`); bot havolasi `/telegram/web-login?phone&ts&sig` (imzo bilan). Yalang'och telefon bilan kirish yo'q.
+- `session.signIn(token, user)` — oldingi foydalanuvchi keshlarini tozalab kiradi. `logout()` — server tokeni + qurilmadagi barcha ma'lumot (`theme` va yuborilmagan eski `supplier_*` yozuvlaridan tashqari).
+- Huquqlar: `GET /settings → permissions` (backend TZ 28.8). UI'da `session.can('debt.delete')` — tugmani yashirish uchun; tekshiruv baribir backend'da (403). Egasi — `staff.manage` bor.
+- Faol do'kon: `user.tenant_id` → `X-Tenant-Id`; almashtirish `PUT /tenants/active` (`ShopsPage`). Kesh kalitlari foydalanuvchi+do'kon bo'yicha (`lib/cache.js`).
+- Obuna tugasa (`session.readOnly`): ilova ochiladi, yozish tugmalari o'chadi, tepada banner (backend yozishni 403 qiladi).
 
 ## Routing
 
-Hammasi `App.jsx`da. Ochiq: `/login`, `/register`, `/forgot-password`, `/terms`, `/delete-account`. Qolganlari `PrivateRoute > Layout` ichida (pastki menyu `BottomNav`). Noma'lum yo'l → `/`.
-`LoginPage` va `DashboardPage` asosiy bundle'da, qolganlari `lazyPage()` bilan (deploydan keyin eski chunk topilmasa sahifani bir marta qayta yuklaydi). Yangi sahifa qo'shsangiz `lazyPage` ishlating.
+Hammasi `App.jsx`da. Ochiq: `/login`, `/forgot-password`, `/telegram/web-login`, `/install`, `/legal/:type`, `/delete-account`. `/onboarding` — token bilan, layout'siz. Qolganlari `Private > Layout`.
+Eski manzillar (`/register`, `/terms`, `/privacy-policy`, `/debts`, `/payments`, `/profile`, `/admin/legal`) yangilariga yo'naltiriladi. Noma'lum yo'l → `/`.
+`LoginPage` va `HomePage` asosiy bundle'da, qolganlari `lazyPage()` bilan. Yangi sahifa qo'shsangiz `lazyPage` ishlating.
 
 ## Responsive (telefon / planshet / kompyuter)
 
-- Breakpoint'lar Tailwind standarti: telefon `< md`, planshet `md` (768px), kompyuter `lg` (1024px). Avval telefon uchun yoziladi, keyin `md:` / `lg:` qo'shiladi.
-- Navigatsiya: telefonda `BottomNav` (`md:hidden`), planshetda tor panel, kompyuterda to'liq yon menyu (`Sidebar`, `md:w-24 lg:w-64`). Bo'limlar `components/navItems.js`da — yangi bo'limni shu yerga qo'shing.
-- Kontent kengligi `.app-container` (`index.css`): 512 → 768 → 1024 → 1152px. Sahifa ildizi: `px-4 py-6 md:px-6 lg:px-8 lg:py-8`.
-- Ro'yxatlar: `grid gap-2 lg:grid-cols-2` (kartalar 2–3 ustun). Batafsil sahifalar kompyuterda ikki ustun: chapda `lg:sticky lg:top-6` karta va amallar, o'ngda tarix. Formalar/sozlamalar: `md:max-w-2xl md:mx-auto`.
-- Telefondagi pastda qotirilgan tugmalar `md:hidden` bo'ladi, planshet/kompyuterda amal sarlavhaga chiqadi.
-- vaul drawer'lar `index.css`dagi global qoida bilan planshetda markazlashadi, kompyuterda suzuvchi oyna bo'ladi — har drawer'ga alohida klass kerak emas.
-- Sticky ishlashi uchun ota elementlarda `overflow-x-hidden` emas, `clip` bo'lishi kerak (`.min-h-screen` uchun `index.css`da shunday).
-- Tekshirish: telefon 390px, planshet 820px va 1180px (landshaft), kompyuter 1440px.
+- Telefon `< md`: pastki menyu (Asosiy · Mijozlar · Hisobot · Yana), qolgan bo'limlar `/more`da. Planshet `md`: tor yon panel. Kompyuter `lg`: 248px yon menyu (do'kon almashtirgich, badge'lar, obuna qutisi). Bo'limlar — `app/nav.js`.
+- Sahifa ildizi `.page` (`index.css`). Mijozlar: `md+` da `/customers/:id` chapda ro'yxat, o'ngda karta (peshtaxta rejimi).
+- Oynalar `ui/Sheet.jsx` (native `<dialog>`): telefonda pastdan, planshet/kompyuterda markazda; `Esc` yopadi, `Enter` saqlaydi.
+- Kompyuter tugmalari (`Layout` → `Shortcuts`): `N` nasiya, `T` to'lov, `M` yangi mijoz, `/` yoki `Ctrl+K` qidiruv (`data-search` atributli input).
+- Sticky ishlashi uchun ota elementlarda `overflow-x-hidden` emas, `clip`. Tekshirish: 360, 390, 768, 1024, 1440px (`e2e/layout.spec.js`, `SHOTS=1` — skrinshotlar).
+
+## Xavfsizlik
+
+- CSP build'da (`vite.config.js` → `cspPlugin`): skript faqat o'zimizdan va `telegram.org`, `connect-src` — API origin. Inline skript yozmang.
+- Admin'dan keladigan HTML (`LegalPage`) faqat `sanitizeHtml` orqali; tashqi havolalar `safeUrl` (faqat https).
+- Parol, kod, token'ni `localStorage`/log'ga yozmang (eski versiya xodim parollarini saqlagan — olib tashlandi). SW API javoblarini keshlamaydi.
 
 ## Kod uslubi
 
 - 4 bo'shliq, nuqta-vergulsiz, bitta qo'shtirnoq, funksional komponentlar + hook'lar, `export default function XxxPage()`.
-- Izohlar va UI matnlari o'zbekcha, atrofdagi kodga mos. Xatolar foydalanuvchiga `toast.error("...")` bilan.
-- Har bir rangli element uchun `dark:` varianti ham yozilsin.
-- **Sanalar:** API'ga `YYYY-MM-DD`, Toshkent vaqti (UTC+5). `toISOString().slice(0, 10)` ishlatmang — `utils/date.js` (`todayYmd`, `toYmd`, `toTashkentYmd`). API'dan kelgan sanani (masalan supplier `transaction_date`, UTC ISO) ko'rsatish/solishtirishdan oldin `toYmd`dan o'tkazing.
-- Pul: `utils/format.js` (`formatCurrency`, `parseCurrency`). Telefon: `utils/phoneMask.js` (`+998` format).
-- Sahifa tez chizilishi uchun `localStorage` keshi (avval keshdan, keyin fonda yangilash) ko'p joyda ishlatiladi — shu naqshga amal qiling.
-- Production'da soxta/dummy ma'lumot ko'rsatmang (masalan, xato bo'lganda o'ylab topilgan do'konlar).
+- Izohlar va UI matnlari o'zbekcha. Xatolar — `toast.error(errorMessage(err))`, 422 maydon xatolari — maydon ostida.
+- **Sanalar:** API'ga `YYYY-MM-DD`, Toshkent vaqti (UTC+5). `toISOString().slice(0, 10)` ishlatmang — `utils/date.js` (`todayYmd`, `toYmd`, `addDaysYmd`). API sanasini ko'rsatishdan oldin `toYmd`/`formatDate`.
+- Ma'lumot yuklash — `useResource(fetcher, deps, { cacheKey })` (avval keshdan, keyin fonda yangilash).
+- Production'da soxta/dummy ma'lumot ko'rsatmang.
 
 ## Telegram Mini App
 
-- `index.html` Telegram SDK'ni faqat Telegram ichida (`tgWebApp` hash, `TelegramWebviewProxy`, iframe) async yuklaydi va `telegram-sdk-loaded` hodisasini chiqaradi; `App.jsx` shundan keyin `initTelegramWebApp()` (`ready`, `expand`, fon rangi) chaqiradi.
-- Telegram login qoidasi (backend): faqat imzolangan `init_data` yoki bot imzosi (`phone`+`ts`+`sig`). Yalang'och telefon bilan kirish yo'q.
+- `public/boot.js` SDK'ni faqat Telegram ichida async yuklaydi va `telegram-sdk-loaded` chiqaradi; `utils/telegram.js` — `waitTelegram`, `initTelegramWebApp`, `requestTelegramContact`.
+- Bot menyu tugmasi `web.daftaron.uz/telegram/web-login` ni parametrsiz ochadi → `/login` → `init_data` bilan kirish.
 
 ## Ochiq vazifalar
 
-1. **Telegram Mini App'dan kelganda login sahifasi chiqadi.** SPA `window.Telegram.WebApp.initData`ni hech qayerga yubormaydi, shuning uchun token bo'lmasa `PrivateRoute` `/login`ga yo'naltiradi. Kerak: token yo'q va `initData` bor bo'lsa, `POST /auth/telegram-login` ga `{ init_data: WebApp.initData, device_name }` yuborish (backend TZ.md, 23.1 «Telegram Login»). `200` → `token`/`user` saqlab davom etish; `404 requires_registration` → `/register` (telefonni oldindan to'ldirib); `401` → login sahifasi. `initData`da `contact` bo'lmasa backend faqat avval bog'langan `telegram_id` bo'yicha kiritadi — kerak bo'lsa `WebApp.requestContact()` javobini yuborish. SDK async yuklanadi: `telegram-sdk-loaded` ni kutish kerak.
-2. `index.html`dagi `/telegram/web-login?phone=` skripti — faqat telefon bo'yicha kirish urinishi, backend buni taqiqlaydi. 1-vazifa bilan birga olib tashlansin.
-3. Backend bilan mos kelmaydigan chaqiruvlar (2026-10-27 holati):
-   - `tenantsApi.setActiveTenant` aniqlanmagan — `ShopsPage`da do'kon almashtirish `TypeError` bilan yiqiladi, `PUT /tenants/active` chaqirilmaydi.
-   - `tenantsApi.getTenants` `{ tenants, active_tenant_id }`dan faqat massivni qaytaradi — `active_tenant_id` yo'qoladi; xatoda `ShopsPage` dummy do'konlarni ko'rsatadi.
-   - `GET /tenants/{id}` yo'q (404, xato yutiladi).
-   - `GET/PUT /legal`, `/legal/{type}` yo'q — `TermsPage`, `PrivacyPolicyPage` doim ichki matnni ko'rsatadi, `LegalManagementPage` ishlamaydi. Matnlar `GET /api/public/settings`da (`appApi.getLegal`).
-   - `POST /debts/{id}/send-return-sms`, `GET /debts/{id}/sms-status` yo'q (funksiyalar ishlatilmayapti).
-   - `PUT/PATCH/DELETE /payments/{id}`, `PATCH /payments` yo'q — to'lovni tahrirlash/o'chirish API'da mavjud emas.
-   - `POST /auth/telegram-login` ishlatilmaydi (1-vazifa).
+1. Backend'da yo'q: Xazna va Uzum to'lovlari (tugmalar «tez orada»), qurilma shahri (`city: null`), rus/kirill UI tarjimasi.
+2. Javob shakli hujjatlashtirilmagan joylar (UI ehtiyotkor o'qiydi): `GET /shops` → `usage`, `GET /debts/{id}/reminders` → `sent[]`, `GET /staff/{id}` → `recent_debts`/`recent_payments`.
 
 ## Deploy
 
