@@ -101,7 +101,7 @@ export default function NotificationsPage() {
     return (
         <div className="page md:max-w-3xl">
             <PageHeader back title="Bildirishnomalar" actions={session.unread > 0 && <Button size="sm" variant="ghost" onClick={markAll}>Hammasini o'qish</Button>} />
-            <Chips size="sm" ariaLabel="Turi" value={type} onChange={setType} options={FILTERS} />
+            <Chips size="sm" scroll ariaLabel="Turi" value={type} onChange={setType} options={FILTERS} />
             <div className="mt-4">
                 {error && !items.length ? <ErrorState onRetry={() => load(1)} /> : loading && !items.length ? <ListSkeleton /> : items.length === 0 ? (
                     <EmptyState icon={Bell} title="Bildirishnoma yo'q" text="Muddati o'tgan qarzlar, to'lovlar va SMS holati shu yerda ko'rinadi." />

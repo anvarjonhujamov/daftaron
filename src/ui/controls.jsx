@@ -143,7 +143,7 @@ export function PhoneInput({ value, onChange, label = 'Telefon raqam', required,
 }
 
 // Tanlov tugmalari (Bugun / Kecha / Boshqa, Naqd / Karta ...). options: [{ value, label }]
-export function Chips({ options, value, onChange, className, size = 'md', ariaLabel, wrap }) {
+export function Chips({ options, value, onChange, className, size = 'md', ariaLabel, wrap, scroll }) {
     return (
         <div role="radiogroup" aria-label={ariaLabel} className={cx('flex gap-2', wrap ? 'flex-wrap' : 'no-scrollbar overflow-x-auto', className)}>
             {options.map((o) => {
@@ -159,8 +159,9 @@ export function Chips({ options, value, onChange, className, size = 'md', ariaLa
                         className={cx(
                             'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl text-sm transition-colors disabled:opacity-40',
                             size === 'sm' ? 'h-9' : 'h-11',
-                            // Bir qatorli guruhda tugmalar joyni teng bo'lib oladi va tor ekranda siqiladi
-                            wrap ? 'shrink-0 px-3.5' : o.narrow ? 'w-11 shrink-0' : 'min-w-0 flex-1 px-2',
+                            // Bir qatorli guruhda tugmalar joyni teng bo'lib oladi va tor ekranda siqiladi;
+                            // scroll — ko'p variantli filtr: tabiiy kenglik, qator yonga suriladi
+                            wrap || scroll ? 'shrink-0 px-3.5' : o.narrow ? 'w-11 shrink-0' : 'min-w-0 flex-1 px-2',
                             active
                                 ? 'border-2 border-brand bg-brand-soft font-bold text-brand-strong'
                                 : 'border-[1.5px] border-line-2 bg-card font-semibold text-ink hover:bg-soft'
