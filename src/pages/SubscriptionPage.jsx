@@ -138,7 +138,7 @@ export default function SubscriptionPage() {
                             </div>
                             <div className="mt-2 text-[26px] font-extrabold">{formatNumber(priceOf(p))} <span className="text-sm font-semibold text-ink-2">so'm/{months === 12 ? 'yil' : 'oy'}</span></div>
                             <ul className="mt-3 flex-1 space-y-1.5 text-[15px] text-ink-2">
-                                {[limitText(p.shop_limit, "do'kon"), limitText(p.worker_limit, 'xodim'), limitText(p.debt_limit, 'nasiya'), `${formatNumber(p.sms_limit)} SMS/oy`].map((t) => (
+                                {[limitText(p.shop_limit, "do'kon"), limitText(p.worker_limit, 'xodim'), limitText(p.debt_limit, 'nasiya'), `${formatNumber(p.sms_limit)} SMS/oy`, p.allow_export === true && "Excel'ga yuklash"].filter(Boolean).map((t) => (
                                     <li key={t} className="flex items-center gap-2"><Check size={16} className="text-pay" aria-hidden />{t}</li>
                                 ))}
                             </ul>

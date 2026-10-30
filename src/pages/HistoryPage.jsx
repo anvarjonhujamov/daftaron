@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowDown, ArrowUp, FileSpreadsheet, History, MessageSquare, Search, Truck } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { ArrowDown, ArrowUp, History, MessageSquare, Search, Truck } from 'lucide-react'
 import { historyApi } from '../api/reports.api'
 import { staffApi } from '../api/staff.api'
 import { useSession } from '../app/session'
+import ExportButton from '../features/ExportButton'
 import { useDebounced, useOnChange } from '../lib/hooks'
-import { errorMessage } from '../lib/errors'
 import { METHODS, SMS_STATUS } from '../features/debt-ui'
 import { Card, EmptyState, ErrorState, List, ListSkeleton, Money, PageHeader, Pill, Row } from '../ui/display'
 import { Button, Chips } from '../ui/controls'
@@ -51,7 +50,6 @@ export default function HistoryPage() {
     const [cursor, setCursor] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [exporting, setExporting] = useState(false)
     const [staff, setStaff] = useState([])
 
     const set = (key, value) => setParams((p) => {
@@ -94,11 +92,6 @@ export default function HistoryPage() {
         if (session.can('staff.manage')) staffApi.list().then((r) => setStaff(r.data || [])).catch(() => {})
     }, [])
 
-    const exportXlsx = async () => {
-        setExporting(true)
-        try { await historyApi.exportXlsx(filters) } catch (err) { toast.error(errorMessage(err)) } finally { setExporting(false) }
-    }
-
     const open = (item) => {
         if (item.kind === 'debt') navigate(`/debts/${item.debt_id || item.id}`)
         else if (item.kind.startsWith('supplier')) item.supplier?.id && navigate(`/suppliers/${item.supplier.id}`)
@@ -115,7 +108,7 @@ export default function HistoryPage() {
 
     return (
         <div className="page">
-            <PageHeader back title="Tarix" actions={<Button variant="secondary" icon={FileSpreadsheet} loading={exporting} onClick={exportXlsx}><span className="hidden sm:inline">Excel'ga yuklash</span><span className="sm:hidden">Excel</span></Button>} />
+            <PageHeader back title="Tarix" actions={<ExportButton onExport={() => historyApi.exportXlsx(filters)} />} />
             <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
                     <Chips size="sm" wrap ariaLabel="Kim bilan" value={scope} onChange={(v) => set('scope', v)} options={[{ value: 'customers', label: 'Mijozlar' }, { value: 'suppliers', label: "Ta'minotchilar" }]} />

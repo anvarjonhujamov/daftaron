@@ -180,3 +180,27 @@ test("Do'kon nomi: /auth/me active_tenant bo'sh kelsa ham ko'rinadi", async ({ p
     const place = isMobile ? page.getByRole('link', { name: /Barkamol Market/ }) : page.locator('aside').getByText('Barkamol Market')
     await expect(place).toBeVisible()
 })
+
+test("Oddiy ta'rif: Excel qulflangan — obuna sahifasiga, eksport so'rovi yo'q", async ({ page }) => {
+    const { calls } = await mockApi(page, {
+        overrides: {
+            'GET /subscription/status': (route, { f }) => route.fulfill({ json: { ...f.subscription, current_plan_id: 1, usage: { ...f.subscription.usage, plan_name: 'Oddiy', export_allowed: false } } })
+        }
+    })
+    await page.goto('/reports')
+    await page.getByRole('button', { name: /Excel/ }).click()
+    await expect(page).toHaveURL(/\/subscription$/)
+    await expect(page.getByText("Excel'ga yuklash").first()).toBeVisible()
+    expect(calls.some((c) => c.path.includes('export'))).toBe(false)
+})
+
+test('Excel: backend 403 plan_feature (blob javob) — xabar o\'qiladi, obuna sahifasiga', async ({ page }) => {
+    await mockApi(page, {
+        overrides: {
+            'GET /history/export.xlsx': (route) => route.fulfill({ status: 403, json: { message: "Ta'rifda yo'q", reason: 'plan_feature', feature: 'export' } })
+        }
+    })
+    await page.goto('/history')
+    await page.getByRole('button', { name: /Excel/ }).click()
+    await expect(page).toHaveURL(/\/subscription$/)
+})

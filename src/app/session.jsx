@@ -96,6 +96,8 @@ export function SessionProvider({ children }) {
             can: (perm) => (permissions === null ? true : permissions.includes(perm)),
             isOwner: permissions === null ? true : permissions.includes('staff.manage'),
             readOnly: !!(trial.is_expired || sub?.read_only || sub?.usage?.subscription_status === 'expired'),
+            // Excel eksport ta'rifga bog'liq (Oddiy'da yo'q); ma'lumot kelmagan bo'lsa backend tekshiradi (403)
+            canExport: sub?.usage?.export_allowed !== false,
             notifications: state.settings?.notifications || {},
             updateSettings: (patch) => setState((s) => {
                 const next = { ...s, settings: { ...s.settings, ...patch } }

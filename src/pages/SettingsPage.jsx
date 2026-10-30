@@ -500,7 +500,7 @@ function DocumentsSection({ settings }) {
             </List>
             <Card className="p-4 text-sm leading-relaxed text-ink-2">
                 <p className="mb-1 font-bold text-ink">Maxfiylik — qisqacha</p>
-                Mijozlaringiz ma'lumoti faqat sizga ko'rinadi. Raqamlar faqat SMS eslatma uchun ishlatiladi. Obuna tugasa ham ma'lumotlar o'chmaydi. Istalgan vaqt Excel'ga yuklab olishingiz mumkin.
+                Mijozlaringiz ma'lumoti faqat sizga ko'rinadi. Raqamlar faqat SMS eslatma uchun ishlatiladi. Obuna tugasa ham ma'lumotlar o'chmaydi.
             </Card>
         </div>
     )

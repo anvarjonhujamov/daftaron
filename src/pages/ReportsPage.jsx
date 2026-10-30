@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BarChart3, FileSpreadsheet } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { BarChart3 } from 'lucide-react'
 import { reportsApi } from '../api/reports.api'
 import { staffApi } from '../api/staff.api'
 import { useSession } from '../app/session'
+import ExportButton from '../features/ExportButton'
 import { useResource } from '../lib/hooks'
-import { errorMessage } from '../lib/errors'
 import { Avatar, Card, EmptyState, ErrorState, KpiCard, List, Money, PageHeader, Row, SectionTitle, Skeleton } from '../ui/display'
-import { Button, Chips } from '../ui/controls'
+import { Chips } from '../ui/controls'
 import { formatDate } from '../utils/date'
 import { formatNumber } from '../utils/format'
 import { formatPhone } from '../utils/phone'
@@ -57,7 +56,6 @@ export default function ReportsPage() {
     const [to, setTo] = useState('')
     const [staffId, setStaffId] = useState('')
     const [staff, setStaff] = useState([])
-    const [exporting, setExporting] = useState(false)
     const allowed = session.can('reports.view')
 
     const params = period === 'custom' ? { from, to, staff_id: staffId } : { period, staff_id: staffId }
@@ -67,11 +65,6 @@ export default function ReportsPage() {
         if (session.can('staff.manage')) staffApi.list().then((r) => setStaff(r.data || [])).catch(() => {})
     }, [])
 
-    const exportXlsx = async () => {
-        setExporting(true)
-        try { await reportsApi.exportXlsx(params) } catch (err) { toast.error(errorMessage(err)) } finally { setExporting(false) }
-    }
-
     if (!allowed) {
         return <div className="page"><PageHeader title="Hisobot" /><EmptyState icon={BarChart3} title="Hisobotni ko'rishga huquqingiz yo'q" text="Do'kon egasidan «Hisobotni ko'rish» huquqini so'rang." /></div>
     }
@@ -80,7 +73,7 @@ export default function ReportsPage() {
     const rate = r?.return_rate
     return (
         <div className="page">
-            <PageHeader title="Hisobot" actions={<Button variant="secondary" icon={FileSpreadsheet} loading={exporting} onClick={exportXlsx}><span className="hidden sm:inline">Excel'ga yuklash</span><span className="sm:hidden">Excel</span></Button>} />
+            <PageHeader title="Hisobot" actions={<ExportButton onExport={() => reportsApi.exportXlsx(params)} />} />
             <div className="flex flex-wrap items-center gap-2">
                 <Chips size="sm" wrap ariaLabel="Davr" value={period} onChange={setPeriod} options={[
                     { value: 'day', label: 'Kun' }, { value: 'week', label: 'Hafta' }, { value: 'month', label: 'Oy' }, { value: 'year', label: 'Yil' }, { value: 'custom', label: 'Oraliq' }

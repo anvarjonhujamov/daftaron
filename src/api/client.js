@@ -40,7 +40,17 @@ export const data = (promise) => promise.then((res) => res.data)
 
 // Fayl yuklab olish (Excel, faktura): token sarlavhada, URL'da emas
 export const downloadFile = async (url, params, fallbackName) => {
-    const res = await api.get(url, { params: clean(params), responseType: 'blob' })
+    let res
+    try {
+        res = await api.get(url, { params: clean(params), responseType: 'blob' })
+    } catch (err) {
+        // Xato javobi ham blob bo'lib keladi: message/reason o'qilishi uchun JSON'ga aylantiramiz
+        const body = err?.response?.data
+        if (body instanceof Blob && body.type.includes('json')) {
+            try { err.response.data = JSON.parse(await body.text()) } catch { /* ignore */ }
+        }
+        throw err
+    }
     const disposition = res.headers['content-disposition'] || ''
     const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
     const name = match ? decodeURIComponent(match[1]) : fallbackName
