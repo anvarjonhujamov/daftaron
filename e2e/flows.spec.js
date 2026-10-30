@@ -149,6 +149,26 @@ test('22.10 Sozlamalar: eslatmalarni saqlash', async ({ page, isMobile }) => {
     expect(calls.find((c) => c.method === 'PUT' && c.path === '/settings/notifications').body).toMatchObject({ sms_on_payment: true, reminder_time: '09:00' })
 })
 
+test("Sozlamalar: ulangan Telegram chat ko'rinadi, Telegram'da kirgan — botsiz ulanadi", async ({ page, isMobile }) => {
+    let chats = []
+    const { calls } = await mockApi(page, {
+        overrides: {
+            'GET /telegram/chats': (route) => route.fulfill({ json: { bot_url: 'https://t.me/daftaron_bot', chats, can_link_self: true } }),
+            'POST /telegram/link-self': (route) => {
+                chats = [{ id: 3, chat_id: '555', title: 'Aziz Karimov' }]
+                return route.fulfill({ status: 201, json: { message: 'Telegram ulandi.', chat: chats[0] } })
+            }
+        }
+    })
+    await page.goto(isMobile ? '/settings/reminders' : '/settings')
+    const scope = isMobile ? page : page.locator('#reminders')
+    await expect(scope.getByText('Hali ulanmagan.').locator('visible=true')).toBeVisible()
+    await scope.getByRole('button', { name: "Telegram'ga ulash" }).click()
+    await expect(scope.getByText('Aziz Karimov').locator('visible=true')).toBeVisible()
+    await expect(scope.getByText('Hali ulanmagan.').locator('visible=true')).toBeHidden()
+    expect(calls.some((c) => c.path === '/telegram/link-token')).toBe(false)
+})
+
 test("Do'kon nomi: /auth/me active_tenant bo'sh kelsa ham ko'rinadi", async ({ page, isMobile }) => {
     await mockApi(page, {
         overrides: {

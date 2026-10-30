@@ -119,7 +119,7 @@ export async function mockApi(page, { loggedIn = true, overrides = {} } = {}) {
             case key === 'GET /sms': return json(route, { data: [], meta: { current_page: 1, last_page: 1, total: 0 } })
             case key === 'PUT /settings/notifications': return json(route, { message: 'Saqlandi' })
             case key === 'GET /auth/devices': return json(route, { data: [{ id: 41, device: 'Android · Chrome', is_current: true, last_active_at: `${t}T10:00:00+05:00` }] })
-            case key === 'GET /telegram/chats': return json(route, { data: [] })
+            case key === 'GET /telegram/chats': return json(route, { bot_username: 'daftaron_bot', bot_url: 'https://t.me/daftaron_bot', chats: [], can_link_self: false })
             case key === 'GET /locations/regions': return json(route, [{ id: 1, name: 'Toshkent shahri' }, { id: 2, name: 'Samarqand viloyati' }])
             case key === 'GET /locations/districts/1': return json(route, [{ id: 11, region_id: 1, name: 'Chilonzor' }, { id: 12, region_id: 1, name: 'Yunusobod' }])
             case key === 'GET /locations/districts/2': return json(route, [{ id: 21, region_id: 2, name: 'Urgut' }])

@@ -273,27 +273,50 @@ function RemindersSection({ settings, session }) {
         }
     }
 
+    // Botdan qaytganda ro'yxat yangilansin (ulash bot ichida bo'ladi)
+    const { reload } = chats
+    useEffect(() => {
+        const onVisible = () => { if (document.visibilityState === 'visible') reload() }
+        document.addEventListener('visibilitychange', onVisible)
+        return () => document.removeEventListener('visibilitychange', onVisible)
+    }, [reload])
+
+    // GET /telegram/chats → { chats, bot_url, can_link_self }
+    const list = chats.data?.chats || []
+    const canLinkSelf = !!chats.data?.can_link_self || !!telegramInitData()
+
     const linkTelegram = async () => {
         setLinking(true)
-        try {
-            if (telegramInitData()) {
+        // Telegram'da kirgan bo'lsa — botga o'tmasdan shu akkauntga ulanadi
+        if (canLinkSelf) {
+            try {
                 await telegramApi.linkSelf()
                 toast.success('Telegram ulandi')
-                chats.reload()
-            } else {
-                const r = await telegramApi.linkToken()
-                const url = safeUrl(r.url)
-                if (url) window.open(url, '_blank', 'noopener,noreferrer')
-                toast('Botda «Start» ni bosing — do\'kon shu chatga ulanadi')
+                reload()
+            } catch (err) {
+                toast.error(errorMessage(err))
+            } finally {
+                setLinking(false)
             }
+            return
+        }
+        // Oyna bosish paytida ochiladi, aks holda brauzer (Safari) popup'ni bloklaydi
+        const win = window.open('', '_blank')
+        try {
+            const r = await telegramApi.linkToken()
+            const url = safeUrl(r.url)
+            if (!url) throw new Error('no url')
+            if (win) win.location.href = url
+            else window.location.href = url
+            toast('Botda «Start» ni bosing — do\'kon shu chatga ulanadi')
         } catch (err) {
+            win?.close()
             toast.error(errorMessage(err))
         } finally {
             setLinking(false)
         }
     }
 
-    const list = Array.isArray(chats.data) ? chats.data : chats.data?.data || []
     return (
         <Card className="space-y-4 p-4 md:p-6">
             {!canEdit && <p className="rounded-xl bg-soft p-3 text-sm text-ink-2">Bu sozlamalarni faqat do'kon egasi o'zgartiradi.</p>}
@@ -312,11 +335,15 @@ function RemindersSection({ settings, session }) {
             )}
             <div className="h-px bg-line" />
             <Toggle disabled={!canEdit} checked={!!n.digest_enabled} onChange={(v) => set({ digest_enabled: v })} label="Kechki xulosa Telegramga" description="Bugungi nasiya, to'lov, muddati o'tganlar · @daftaron_bot" />
+            {n.digest_enabled && canEdit && chats.data && list.length === 0 && (
+                <p className="rounded-xl bg-warn-soft p-3 text-sm text-ink">Xulosa kelishi uchun pastda Telegram'ni ulang.</p>
+            )}
             {n.digest_enabled && (
                 <Select label="Xulosa vaqti" disabled={!canEdit} value={n.digest_time || '20:00'} onChange={(v) => set({ digest_time: v || '20:00' })}
                     options={['18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].map((t) => ({ value: t, label: t }))} placeholder="20:00" />
             )}
-            <Toggle disabled={!canEdit} checked={n.owner_inactivity_reminder !== false} onChange={(v) => set({ owner_inactivity_reminder: v })} label="«3 kun nasiya yozilmadi» eslatmasi" />
+            <Toggle disabled={!canEdit} checked={n.owner_inactivity_reminder !== false} onChange={(v) => set({ owner_inactivity_reminder: v })} label="«Bugun nasiya yozilmadi» eslatmasi"
+                description="24 soat nasiya yozilmasa, kunduzi Telegram'ga" />
             {canEdit && (
                 <div className="rounded-ctl bg-soft/70 p-3.5">
                     <p className="text-sm font-semibold">Ulangan Telegram chatlar</p>
