@@ -6,8 +6,9 @@ import { onboardingApi } from '../api/auth.api'
 import { locationsApi } from '../api/settings.api'
 import { debtsApi } from '../api/debts.api'
 import { useSession } from '../app/session'
-import { errorMessage } from '../lib/errors'
+import { errorMessage, fieldErrors } from '../lib/errors'
 import { QuickCustomerForm } from '../features/CustomerPicker'
+import LocationFields from '../features/LocationFields'
 import { AmountPad } from '../ui/Sheet'
 import { Button, Chips, Input, Toggle } from '../ui/controls'
 import { addDaysYmd, addMonthsYmd, formatDate, todayYmd } from '../utils/date'
@@ -22,12 +23,13 @@ export default function OnboardingPage() {
     const navigate = useNavigate()
     const session = useSession()
     const [step, setStep] = useState(null)
+    const [profile, setProfile] = useState(null)
     const [customer, setCustomer] = useState(null)
     const [done, setDone] = useState(null)
 
     useEffect(() => {
         onboardingApi.state()
-            .then((s) => setStep(s.step === 'done' ? 'finished' : s.step))
+            .then((s) => { setProfile(s.profile || null); setStep(s.step === 'done' ? 'finished' : s.step) })
             .catch(() => setStep('shop'))
     }, [])
 
@@ -50,7 +52,7 @@ export default function OnboardingPage() {
             <div className="mt-3 grid grid-cols-3 gap-1.5" aria-hidden>
                 {STEPS.map((s, i) => <div key={s} className={`h-1.5 rounded-full ${i <= index ? 'bg-brand' : 'bg-line'}`} />)}
             </div>
-            {step === 'shop' && <ShopStep onDone={async () => { await session.refresh(); setStep('customer') }} />}
+            {step === 'shop' && <ShopStep profile={profile} onDone={async () => { await session.refresh(); setStep('customer') }} />}
             {step === 'customer' && (
                 <>
                     <h1 className="mb-2 mt-9 text-[28px] font-extrabold leading-tight tracking-tight">Birinchi mijozni qo'shing</h1>
@@ -63,25 +65,39 @@ export default function OnboardingPage() {
     )
 }
 
-function ShopStep({ onDone }) {
+// Ism Telegram profilidan kelishi mumkin (bo'sh bo'lsa — so'raladi), manzil ixtiyoriy
+function ShopStep({ profile, onDone }) {
+    const [ownerName, setOwnerName] = useState(profile?.name || '')
     const [name, setName] = useState('')
     const [categoryId, setCategoryId] = useState(null)
     const [categories, setCategories] = useState([])
-    const [error, setError] = useState('')
+    const [location, setLocation] = useState({ region_id: profile?.region_id || null, district_id: profile?.district_id || null })
+    const [errors, setErrors] = useState({})
     const [busy, setBusy] = useState(false)
 
     useEffect(() => {
         locationsApi.categories().then((r) => setCategories(Array.isArray(r) ? r : r?.data || [])).catch(() => {})
     }, [])
 
+    const clear = (key) => setErrors((e) => ({ ...e, [key]: '' }))
+
     const submit = async () => {
-        if (!name.trim()) return setError("Do'kon nomini kiriting")
+        const missing = {}
+        if (!ownerName.trim()) missing.owner_name = 'Ismingizni kiriting'
+        if (!name.trim()) missing.name = "Do'kon nomini kiriting"
+        if (Object.keys(missing).length) return setErrors(missing)
+        const payload = { name: name.trim(), owner_name: ownerName.trim(), category_id: categoryId }
+        if (location.region_id) payload.region_id = location.region_id
+        if (location.district_id) payload.district_id = location.district_id
         setBusy(true)
         try {
-            await onboardingApi.shop({ name: name.trim(), category_id: categoryId })
+            await onboardingApi.shop(payload)
             await onDone()
         } catch (err) {
-            setError(errorMessage(err))
+            const fields = err?.response?.status === 422 ? fieldErrors(err) : {}
+            const shown = ['owner_name', 'name', 'region_id', 'district_id'].some((k) => fields[k])
+            setErrors(fields)
+            if (!shown) toast.error(errorMessage(err))
         } finally {
             setBusy(false)
         }
@@ -89,9 +105,14 @@ function ShopStep({ onDone }) {
 
     return (
         <form className="flex flex-1 flex-col" noValidate onSubmit={(e) => { e.preventDefault(); submit() }}>
-            <h1 className="mb-2 mt-9 text-[28px] font-extrabold leading-tight tracking-tight">Do'koningiz nomi nima?</h1>
-            <p className="mb-7 text-base text-ink-2">Bu nom qarzdorga boradigan SMS'da ko'rinadi.</p>
-            <Input label="Do'kon nomi" value={name} onChange={(e) => { setName(e.target.value); setError('') }} error={error} autoFocus maxLength={255} />
+            <h1 className="mb-2 mt-9 text-[28px] font-extrabold leading-tight tracking-tight">Siz va do'koningiz</h1>
+            <p className="mb-7 text-base text-ink-2">Do'kon nomi qarzdorga boradigan SMS'da ko'rinadi.</p>
+            <div className="space-y-4">
+                <Input label="Ismingiz" value={ownerName} onChange={(e) => { setOwnerName(e.target.value); clear('owner_name') }}
+                    error={errors.owner_name} autoFocus={!profile?.name} maxLength={255} autoComplete="name" />
+                <Input label="Do'kon nomi" value={name} onChange={(e) => { setName(e.target.value); clear('name') }}
+                    error={errors.name} autoFocus={!!profile?.name} maxLength={255} />
+            </div>
             {categories.length > 0 && (
                 <>
                     <p className="mb-2.5 mt-7 text-sm font-semibold">Nima sotasiz? <span className="font-normal text-ink-3">(ixtiyoriy)</span></p>
@@ -99,6 +120,9 @@ function ShopStep({ onDone }) {
                         options={categories.map((c) => ({ value: c.id, label: c.name }))} />
                 </>
             )}
+            <p className="mb-2.5 mt-7 text-sm font-semibold">Do'kon manzili <span className="font-normal text-ink-3">(ixtiyoriy)</span></p>
+            <LocationFields withStreet={false} value={location} errors={errors}
+                onChange={(v) => { setLocation({ region_id: v.region_id, district_id: v.district_id }); setErrors((e) => ({ ...e, region_id: '', district_id: '' })) }} />
             <div className="flex-1" />
             <Button type="submit" size="lg" block loading={busy} className="mt-8">Keyingisi</Button>
         </form>

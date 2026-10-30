@@ -19,8 +19,48 @@ test('22.1 Kirish: SMS-kod bilan (yangi raqam → onboarding)', async ({ page })
     await expect(page.getByRole('heading', { name: 'Kodni kiriting' })).toBeVisible()
     await expect(page.getByText('Kodni qayta yuborish:')).toBeVisible()
     await page.getByLabel('4 xonali kod').fill('4821')
-    await expect(page.getByRole('heading', { name: "Do'koningiz nomi nima?" })).toBeVisible()
+    await expect(page.getByRole('heading', { name: "Siz va do'koningiz" })).toBeVisible()
     expect(calls.find((c) => c.path === '/auth/otp/verify').body).toMatchObject({ phone: '+998901234567', code: '4821' })
+})
+
+test("Onboarding 1-qadam: ism Telegram'dan, viloyat/tuman ixtiyoriy, 422 maydon ostida", async ({ page }) => {
+    let shopCalls = 0
+    const { calls } = await mockApi(page, {
+        overrides: {
+            'GET /onboarding': (route) => route.fulfill({ json: { step: shopCalls > 1 ? 'customer' : 'shop', completed: false, profile: { name: 'Aziz Karimov', region_id: 2, district_id: null } } }),
+            'POST /onboarding/shop': (route) => {
+                shopCalls += 1
+                if (shopCalls === 1) return route.fulfill({ status: 422, json: { message: 'Xato', errors: { district_id: ["Tuman tanlangan viloyatga tegishli emas."] } } })
+                return route.fulfill({ status: 201, json: { message: "Do'kon saqlandi.", onboarding: { step: 'customer' } } })
+            }
+        }
+    })
+    await page.goto('/onboarding')
+    await expect(page.getByLabel('Ismingiz')).toHaveValue('Aziz Karimov')
+    await expect(page.getByLabel('Viloyat')).toHaveValue('2')
+    await page.getByLabel('Ismingiz').fill('')
+    await page.getByRole('button', { name: 'Keyingisi' }).click()
+    await expect(page.getByText('Ismingizni kiriting')).toBeVisible()
+    await expect(page.getByText("Do'kon nomini kiriting")).toBeVisible()
+    expect(shopCalls).toBe(0)
+
+    await page.getByLabel('Ismingiz').fill('Aziz')
+    await page.getByLabel("Do'kon nomi").fill('Barkamol Market')
+    await page.getByLabel('Viloyat').selectOption('1')
+    await expect(page.getByLabel('Tuman')).toBeEnabled()
+    await page.getByLabel('Tuman').selectOption('12')
+    await page.getByRole('button', { name: 'Keyingisi' }).click()
+    await expect(page.getByText('Tuman tanlangan viloyatga tegishli emas.')).toBeVisible()
+
+    // Viloyat almashsa tuman tozalanadi — faqat viloyat yuboriladi
+    await page.getByLabel('Viloyat').selectOption('2')
+    await expect(page.getByLabel('Tuman')).toHaveValue('')
+    await page.getByRole('button', { name: 'Keyingisi' }).click()
+    await expect(page.getByRole('heading', { name: "Birinchi mijozni qo'shing" })).toBeVisible()
+    const bodies = calls.filter((c) => c.path === '/onboarding/shop').map((c) => c.body)
+    expect(bodies[0]).toMatchObject({ name: 'Barkamol Market', owner_name: 'Aziz', region_id: 1, district_id: 12 })
+    expect(bodies[1]).toMatchObject({ name: 'Barkamol Market', owner_name: 'Aziz', region_id: 2 })
+    expect(bodies[1]).not.toHaveProperty('district_id')
 })
 
 test('22.1 Kirish: Telegram bot orqali (tg_login kodi → token, manzildan olib tashlanadi)', async ({ page }) => {
