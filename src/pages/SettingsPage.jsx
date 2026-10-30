@@ -321,7 +321,7 @@ function RemindersSection({ settings, session }) {
         <Card className="space-y-4 p-4 md:p-6">
             {!canEdit && <p className="rounded-xl bg-soft p-3 text-sm text-ink-2">Bu sozlamalarni faqat do'kon egasi o'zgartiradi.</p>}
             <Toggle disabled={!canEdit} checked={n.sms_on_debt !== false} onChange={(v) => set({ sms_on_debt: v })} label="Nasiya yozilganda mijozga SMS" description="Summa va qaytarish sanasi bilan (nasiya oynasida yoqiq turadi)" />
-            <Toggle disabled={!canEdit} checked={!!n.sms_on_payment} onChange={(v) => set({ sms_on_payment: v })} label="To'lov qabul qilinganda SMS" description="Qolgan qarz bilan" />
+            <Toggle disabled={!canEdit} checked={n.sms_on_payment !== false} onChange={(v) => set({ sms_on_payment: v })} label="To'lov qabul qilinganda SMS" description="Qolgan qarz bilan" />
             <div className="h-px bg-line" />
             <Toggle disabled={!canEdit} checked={n.reminder_enabled !== false} onChange={(v) => set({ reminder_enabled: v })} label="Muddat eslatmasi" description="Qaytarish kuni, keyin muddat o'tsa takroriy" />
             {n.reminder_enabled !== false && (
@@ -334,11 +334,11 @@ function RemindersSection({ settings, session }) {
                 </div>
             )}
             <div className="h-px bg-line" />
-            <Toggle disabled={!canEdit} checked={!!n.digest_enabled} onChange={(v) => set({ digest_enabled: v })} label="Kechki xulosa Telegramga" description="Bugungi nasiya, to'lov, muddati o'tganlar · @daftaron_bot" />
-            {n.digest_enabled && canEdit && chats.data && list.length === 0 && (
+            <Toggle disabled={!canEdit} checked={n.digest_enabled !== false} onChange={(v) => set({ digest_enabled: v })} label="Kechki xulosa Telegramga" description="Bugungi nasiya, to'lov, muddati o'tganlar · @daftaron_bot" />
+            {n.digest_enabled !== false && canEdit && chats.data && list.length === 0 && (
                 <p className="rounded-xl bg-warn-soft p-3 text-sm text-ink">Xulosa kelishi uchun pastda Telegram'ni ulang.</p>
             )}
-            {n.digest_enabled && (
+            {n.digest_enabled !== false && (
                 <Select label="Xulosa vaqti" disabled={!canEdit} value={n.digest_time || '20:00'} onChange={(v) => set({ digest_time: v || '20:00' })}
                     options={['18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].map((t) => ({ value: t, label: t }))} placeholder="20:00" />
             )}

@@ -56,7 +56,7 @@ export default function PaymentSheet({ open, onClose, customer: initialCustomer,
         setDebtId(initialDebt?.id || null)
         setDateMode('today')
         setDateOther('')
-        setSendSms(session.notifications.sms_on_payment ?? false)
+        setSendSms(session.notifications.sms_on_payment ?? true)
         setPreview(null)
         setResult(null)
     }, [open])
