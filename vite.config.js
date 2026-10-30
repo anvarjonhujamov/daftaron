@@ -50,7 +50,7 @@ function cspPlugin(apiUrl) {
                 registerType: 'autoUpdate',
                 // Ro'yxatdan o'tkazish src/main.jsx da (virtual:pwa-register): yangilanishni tekshirish + avtomatik reload
                 injectRegister: false,
-                includeAssets: ['favicon.png', 'apple-touch-icon.png', 'mask-icon.svg'],
+                includeAssets: ['favicon.png', 'apple-touch-icon.png'],
                 manifest: {
                     name: 'DaftarOn — nasiya daftari',
                     short_name: 'DaftarOn',
@@ -84,7 +84,9 @@ function cspPlugin(apiUrl) {
                     // Yangi SW kutmasdan faollashadi va ochiq sahifalarni boshqaradi (registerSW sahifani yangilaydi)
                     skipWaiting: true,
                     clientsClaim: true,
-                    globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+                    // Shriftlar oldindan yuklanmaydi: Inter 7 ta subset (~220 KB), brauzer unicode-range bo'yicha
+                    // faqat keraklisini oladi, u pastdagi 'fonts' keshiga tushadi
+                    globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
                     // API javoblari SW'da keshlanmaydi: ular foydalanuvchi va do'konga xos (X-Tenant-Id),
                     // umumiy qurilmada boshqa odamga ko'rinib qolmasin
                     runtimeCaching: [

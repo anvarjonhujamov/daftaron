@@ -74,14 +74,3 @@ export function useOnChange(callback) {
         return () => window.removeEventListener(CHANGE_EVENT, handler)
     }, [])
 }
-
-export function useMediaQuery(query) {
-    const [match, setMatch] = useState(() => window.matchMedia(query).matches)
-    useEffect(() => {
-        const mq = window.matchMedia(query)
-        const handler = () => setMatch(mq.matches)
-        mq.addEventListener('change', handler)
-        return () => mq.removeEventListener('change', handler)
-    }, [query])
-    return match
-}

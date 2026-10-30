@@ -13,9 +13,6 @@ export const formatMoney = (value) => {
     return n === '—' ? n : `${n} so'm`
 }
 
-// Eski nom (kod bo'ylab ishlatiladi)
-export const formatCurrency = formatNumber
-
 // Kiritilgan matndan butun so'm: "1 250 000" -> 1250000
 export const parseCurrency = (value) => {
     if (value === null || value === undefined) return 0

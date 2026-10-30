@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import { Card, Money, Pill } from '../ui/display'
 import { Button } from '../ui/controls'
 import { formatDate, formatDateTime } from '../utils/date'
-import { formatNumber } from '../utils/format'
 
 // Nasiya holati (backend `state`, TZ 28.4)
 export const debtState = (d) => {
@@ -99,5 +98,3 @@ export function SmsRow({ sms, onRetry, retrying }) {
 }
 
 export const paymentLine = (p) => `${formatDateTime(p.at || p.paid_at)}${p.method ? ` · ${METHODS[p.method] || p.method}` : ''}${p.staff?.name ? ` · ${p.staff.name}` : ''}`
-
-export const money = formatNumber

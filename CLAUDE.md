@@ -1,13 +1,13 @@
 # Daftaron — web SPA
 
-Do'konlar uchun raqamli nasiya daftarining web ilovasi (`web.daftaron.uz`, PWA). Foydalanuvchilar uni mobil brauzerda, PWA sifatida yoki Telegram Mini App ichida ochadi. **Native Android ilova yo'q**: `app/`, `build.gradle`, `twa-manifest.json` (TWA) va `mobile-native/` (Expo) ishlatilmaydi, ularga tegmang.
+Do'konlar uchun raqamli nasiya daftarining web ilovasi (`web.daftaron.uz`, PWA). Foydalanuvchilar uni mobil brauzerda, PWA sifatida yoki Telegram Mini App ichida ochadi. **Native Android ilova yo'q** (eski TWA va Expo kodlari 2026-10-30 da o'chirilgan, git tarixida bor).
 
 Backend alohida repo: `/Applications/MAMP/htdocs/daftaron` (Laravel 12), API `https://daftaron.firstcoder.uz/api/v1`. Uning [CLAUDE.md](/Applications/MAMP/htdocs/daftaron/CLAUDE.md)'sida domen lug'ati (Tenant, Debt, Payment, Supplier...) va biznes qoidalari bor.
 
 ## API kontrakti — manba backend'da
 
-- Endpointlar ro'yxati: backend `TZ.md`, **19-bo'lim**. So'rov/javob formatlari: **23-bo'lim** (ta'minotchilar — 24). Batafsil: `public/docs/openapi.yaml`.
-- Har doim backend repodagi faylni o'qing: `/Applications/MAMP/htdocs/daftaron/TZ.md`. Bu repodagi `TZ.md`, `UserFlow-Mobile.md`, `openapi.yaml` — eskirishi mumkin bo'lgan nusxalar.
+- Endpointlar ro'yxati: backend `TZ.md`, **19-bo'lim**. So'rov/javob formatlari: **23-bo'lim** (ta'minotchilar — 24). Batafsil: backend `public/docs/openapi.yaml`.
+- Har doim backend repodagi faylni o'qing: `/Applications/MAMP/htdocs/daftaron/TZ.md` (bu repoda nusxa saqlanmaydi).
 - Kontraktni bu yerda takrorlamang. Backend'da yo'q endpoint chaqirmang; kerak bo'lsa avval backend'ga qo'shilsin.
 
 ## Stek
@@ -52,6 +52,7 @@ e2e/                  # Playwright testlari (UserFlow bandlari bo'yicha nomlanga
 ## Dizayn tizimi (DaftarOn 2.0)
 
 - Manba: claude.ai artifact «DaftarOn 2.0 — sodda UI» (58 ekran). Logotip — `public/logo.png`, o'zgartirilmaydi.
+- Rasmlar ko'rsatiladigan o'lchamda (logo 192px, to'lov ikonlari 96px balandlik): SW ularni oldindan yuklaydi, katta PNG qo'ymang.
 - Ranglar faqat tokenlar orqali: `bg-bg`, `bg-card`, `bg-soft`, `text-ink`/`ink-2`/`ink-3`, `border-line`/`line-2`, `brand` (asosiy), `debt` (qarz, qizil), `pay` (to'lov, yashil), `supp` (ta'minotchi, to'q sariq), `warn`, `danger`. Har birida `-soft` (fon) varianti bor.
   Qiymatlar `src/index.css` dagi CSS o'zgaruvchilarida, tungi rejim — `.dark` bloki. **Komponentga hex va `dark:` yozilmaydi** — tokenlar o'zi almashadi.
 - Matn rangi tokenlari tungi rejimda ochroq (kontrast AA). Tugma foni uchun `bg-pay-strong`, `bg-brand`, `bg-danger`; `text-debt`/`text-pay` — faqat matn.
@@ -123,4 +124,4 @@ Eski manzillar (`/register`, `/terms`, `/privacy-policy`, `/debts`, `/payments`,
 - `sw.js` nginx'da uzoq keshlanadi; shuning uchun `main.jsx` SW yangilanishini o'zi tekshiradi. `vite.config.js`dagi `skipWaiting`/`clientsClaim`ni olib tashlamang.
 - Eski hashlangan chunk'lar serverda qoldiriladi (rsync `--delete`siz): ochiq turgan eski sahifalar ishlashda davom etadi.
 - `dist/` git'da saqlanadi va odatda manba o'zgarishi bilan birga commit qilinadi.
-- `vercel.json` / `daftaron.vercel.app` — eski, prod emas. "Kodda bor, prod'da yo'q" muammosida avval `web.daftaron.uz`dagi jonli bundle'ni tekshiring.
+- `daftaron.vercel.app` — eski, prod emas. "Kodda bor, prod'da yo'q" muammosida avval `web.daftaron.uz`dagi jonli bundle'ni tekshiring.
