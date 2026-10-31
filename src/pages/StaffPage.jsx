@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Pause, Pencil, Play, Plus, Trash2, UserCog } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Lock, Pause, Pencil, Play, Plus, Trash2, UserCog } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { staffApi } from '../api/staff.api'
 import { shopsApi } from '../api/shops.api'
@@ -32,6 +32,7 @@ const OWNER_ONLY = ['staff.manage', 'settings.manage']
 
 export default function StaffPage() {
     const session = useSession()
+    const navigate = useNavigate()
     const res = useResource(() => staffApi.list(), [], { cacheKey: 'staff', enabled: session.can('staff.manage') })
     const catalog = useResource(() => staffApi.permissions(), [], { cacheKey: 'staff_catalog', enabled: session.can('staff.manage') })
     const shops = useResource(() => shopsApi.overview(), [], { cacheKey: 'shops', enabled: session.can('staff.manage') })
@@ -44,6 +45,14 @@ export default function StaffPage() {
     }
 
     const list = res.data?.data || []
+    // Ta'rif bo'yicha xodim limiti: GET /staff → usage { total, used }, null — cheksiz
+    const usage = res.data?.usage
+    const workerTotal = usage ? usage.total : session.subscription?.usage?.worker_total_limit
+    const workerUsed = usage ? usage.used : session.subscription?.usage?.worker_used
+    const canAdd = workerTotal === null || workerTotal === undefined || workerUsed === undefined || Number(workerUsed) < Number(workerTotal)
+    const addButton = (label) => (canAdd
+        ? <Button icon={Plus} onClick={() => setForm({})}>{label}</Button>
+        : <Button variant="secondary" icon={Lock} onClick={() => navigate('/subscription')}>{label}</Button>)
     const labels = Object.fromEntries((catalog.data?.permissions || []).map((p) => [p.key, p.label]))
 
     const run = async (fn, msg) => {
@@ -52,9 +61,15 @@ export default function StaffPage() {
 
     return (
         <div className="page">
-            <PageHeader back title="Xodimlar" actions={!session.readOnly && <Button icon={Plus} onClick={() => setForm({})}>Xodim</Button>} />
+            <PageHeader back title="Xodimlar" actions={!session.readOnly && addButton('Xodim')} />
+            {!canAdd && !session.readOnly && (
+                <p className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-warn-soft px-3.5 py-2.5 text-sm text-ink">
+                    <span>{Number(workerTotal) === 0 ? "Joriy ta'rifda xodim qo'shib bo'lmaydi." : `Ta'rifingizda ${formatNumber(workerTotal)} tagacha xodim — limit tugagan.`} Yuqoriroq ta'rifga o'ting.</span>
+                    <Button size="sm" onClick={() => navigate('/subscription')}>Ta'riflar</Button>
+                </p>
+            )}
             {res.error && !res.data ? <ErrorState onRetry={res.reload} /> : res.loading && !res.data ? <ListSkeleton rows={3} /> : list.length === 0 ? (
-                <EmptyState icon={UserCog} title="Hali xodim yo'q" text="Xodim o'z raqami bilan kod orqali kiradi. Parol bermaysiz." action={<Button icon={Plus} onClick={() => setForm({})}>Xodim qo'shish</Button>} />
+                <EmptyState icon={UserCog} title="Hali xodim yo'q" text="Xodim o'z raqami bilan kod orqali kiradi. Parol bermaysiz." action={!session.readOnly && addButton("Xodim qo'shish")} />
             ) : (
                 <div className="grid gap-3 lg:grid-cols-2">
                     {list.map((s) => {

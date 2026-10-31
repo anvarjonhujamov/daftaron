@@ -1,28 +1,27 @@
 import { useState } from 'react'
-import { Check, Copy, Gift } from 'lucide-react'
+import { Copy, Gift } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { subscriptionApi } from '../api/subscription.api'
 import { useSession } from '../app/session'
 import { useResource } from '../lib/hooks'
 import { errorMessage } from '../lib/errors'
 import TopUpSheet, { ProviderButtons } from '../features/TopUpSheet'
+import PlanCards, { PACKAGE_UNITS } from '../features/PlanCards'
 import { Card, List, Money, PageHeader, Pill, Row, SectionTitle, Skeleton } from '../ui/display'
-import { Button, Chips, Input, Toggle, cx } from '../ui/controls'
+import { Button, Input, Toggle, cx } from '../ui/controls'
 import { Confirm } from '../ui/Sheet'
 import { formatDate } from '../utils/date'
 import { formatMoney, formatNumber } from '../utils/format'
 
-const limitText = (v, unit) => (v === null || v === undefined || v === 0 ? `Cheksiz ${unit}` : `${formatNumber(v)} ${unit}`)
+// Qoldiq: null — cheksiz (∞), 0 — haqiqiy nol
+const ofLimit = (used, total) => `${formatNumber(used)} / ${total === null || total === undefined ? '∞' : formatNumber(total)}`
 const TX_TYPES = { subscription: 'Obuna', deposit: "Balans to'ldirildi", sms: 'SMS', extra: "Qo'shimcha paket", referral: 'Referal bonusi', promo: 'Promo' }
-const PACKAGE_UNITS = { sms: 'SMS', debt: 'nasiya', shop: "do'kon", worker: 'xodim' }
 
 export default function SubscriptionPage() {
     const session = useSession()
     const status = useResource(() => subscriptionApi.status(), [], { cacheKey: 'subscription_status' })
     const tx = useResource(() => subscriptionApi.transactions(), [])
-    const [months, setMonths] = useState(1)
     const [provider, setProvider] = useState(null)
-    const [choose, setChoose] = useState(null)
     const [buy, setBuy] = useState(null)
     const [promo, setPromo] = useState('')
     const [promoInfo, setPromoInfo] = useState(null)
@@ -39,20 +38,9 @@ export default function SubscriptionPage() {
     const currentPlan = plans.find((p) => p.id === s.current_plan_id)
     const shortfall = currentPlan ? Number(currentPlan.price) - Number(s.balance || 0) : 0
     const packages = (s.extra_packages || []).filter((p) => p.is_active !== false && (usage.allowed_extra_package_types || []).includes(p.feature_type || p.type))
-    const priceOf = (p) => (months === 12 ? Number(p.yearly_price ?? p.price * 10) : Number(p.price))
 
     const refresh = () => { status.reload(); tx.reload(); session.refresh() }
 
-    const doChoose = async () => {
-        try {
-            const r = await subscriptionApi.choose(choose.id, { months: months === 12 ? 12 : undefined, promo_code: promoInfo?.valid ? promo.trim() : undefined })
-            toast.success(r.message || "Ta'rif faollashtirildi")
-            setChoose(null)
-            refresh()
-        } catch (err) {
-            toast.error(errorMessage(err))
-        }
-    }
     const doBuy = async () => {
         try {
             const r = await subscriptionApi.buyExtra(buy.id)
@@ -108,8 +96,8 @@ export default function SubscriptionPage() {
                 {[
                     ['SMS', usage.sms_remaining === null || usage.sms_remaining === undefined ? '—' : `${formatNumber(usage.sms_remaining)} ta`],
                     ['Nasiya yozish', usage.debt_remaining === null || usage.debt_remaining === undefined ? 'Cheksiz' : `${formatNumber(usage.debt_remaining)} ta`],
-                    ["Do'konlar", `${formatNumber(usage.shop_used)} / ${usage.shop_total_limit ? formatNumber(usage.shop_total_limit) : '∞'}`],
-                    ['Xodimlar', `${formatNumber(usage.worker_used)} / ${usage.worker_total_limit ? formatNumber(usage.worker_total_limit) : '∞'}`]
+                    ["Do'konlar", ofLimit(usage.shop_used, usage.shop_total_limit)],
+                    ['Xodimlar', ofLimit(usage.worker_used, usage.worker_total_limit)]
                 ].map(([k, v]) => <Card key={k} className="p-4"><div className="text-[13px] text-ink-2">{k}</div><div className="text-lg font-extrabold">{v}</div></Card>)}
             </div>
             {packages.length > 0 && (
@@ -122,32 +110,9 @@ export default function SubscriptionPage() {
                 </div>
             )}
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="section-label">Ta'riflar</h2>
-                <Chips size="sm" ariaLabel="Muddat" value={months} onChange={setMonths} wrap options={[{ value: 1, label: 'Oylik' }, { value: 12, label: 'Yillik · 2 oy bepul' }]} />
-            </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-                {plans.map((p) => {
-                    const active = p.id === s.current_plan_id && !expired
-                    const popular = /pro/i.test(p.name)
-                    return (
-                        <Card key={p.id} className={cx('flex flex-col p-5', active ? 'border-2 border-brand' : popular && 'border-2 border-line-2')}>
-                            <div className="flex items-center gap-2">
-                                <strong className="text-lg">{p.name}</strong>
-                                {popular && <Pill tone="info">Eng ommabob</Pill>}
-                            </div>
-                            <div className="mt-2 text-[26px] font-extrabold">{formatNumber(priceOf(p))} <span className="text-sm font-semibold text-ink-2">so'm/{months === 12 ? 'yil' : 'oy'}</span></div>
-                            <ul className="mt-3 flex-1 space-y-1.5 text-[15px] text-ink-2">
-                                {[limitText(p.shop_limit, "do'kon"), limitText(p.worker_limit, 'xodim'), limitText(p.debt_limit, 'nasiya'), `${formatNumber(p.sms_limit)} SMS/oy`, p.allow_export === true && "Excel'ga yuklash"].filter(Boolean).map((t) => (
-                                    <li key={t} className="flex items-center gap-2"><Check size={16} className="text-pay" aria-hidden />{t}</li>
-                                ))}
-                            </ul>
-                            <Button className="mt-4" variant={active ? 'secondary' : 'primary'} disabled={active || session.isOwner === false} onClick={() => setChoose(p)}>
-                                {active ? "Faol ta'rif" : `${p.name}ga o'tish`}
-                            </Button>
-                        </Card>
-                    )
-                })}
+            <div className="mt-6">
+                <PlanCards plans={plans} currentPlanId={s.current_plan_id} expired={expired} balance={s.balance} promoCode={promoInfo?.valid ? promo.trim() : undefined}
+                    canChoose={session.isOwner !== false} onChanged={refresh} />
             </div>
 
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -182,8 +147,6 @@ export default function SubscriptionPage() {
             )}
 
             <TopUpSheet open={!!provider} provider={provider} user={session.user} suggested={shortfall} onClose={() => setProvider(null)} />
-            <Confirm open={!!choose} onClose={() => setChoose(null)} onConfirm={doChoose} title={`${choose?.name || ''} ta'rifi`} confirmText="Tasdiqlash"
-                text={choose && `Balansdan ${formatMoney(priceOf(choose))} yechiladi (${months === 12 ? '12 oy, 2 oy bepul' : '1 oy'}).${promoInfo?.valid ? ' Promo kod qo\'llanadi.' : ''} Balans: ${formatMoney(s.balance)}.`} />
             <Confirm open={!!buy} onClose={() => setBuy(null)} onConfirm={doBuy} title="Qo'shimcha paket" confirmText="Sotib olish"
                 text={buy && `+${formatNumber(buy.quantity)} ${PACKAGE_UNITS[buy.feature_type || buy.type] || ''} — balansdan ${formatMoney(buy.price)} yechiladi.`} />
         </div>

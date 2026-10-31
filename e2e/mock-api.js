@@ -27,9 +27,11 @@ export const fixtures = () => {
             trial_info: { trial_ends_at: `${addDays(t, 32)}T00:00:00+05:00`, days_remaining: 32, is_expired: false, status: 1 },
             usage: { subscription_status: 'active', plan_name: 'Pro', plan_price: 59000, debt_remaining: null, sms_remaining: 50, sms_total_limit: 50, shop_used: 1, shop_total_limit: 3, worker_used: 1, worker_total_limit: 5, allowed_extra_package_types: ['sms'], export_allowed: true },
             plans: [
-                { id: 1, name: 'Oddiy', price: 29000, yearly_price: 290000, sms_limit: 20, shop_limit: 1, worker_limit: 1, debt_limit: null, allow_export: false },
-                { id: 2, name: 'Pro', price: 59000, yearly_price: 590000, sms_limit: 50, shop_limit: 3, worker_limit: 5, debt_limit: null, allow_export: true },
-                { id: 3, name: 'Premium', price: 99000, yearly_price: 990000, sms_limit: 150, shop_limit: null, worker_limit: null, debt_limit: null, allow_export: true }
+                { id: 1, name: 'Oddiy', price: 29000, yearly_price: 290000, sms_limit: 20, shop_limit: 1, worker_limit: 0, supplier_limit: 10, debt_limit: 70, allow_export: false, sms_overage_price: 190,
+                    extra_packages: [{ id: 2, type: 'sms', feature_type: 'sms', resolved_type: 'sms', quantity: 50, price: 25000, is_active: true }] },
+                { id: 2, name: 'Pro', price: 59000, yearly_price: 590000, sms_limit: 50, shop_limit: 3, worker_limit: 5, supplier_limit: 500, debt_limit: null, allow_export: true, sms_overage_price: 190,
+                    extra_packages: [{ id: 2, type: 'sms', feature_type: 'sms', resolved_type: 'sms', quantity: 50, price: 25000, is_active: true }, { id: 3, type: 'debt', feature_type: 'shop', resolved_type: 'shop', quantity: 1, price: 20000, is_active: true }] },
+                { id: 3, name: 'Premium', price: 99000, yearly_price: 990000, sms_limit: 150, shop_limit: null, worker_limit: null, supplier_limit: null, debt_limit: null, allow_export: true, sms_overage_price: 150, extra_packages: [] }
             ],
             extra_packages: [{ id: 2, type: 'sms', feature_type: 'sms', quantity: 50, price: 25000, is_active: true }]
         },

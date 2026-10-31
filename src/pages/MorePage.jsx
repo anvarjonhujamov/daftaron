@@ -22,7 +22,7 @@ export default function MorePage() {
         session.isOwner && ['/shops', Store, "Do'konlar", `${(session.tenants || []).length} ta do'kon`],
         ['/notifications', Bell, 'Bildirishnomalar', null, <CountBadge key="b" count={session.unread} />],
         ['/support', Bot, 'Yordam va AI yordamchi'],
-        ['/subscription', CreditCard, "Ta'rif va SMS", sub && `${sub.usage?.plan_name || 'Sinov'} · ${days !== undefined ? `${days} kun qoldi` : ''} · SMS ${formatNumber(sub.usage?.sms_remaining)}`],
+        ['/subscription', CreditCard, "Ta'rif va balans", sub && `${sub.usage?.plan_name || 'Sinov'} · ${days !== undefined ? `${days} kun qoldi` : ''} · SMS ${formatNumber(sub.usage?.sms_remaining)}`],
         ['/settings', Settings, 'Sozlamalar']
     ].filter(Boolean)
 

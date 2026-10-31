@@ -194,6 +194,41 @@ test("Oddiy ta'rif: Excel qulflangan — obuna sahifasiga, eksport so'rovi yo'q"
     expect(calls.some((c) => c.path.includes('export'))).toBe(false)
 })
 
+test("Oddiy ta'rif: hamma ta'riflar narxi va limitdan tashqari narxlar bilan, Pro'ga o'tish", async ({ page }) => {
+    const oddiy = (f) => ({ ...f.subscription, current_plan_id: 1, usage: { ...f.subscription.usage, plan_name: 'Oddiy', shop_used: 1, shop_total_limit: 1, worker_used: 0, worker_total_limit: 0 } })
+    const { calls } = await mockApi(page, {
+        overrides: {
+            'GET /subscription/status': (route, { f }) => route.fulfill({ json: oddiy(f) }),
+            'POST /subscription/choose/2': (route) => route.fulfill({ json: { message: 'Obuna muvaffaqiyatli faollashtirildi.', current_plan_id: 2 } })
+        }
+    })
+    await page.goto('/subscription')
+    for (const name of ['Oddiy', 'Pro', 'Premium']) await expect(page.getByText(name, { exact: true }).first()).toBeVisible()
+    await expect(page.getByText("Xodim qo'shib bo'lmaydi").first()).toBeVisible()
+    await expect(page.getByText("190 so'm/SMS").first()).toBeVisible()
+    await expect(page.getByText("+1 do'kon")).toBeVisible()
+    await page.getByRole('button', { name: "Proga o'tish" }).click()
+    await page.getByRole('button', { name: 'Tasdiqlash' }).click()
+    await expect.poll(() => calls.some((c) => c.method === 'POST' && c.path.endsWith('/subscription/choose/2'))).toBe(true)
+
+    // Sozlamalarda ham ta'riflar ko'rinadi
+    await page.goto('/settings/account')
+    await expect(page.getByRole('button', { name: "Proga o'tish" }).first()).toBeVisible()
+})
+
+test("Oddiy ta'rif: do'kon limiti tugagan — qo'shish o'rniga ta'riflarga", async ({ page }) => {
+    await mockApi(page, {
+        overrides: {
+            'GET /subscription/status': (route, { f }) => route.fulfill({ json: { ...f.subscription, current_plan_id: 1, usage: { ...f.subscription.usage, plan_name: 'Oddiy', shop_used: 1, shop_total_limit: 1 } } }),
+            'GET /shops': (route, { f }) => route.fulfill({ json: { active_tenant_id: f.user.tenant_id, usage: { base: 1, extra: 0, total: 1, used: 1, remaining: 0 }, data: [{ id: f.user.tenant_id, name: 'Barkamol Market', is_owner: true, is_active: true, stats: {} }] } })
+        }
+    })
+    await page.goto('/shops')
+    await expect(page.getByText("Do'kon limiti tugagan")).toBeVisible()
+    await page.getByRole('button', { name: "Do'kon", exact: true }).click()
+    await expect(page).toHaveURL(/\/subscription$/)
+})
+
 test('Excel: backend 403 plan_feature (blob javob) — xabar o\'qiladi, obuna sahifasiga', async ({ page }) => {
     await mockApi(page, {
         overrides: {

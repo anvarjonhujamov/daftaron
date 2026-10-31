@@ -11,6 +11,7 @@ import { safeUrl } from '../lib/sanitize'
 import { passwordProblem } from './ForgotPasswordPage'
 import { CodeInput } from './LoginPage'
 import TopUpSheet, { ProviderButtons } from '../features/TopUpSheet'
+import PlanCards from '../features/PlanCards'
 import { Avatar, Card, List, PageHeader, Pill, Row, Skeleton } from '../ui/display'
 import { Button, Chips, Input, PhoneInput, Select, Toggle } from '../ui/controls'
 import { Confirm, Sheet } from '../ui/Sheet'
@@ -21,7 +22,7 @@ import { telegramInitData } from '../utils/telegram'
 
 const SECTIONS = [
     { key: 'profile', label: "Profil va do'kon", icon: Store },
-    { key: 'account', label: 'Hisob va balans', icon: Wallet },
+    { key: 'account', label: "Ta'rif va balans", icon: Wallet },
     { key: 'reminders', label: 'Eslatmalar va SMS', icon: BellRing },
     { key: 'appearance', label: "Ko'rinish va til", icon: Palette },
     { key: 'security', label: 'Xavfsizlik', icon: Lock },
@@ -104,7 +105,7 @@ function MenuList({ session }) {
             <List>
                 <Row to="/settings/profile" left={<Avatar name={p?.name || session.user?.name} size={44} />} title={p?.name || session.user?.name}
                     subtitle={`${session.tenant?.name || ''} · ${formatPhone(p?.phone || session.user?.phone)}`} chevron />
-                <Row to="/subscription" left={<Wallet size={22} className="text-brand-strong" aria-hidden />} title={`Balans: ${formatMoney(sub?.balance)}`}
+                <Row to="/subscription" left={<Wallet size={22} className="text-brand-strong" aria-hidden />} title={`Ta'rif va balans · ${formatMoney(sub?.balance)}`}
                     subtitle={`${sub?.usage?.plan_name || 'Sinov'} · ${formatDate(sub?.trial_info?.trial_ends_at)} gacha · SMS ${formatNumber(sub?.usage?.sms_remaining)}`} chevron />
             </List>
             <List>
@@ -230,24 +231,31 @@ function AccountSection({ session }) {
     const sub = session.subscription || {}
     const usage = sub.usage || {}
     const [provider, setProvider] = useState(null)
+    const expired = !!(sub.trial_info?.is_expired || usage.subscription_status === 'expired')
     return (
-        <Card className="p-4 md:p-6">
-            <div className="flex items-start justify-between gap-3">
-                <div>
-                    <div className="text-sm text-ink-2">Joriy balans</div>
-                    <div className="text-[28px] font-extrabold">{formatMoney(sub.balance)}</div>
+        <div className="space-y-6">
+            <Card className="p-4 md:p-6">
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <div className="text-sm text-ink-2">Joriy balans</div>
+                        <div className="text-[28px] font-extrabold">{formatMoney(sub.balance)}</div>
+                    </div>
+                    <Link to="/subscription" className="flex items-center gap-1 text-sm font-semibold text-brand-strong">Obuna va to'lovlar <ChevronRight size={16} aria-hidden /></Link>
                 </div>
-                <Link to="/subscription" className="flex items-center gap-1 text-sm font-semibold text-brand-strong">Obuna va to'lovlar <ChevronRight size={16} aria-hidden /></Link>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                    {[['Ta\'rif', usage.plan_name || 'Sinov'], ['Muddati', `${formatDate(sub.trial_info?.trial_ends_at)} gacha`],
+                        ['SMS qoldig\'i', formatNumber(usage.sms_remaining)], ['Nasiya qoldig\'i', usage.debt_remaining === null || usage.debt_remaining === undefined ? 'Cheksiz' : formatNumber(usage.debt_remaining)]
+                    ].map(([k, v]) => <div key={k} className="rounded-xl bg-soft/70 p-3"><div className="text-ink-2">{k}</div><strong>{v}</strong></div>)}
+                </div>
+                <p className="mb-2 mt-5 text-sm font-semibold">Balansni to'ldirish</p>
+                <ProviderButtons onSelect={setProvider} />
+                <TopUpSheet open={!!provider} provider={provider} user={session.user} onClose={() => setProvider(null)} />
+            </Card>
+            <div>
+                <PlanCards plans={sub.plans} currentPlanId={sub.current_plan_id} expired={expired} balance={sub.balance}
+                    canChoose={session.isOwner !== false} onChanged={session.refresh} />
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                {[['Ta\'rif', usage.plan_name || 'Sinov'], ['Muddati', `${formatDate(sub.trial_info?.trial_ends_at)} gacha`],
-                    ['SMS qoldig\'i', formatNumber(usage.sms_remaining)], ['Nasiya qoldig\'i', usage.debt_remaining === null || usage.debt_remaining === undefined ? 'Cheksiz' : formatNumber(usage.debt_remaining)]
-                ].map(([k, v]) => <div key={k} className="rounded-xl bg-soft/70 p-3"><div className="text-ink-2">{k}</div><strong>{v}</strong></div>)}
-            </div>
-            <p className="mb-2 mt-5 text-sm font-semibold">Balansni to'ldirish</p>
-            <ProviderButtons onSelect={setProvider} />
-            <TopUpSheet open={!!provider} provider={provider} user={session.user} onClose={() => setProvider(null)} />
-        </Card>
+        </div>
     )
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRightLeft, Eraser, Pencil, Plus, Store, Trash2 } from 'lucide-react'
+import { ArrowRightLeft, Eraser, Lock, Pencil, Plus, Store, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { shopsApi } from '../api/shops.api'
 import { customersApi } from '../api/customers.api'
@@ -25,6 +25,14 @@ const usageText = (u) => {
     return total === null || total === undefined ? `Do'konlar: ${used} ta (cheksiz)` : `Ta'rifingizda ${total} tagacha do'kon. Hozir: ${used} ta.`
 }
 
+// Yana do'kon qo'shsa bo'ladimi: /shops → usage, bo'lmasa /subscription/status → usage. null limit — cheksiz
+const canAddShop = (u, sub) => {
+    const used = u?.used ?? sub?.shop_used
+    const total = u ? (u.total ?? u.total_limit ?? null) : sub?.shop_total_limit
+    if (used === undefined || total === null || total === undefined) return true
+    return Number(used) < Number(total)
+}
+
 export default function ShopsPage() {
     const session = useSession()
     const navigate = useNavigate()
@@ -38,6 +46,7 @@ export default function ShopsPage() {
     const shops = res.data?.data || []
     const activeId = res.data?.active_tenant_id ?? session.user?.tenant_id
     const totalDebt = shops.reduce((s, x) => s + Number(x.stats?.total_debt || 0), 0)
+    const canAdd = canAddShop(res.data?.usage, session.subscription?.usage)
 
     // Do'kon almashtirish: butun ilova shu do'konga o'tadi (X-Tenant-Id)
     const switchTo = async (shop) => {
@@ -73,8 +82,16 @@ export default function ShopsPage() {
     return (
         <div className="page">
             <PageHeader back title="Do'konlar" subtitle="Do'konni tanlang — butun ilova shu do'konga o'tadi."
-                actions={!session.readOnly && <Button icon={Plus} onClick={() => setForm({})}>Do'kon</Button>} />
+                actions={!session.readOnly && (canAdd
+                    ? <Button icon={Plus} onClick={() => setForm({})}>Do'kon</Button>
+                    : <Button variant="secondary" icon={Lock} onClick={() => navigate('/subscription')}>Do'kon</Button>)} />
             {usageText(res.data?.usage) && <p className="mb-3 rounded-xl bg-brand-soft px-3.5 py-2.5 text-sm font-semibold text-brand-strong">{usageText(res.data.usage)}</p>}
+            {!canAdd && !session.readOnly && (
+                <p className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-warn-soft px-3.5 py-2.5 text-sm text-ink">
+                    <span>Do'kon limiti tugagan. Yangi do'kon uchun yuqoriroq ta'rifga o'ting yoki qo'shimcha do'kon paketini oling.</span>
+                    <Button size="sm" onClick={() => navigate('/subscription')}>Ta'riflar</Button>
+                </p>
+            )}
             {res.error && !res.data ? <ErrorState onRetry={res.reload} /> : res.loading && !res.data ? <ListSkeleton rows={2} /> : (
                 <div className="grid gap-3 lg:grid-cols-2">
                     {shops.map((s) => {
