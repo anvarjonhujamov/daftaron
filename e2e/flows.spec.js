@@ -205,6 +205,9 @@ test("Oddiy ta'rif: hamma ta'riflar narxi va limitdan tashqari narxlar bilan, Pr
     await page.goto('/subscription')
     for (const name of ['Oddiy', 'Pro', 'Premium']) await expect(page.getByText(name, { exact: true }).first()).toBeVisible()
     await expect(page.getByText("Xodim qo'shib bo'lmaydi").first()).toBeVisible()
+    // Pro: bazada debt_limit = 0, lekin limits.debt = null — «Cheksiz nasiya»
+    await expect(page.getByText('Cheksiz nasiya').first()).toBeVisible()
+    await expect(page.getByText("Nasiya yozib bo'lmaydi")).toHaveCount(0)
     await expect(page.getByText("190 so'm/SMS").first()).toBeVisible()
     await expect(page.getByText("+1 do'kon")).toBeVisible()
     await page.getByRole('button', { name: "Proga o'tish" }).click()

@@ -17,14 +17,18 @@ const limit = (v, text, unlimited, none) => {
     return { ok: true, text: text(formatNumber(v)) }
 }
 
-const features = (p) => [
-    limit(p.debt_limit, (n) => `Oyiga ${n} ta nasiya`, 'Cheksiz nasiya', "Nasiya yozib bo'lmaydi"),
-    limit(p.shop_limit, (n) => `${n} ta do'kon`, "Cheksiz do'kon", "Do'kon yo'q"),
-    limit(p.worker_limit, (n) => `${n} ta xodim`, 'Cheksiz xodim', "Xodim qo'shib bo'lmaydi"),
-    limit(p.supplier_limit, (n) => `${n} ta ta'minotchi`, "Cheksiz ta'minotchi", "Ta'minotchi yo'q"),
-    limit(p.sms_limit, (n) => `Oyiga ${n} ta bepul SMS`, 'Cheksiz SMS', "Bepul SMS yo'q"),
-    { ok: p.allow_export !== false, text: "Excel'ga yuklash" }
-]
+// plans[].limits — backend haqiqatda qo'llaydigan limitlar (Pro'da nasiya bazada 0 bo'lsa ham cheksiz)
+const features = (p) => {
+    const l = p.limits || { debt: p.debt_limit, shop: p.shop_limit, worker: p.worker_limit, supplier: p.supplier_limit, sms: p.sms_limit }
+    return [
+        limit(l.debt, (n) => `Oyiga ${n} ta nasiya`, 'Cheksiz nasiya', "Nasiya yozib bo'lmaydi"),
+        limit(l.shop, (n) => `${n} ta do'kon`, "Cheksiz do'kon", "Do'kon yo'q"),
+        limit(l.worker, (n) => `${n} ta xodim`, 'Cheksiz xodim', "Xodim qo'shib bo'lmaydi"),
+        limit(l.supplier, (n) => `${n} ta ta'minotchi`, "Cheksiz ta'minotchi", "Ta'minotchi yo'q"),
+        limit(l.sms, (n) => `Oyiga ${n} ta bepul SMS`, 'Cheksiz SMS', "Bepul SMS yo'q"),
+        { ok: p.allow_export !== false, text: "Excel'ga yuklash" }
+    ]
+}
 
 // Ta'riflar kartalari: limitlar, limitdan tashqari narxlar va tanlash (balansdan)
 export default function PlanCards({ plans = [], currentPlanId, expired, balance, promoCode, canChoose = true, onChanged }) {

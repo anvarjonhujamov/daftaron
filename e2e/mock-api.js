@@ -29,7 +29,7 @@ export const fixtures = () => {
             plans: [
                 { id: 1, name: 'Oddiy', price: 29000, yearly_price: 290000, sms_limit: 20, shop_limit: 1, worker_limit: 0, supplier_limit: 10, debt_limit: 70, allow_export: false, sms_overage_price: 190,
                     extra_packages: [{ id: 2, type: 'sms', feature_type: 'sms', resolved_type: 'sms', quantity: 50, price: 25000, is_active: true }] },
-                { id: 2, name: 'Pro', price: 59000, yearly_price: 590000, sms_limit: 50, shop_limit: 3, worker_limit: 5, supplier_limit: 500, debt_limit: null, allow_export: true, sms_overage_price: 190,
+                { id: 2, name: 'Pro', price: 59000, yearly_price: 590000, sms_limit: 50, shop_limit: 3, worker_limit: 5, supplier_limit: 500, debt_limit: 0, limits: { debt: null, sms: 50, shop: 3, worker: 5, supplier: 500 }, allow_export: true, sms_overage_price: 190,
                     extra_packages: [{ id: 2, type: 'sms', feature_type: 'sms', resolved_type: 'sms', quantity: 50, price: 25000, is_active: true }, { id: 3, type: 'debt', feature_type: 'shop', resolved_type: 'shop', quantity: 1, price: 20000, is_active: true }] },
                 { id: 3, name: 'Premium', price: 99000, yearly_price: 990000, sms_limit: 150, shop_limit: null, worker_limit: null, supplier_limit: null, debt_limit: null, allow_export: true, sms_overage_price: 150, extra_packages: [] }
             ],
