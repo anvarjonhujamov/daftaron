@@ -114,12 +114,12 @@ function MenuList({ session }) {
                 <Row to="/settings/appearance" left={<Palette size={20} aria-hidden />} title="Ko'rinish va til" chevron />
                 <Row to="/settings/security" left={<Lock size={20} aria-hidden />} title="Xavfsizlik" subtitle={session.settings?.profile?.login_method === 'password' ? 'Parol' : 'Kod bilan kirish'} chevron />
             </List>
-            {session.isOwner && (
-                <List>
-                    <Row to="/shops" left={<Store size={20} aria-hidden />} title="Do'konlar" right={<span className="text-ink-2">{(session.tenants || []).length}</span>} chevron />
-                    <Row to="/staff" left={<Users size={20} aria-hidden />} title="Xodimlar" chevron />
-                </List>
-            )}
+            <List>
+                <Row to="/shops" left={<Store size={20} aria-hidden />} title="Do'konlar"
+                    subtitle={session.ownsShop === false ? "O'z do'konimni ochish" : undefined}
+                    right={<span className="text-ink-2">{(session.tenants || []).length}</span>} chevron />
+                {session.isOwner && <Row to="/staff" left={<Users size={20} aria-hidden />} title="Xodimlar" chevron />}
+            </List>
             <List>
                 <Row to="/support" left={<Bot size={20} aria-hidden />} title="Aloqa" subtitle="AI yordamchi, Telegram" chevron />
                 <Row to="/settings/documents" left={<FileText size={20} aria-hidden />} title="Hujjatlar" subtitle="Oferta, maxfiylik" chevron />

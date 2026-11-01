@@ -19,7 +19,7 @@ export default function MorePage() {
         ['/suppliers', Package, "Ta'minotchilar"],
         session.can('reports.view') && ['/history', History, 'Tarix', 'Barcha amallar'],
         session.can('staff.manage') && ['/staff', UserCog, 'Xodimlar'],
-        session.isOwner && ['/shops', Store, "Do'konlar", `${(session.tenants || []).length} ta do'kon`],
+        ['/shops', Store, "Do'konlar", session.ownsShop === false ? "O'z do'konimni ochish" : `${(session.tenants || []).length} ta do'kon`],
         ['/notifications', Bell, 'Bildirishnomalar', null, <CountBadge key="b" count={session.unread} />],
         ['/support', Bot, 'Yordam va AI yordamchi'],
         ['/subscription', CreditCard, "Ta'rif va balans", sub && `${sub.usage?.plan_name || 'Sinov'} · ${days !== undefined ? `${days} kun qoldi` : ''} · SMS ${formatNumber(sub.usage?.sms_remaining)}`],

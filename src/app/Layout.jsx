@@ -56,7 +56,7 @@ function Sidebar({ session, badges }) {
                 <span className="hidden text-lg font-extrabold lg:inline">DaftarOn</span>
             </Link>
             <Link
-                to={session.isOwner ? '/shops' : '/settings'}
+                to="/shops"
                 className="mb-3 hidden h-[52px] items-center justify-between rounded-xl border-[1.5px] border-line bg-soft/60 px-3 lg:flex"
             >
                 <span className="min-w-0 leading-tight">

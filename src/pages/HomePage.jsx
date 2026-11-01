@@ -85,7 +85,7 @@ export default function HomePage() {
         <div className="page">
             {/* Telefon sarlavhasi */}
             <div className="mb-2 flex items-center justify-between md:hidden">
-                <Link to={session.isOwner ? '/shops' : '/settings'} className="flex h-11 min-w-0 items-center gap-2 text-lg font-extrabold">
+                <Link to="/shops" className="flex h-11 min-w-0 items-center gap-2 text-lg font-extrabold">
                     <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
                     <span className="truncate">{session.tenant?.name || 'DaftarOn'}</span>
                     <ChevronDown size={18} className="shrink-0 text-ink-2" aria-hidden />

@@ -10,7 +10,7 @@ import { emitChange, useResource } from '../lib/hooks'
 import { setUser } from '../lib/session'
 import { errorMessage, fieldErrors } from '../lib/errors'
 import LocationFields from '../features/LocationFields'
-import { Card, EmptyState, ErrorState, ListSkeleton, Money, PageHeader, Pill } from '../ui/display'
+import { Card, ErrorState, ListSkeleton, Money, PageHeader, Pill } from '../ui/display'
 import { Button, Checkbox, Chips, Input, Select } from '../ui/controls'
 import { Confirm, Sheet } from '../ui/Sheet'
 import { CodeInput } from './LoginPage'
@@ -33,22 +33,11 @@ const canAddShop = (u, sub) => {
     return Number(used) < Number(total)
 }
 
-export default function ShopsPage() {
+// Do'kon almashtirish: butun ilova shu do'konga o'tadi (X-Tenant-Id)
+function useSwitchShop() {
     const session = useSession()
     const navigate = useNavigate()
-    const res = useResource(() => shopsApi.overview(), [], { cacheKey: 'shops' })
-    const [form, setForm] = useState(null)
     const [switching, setSwitching] = useState(null)
-    const [confirm, setConfirm] = useState(null)
-    const [purge, setPurge] = useState(null)
-    const [transfer, setTransfer] = useState(false)
-
-    const shops = res.data?.data || []
-    const activeId = res.data?.active_tenant_id ?? session.user?.tenant_id
-    const totalDebt = shops.reduce((s, x) => s + Number(x.stats?.total_debt || 0), 0)
-    const canAdd = canAddShop(res.data?.usage, session.subscription?.usage)
-
-    // Do'kon almashtirish: butun ilova shu do'konga o'tadi (X-Tenant-Id)
     const switchTo = async (shop) => {
         setSwitching(shop.id)
         try {
@@ -64,6 +53,23 @@ export default function ShopsPage() {
             setSwitching(null)
         }
     }
+    return { switching, switchTo }
+}
+
+export default function ShopsPage() {
+    const session = useSession()
+    const navigate = useNavigate()
+    const res = useResource(() => shopsApi.overview(), [], { cacheKey: 'shops' })
+    const [form, setForm] = useState(null)
+    const { switching, switchTo } = useSwitchShop()
+    const [confirm, setConfirm] = useState(null)
+    const [purge, setPurge] = useState(null)
+    const [transfer, setTransfer] = useState(false)
+
+    const shops = res.data?.data || []
+    const activeId = res.data?.active_tenant_id ?? session.user?.tenant_id
+    const totalDebt = shops.reduce((s, x) => s + Number(x.stats?.total_debt || 0), 0)
+    const canAdd = canAddShop(res.data?.usage, session.subscription?.usage)
 
     const remove = async () => {
         try {
@@ -77,7 +83,7 @@ export default function ShopsPage() {
         }
     }
 
-    if (!session.isOwner) return <div className="page"><PageHeader back title="Do'konlar" /><EmptyState icon={Store} title="Do'konlarni faqat egasi boshqaradi" /></div>
+    if (!session.isOwner) return <StaffShops />
 
     return (
         <div className="page">
@@ -271,5 +277,54 @@ function PurgeSheet({ shop, onClose, onDone }) {
             </p>
             {sent && <div className="mt-5"><CodeInput value={code} onChange={setCode} onComplete={confirm} /></div>}
         </Sheet>
+    )
+}
+
+// Xodim ko'rinishi (TZ 28.21): GET /tenants → is_owner. Ish beruvchi do'koni va (bo'lsa) o'z do'koni o'rtasida almashish;
+// o'z do'koni yo'q bo'lsa — «O'z do'konimni ochish» (POST /onboarding/shop, onboarding'ning 1-qadami)
+function StaffShops() {
+    const session = useSession()
+    const navigate = useNavigate()
+    const res = useResource(() => shopsApi.list(), [], { cacheKey: 'tenants' })
+    const { switching, switchTo } = useSwitchShop()
+
+    const shops = res.data?.tenants || []
+    const activeId = res.data?.active_tenant_id ?? session.user?.tenant_id
+    const ownsShop = res.data ? shops.some((s) => s.is_owner) : session.ownsShop !== false
+
+    return (
+        <div className="page md:max-w-2xl">
+            <PageHeader back title="Do'konlar" subtitle="Siz ishlaydigan do'konlar. Tanlangan do'konda ishlaysiz." />
+            {res.error && !res.data ? <ErrorState onRetry={res.reload} /> : res.loading && !res.data ? <ListSkeleton rows={2} /> : (
+                <div className="grid gap-3">
+                    {shops.map((s) => {
+                        const active = s.id === activeId
+                        return (
+                            <Card key={s.id} className={active ? 'border-2 border-brand p-4' : 'p-4'}>
+                                <div className="flex items-center gap-3">
+                                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-strong"><Store size={22} aria-hidden /></span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-base font-bold">{s.name}</p>
+                                        <p className="text-[13px] text-ink-2">{s.is_owner ? "O'z do'koningiz" : 'Xodim sifatida'}</p>
+                                    </div>
+                                    {active
+                                        ? <Pill tone="info">Hozir tanlangan</Pill>
+                                        : <Button size="sm" loading={switching === s.id} onClick={() => switchTo(s)}>O'tish</Button>}
+                                </div>
+                            </Card>
+                        )
+                    })}
+                    {!ownsShop && (
+                        <Card className="p-4">
+                            <p className="text-base font-bold">O'z do'koningiz bormi?</p>
+                            <p className="mt-1 text-[15px] text-ink-2">
+                                Shu raqam bilan o'z do'koningizni oching. Bu do'konda xodimligingiz saqlanadi — do'konlar orasida shu yerda almashasiz.
+                            </p>
+                            <Button icon={Plus} className="mt-3" onClick={() => navigate('/onboarding?new=1')}>O'z do'konimni ochish</Button>
+                        </Card>
+                    )}
+                </div>
+            )}
+        </div>
     )
 }

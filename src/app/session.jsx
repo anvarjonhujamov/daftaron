@@ -95,6 +95,8 @@ export function SessionProvider({ children }) {
             // Hali yuklanmagan bo'lsa (null) — tugmalar ko'rinadi, backend baribir tekshiradi (403)
             can: (perm) => (permissions === null ? true : permissions.includes(perm)),
             isOwner: permissions === null ? true : permissions.includes('staff.manage'),
+            // Ikki rolli hisob (TZ 28.21): o'z do'koni bormi — available_tenants → owner_id. Hali yuklanmagan — null
+            ownsShop: state.tenants ? state.tenants.some((t) => Number(t.owner_id) === Number(user?.id)) : null,
             readOnly: !!(trial.is_expired || sub?.read_only || sub?.usage?.subscription_status === 'expired'),
             // Excel eksport ta'rifga bog'liq (Oddiy'da yo'q); ma'lumot kelmagan bo'lsa backend tekshiradi (403)
             canExport: sub?.usage?.export_allowed !== false,

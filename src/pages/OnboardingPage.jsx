@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, ChevronRight, Send, Smartphone, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { onboardingApi } from '../api/auth.api'
 import { locationsApi } from '../api/settings.api'
 import { debtsApi } from '../api/debts.api'
 import { useSession } from '../app/session'
+import { emitChange } from '../lib/hooks'
 import { errorMessage, fieldErrors } from '../lib/errors'
 import { QuickCustomerForm } from '../features/CustomerPicker'
 import LocationFields from '../features/LocationFields'
@@ -22,6 +23,10 @@ const STEPS = ['shop', 'customer', 'debt']
 export default function OnboardingPage() {
     const navigate = useNavigate()
     const session = useSession()
+    // ?new=1 — xodim o'z do'konini ochadi (TZ 28.21): backend holati 'done' (ish beruvchi do'koni bor), shuning uchun 1-qadamdan.
+    // O'z do'koni bor bo'lsa ochilmaydi — POST /onboarding/shop mavjud do'kon nomini yangilab yuborardi
+    const [params] = useSearchParams()
+    const [openOwn] = useState(() => params.get('new') === '1' && session.ownsShop !== true)
     const [step, setStep] = useState(null)
     const [profile, setProfile] = useState(null)
     const [customer, setCustomer] = useState(null)
@@ -29,7 +34,7 @@ export default function OnboardingPage() {
 
     useEffect(() => {
         onboardingApi.state()
-            .then((s) => { setProfile(s.profile || null); setStep(s.step === 'done' ? 'finished' : s.step) })
+            .then((s) => { setProfile(s.profile || null); setStep(openOwn ? 'shop' : s.step === 'done' ? 'finished' : s.step) })
             .catch(() => setStep('shop'))
     }, [])
 
@@ -48,11 +53,12 @@ export default function OnboardingPage() {
             <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-ink-2">{index + 1}-qadam / 3</span>
                 {step !== 'shop' && <button type="button" onClick={skip} className="text-sm font-semibold text-ink-2">Keyinroq</button>}
+                {step === 'shop' && openOwn && <button type="button" onClick={() => navigate('/shops', { replace: true })} className="text-sm font-semibold text-ink-2">Bekor qilish</button>}
             </div>
             <div className="mt-3 grid grid-cols-3 gap-1.5" aria-hidden>
                 {STEPS.map((s, i) => <div key={s} className={`h-1.5 rounded-full ${i <= index ? 'bg-brand' : 'bg-line'}`} />)}
             </div>
-            {step === 'shop' && <ShopStep profile={profile} onDone={async () => { await session.refresh(); setStep('customer') }} />}
+            {step === 'shop' && <ShopStep profile={profile} onDone={async () => { await session.refresh(); emitChange('shop'); setStep('customer') }} />}
             {step === 'customer' && (
                 <>
                     <h1 className="mb-2 mt-9 text-[28px] font-extrabold leading-tight tracking-tight">Birinchi mijozni qo'shing</h1>

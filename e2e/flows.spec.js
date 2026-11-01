@@ -181,6 +181,55 @@ test("Do'kon nomi: /auth/me active_tenant bo'sh kelsa ham ko'rinadi", async ({ p
     await expect(place).toBeVisible()
 })
 
+// TZ 28.21: xodim (do'kon egasi boshqa) — huquqlarda staff.manage yo'q
+const WORKER_PERMS = ['debt.create', 'payment.create', 'customer.edit']
+
+test("Xodim: o'z do'konimni ochish → POST /onboarding/shop, keyin onboarding davomi", async ({ page }) => {
+    let opened = false
+    const { calls } = await mockApi(page, {
+        overrides: {
+            'GET /auth/me': (route, { f }) => route.fulfill({ json: opened
+                ? { user: { ...f.user, tenant_id: 50 }, active_tenant: { id: 50, name: 'Aziz savdo', owner_id: 7 }, available_tenants: [{ ...f.tenant, owner_id: 99 }, { id: 50, name: 'Aziz savdo', owner_id: 7 }] }
+                : { user: f.user, active_tenant: { ...f.tenant, owner_id: 99 }, available_tenants: [{ ...f.tenant, owner_id: 99 }] } }),
+            'GET /settings': (route, { f }) => route.fulfill({ json: { ...f.settings, permissions: opened ? f.settings.permissions : WORKER_PERMS } }),
+            'GET /tenants': (route) => route.fulfill({ json: { active_tenant_id: 12, tenants: [{ id: 12, name: 'Barkamol Market', is_owner: false, is_active: true }] } }),
+            'GET /onboarding': (route) => route.fulfill({ json: { step: 'done', completed: true, profile: { name: 'Xurshidbek', region_id: null, district_id: null } } }),
+            'POST /onboarding/shop': (route) => {
+                opened = true
+                return route.fulfill({ status: 201, json: { message: "Do'kon saqlandi.", tenant: { id: 50, name: 'Aziz savdo' }, onboarding: { step: 'customer', completed: false } } })
+            }
+        }
+    })
+    await page.goto('/shops')
+    await expect(page.getByText('Xodim sifatida')).toBeVisible()
+    await page.getByRole('button', { name: "O'z do'konimni ochish" }).click()
+    await expect(page.getByRole('heading', { name: "Siz va do'koningiz" })).toBeVisible()
+    await page.getByLabel("Do'kon nomi").fill('Aziz savdo')
+    await page.getByRole('button', { name: 'Keyingisi' }).click()
+    await expect(page.getByRole('heading', { name: "Birinchi mijozni qo'shing" })).toBeVisible()
+    expect(calls.find((c) => c.path === '/onboarding/shop').body).toMatchObject({ name: 'Aziz savdo', owner_name: 'Xurshidbek' })
+})
+
+test("Ikki rolli hisob: ish beruvchi do'konidan o'z do'koniga o'tish (GET /tenants → PUT /tenants/active)", async ({ page }) => {
+    const { calls } = await mockApi(page, {
+        overrides: {
+            'GET /auth/me': (route, { f }) => route.fulfill({ json: { user: f.user, active_tenant: { ...f.tenant, owner_id: 99 }, available_tenants: [{ ...f.tenant, owner_id: 99 }, { id: 50, name: 'Aziz savdo', owner_id: 7 }] } }),
+            'GET /settings': (route, { f }) => route.fulfill({ json: { ...f.settings, permissions: WORKER_PERMS } }),
+            'GET /tenants': (route) => route.fulfill({ json: { active_tenant_id: 12, tenants: [
+                { id: 50, name: 'Aziz savdo', is_owner: true, is_active: false },
+                { id: 12, name: 'Barkamol Market', is_owner: false, is_active: true }
+            ] } }),
+            'PUT /tenants/active': (route) => route.fulfill({ json: { message: "Faol do'kon yangilandi.", active_tenant: { id: 50, name: 'Aziz savdo' } } })
+        }
+    })
+    await page.goto('/shops')
+    await expect(page.getByText("O'z do'koningiz", { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: "O'z do'konimni ochish" })).toHaveCount(0)
+    await page.getByRole('button', { name: "O'tish" }).click()
+    await expect(page).toHaveURL(/\/$/)
+    expect(calls.find((c) => c.method === 'PUT' && c.path === '/tenants/active').body).toEqual({ tenant_id: 50 })
+})
+
 test("Oddiy ta'rif: Excel qulflangan — obuna sahifasiga, eksport so'rovi yo'q", async ({ page }) => {
     const { calls } = await mockApi(page, {
         overrides: {
