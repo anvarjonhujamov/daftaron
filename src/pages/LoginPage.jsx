@@ -7,6 +7,7 @@ import { useSession } from '../app/session'
 import { deviceName, getToken } from '../lib/session'
 import { errorMessage, errorReason } from '../lib/errors'
 import { Button, Input, PhoneInput, cx } from '../ui/controls'
+import AppBadges from '../features/AppBadges'
 import { formatPhone, isValidPhone, toApiPhone } from '../utils/phone'
 import { requestTelegramContact, telegramInitData, waitTelegram } from '../utils/telegram'
 
@@ -345,6 +346,7 @@ export default function LoginPage() {
                 <strong className="text-ink">Bitta hisob — hamma qurilmada:</strong> telefon, planshet, kompyuter va Telegram bot.
                 iPhone'da brauzer orqali ishlaydi — <Link to="/install" className="font-semibold text-brand-strong">o'rnatish</Link>.
             </div>
+            <AppBadges className="mt-3" />
             <p className="mt-3.5 text-center text-[13px] text-ink-3">
                 Yangi foydalanuvchimisiz? Shu raqam bilan kiring — hisob o'zi ochiladi.{' '}
                 <Link to="/legal/offer" className="underline">Oferta</Link> · <Link to="/legal/privacy" className="underline">Maxfiylik</Link>

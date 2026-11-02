@@ -12,6 +12,7 @@ import { passwordProblem } from './ForgotPasswordPage'
 import { CodeInput } from './LoginPage'
 import TopUpSheet, { ProviderButtons } from '../features/TopUpSheet'
 import PlanCards from '../features/PlanCards'
+import AppBadges, { inAndroidApp } from '../features/AppBadges'
 import { Avatar, Card, List, PageHeader, Pill, Row, Skeleton } from '../ui/display'
 import { Button, Chips, Input, PhoneInput, Select, Toggle } from '../ui/controls'
 import { Confirm, Sheet } from '../ui/Sheet'
@@ -124,6 +125,7 @@ function MenuList({ session }) {
                 <Row to="/support" left={<Bot size={20} aria-hidden />} title="Aloqa" subtitle="AI yordamchi, Telegram" chevron />
                 <Row to="/settings/documents" left={<FileText size={20} aria-hidden />} title="Hujjatlar" subtitle="Oferta, maxfiylik" chevron />
             </List>
+            <AppCard />
             <List><Row onClick={logout} left={<LogOut size={20} className="text-debt" aria-hidden />} title={<span className="text-debt">Chiqish</span>} /></List>
             <p className="text-center text-[13px] text-ink-3">Kompyuterda: web.daftaron.uz · v{__APP_VERSION__.split('+')[0]}</p>
         </div>
@@ -506,6 +508,7 @@ function DocumentsSection({ settings }) {
                 <Row to="/legal/privacy" left={<FileText size={20} aria-hidden />} title="Maxfiylik siyosati" subtitle={legal.privacy?.version && `Versiya ${legal.privacy.version}`} chevron />
                 <Row to="/delete-account" left={<Trash2 size={20} className="text-debt" aria-hidden />} title="Akkauntni o'chirish" chevron />
             </List>
+            <AppCard />
             <Card className="p-4 text-sm leading-relaxed text-ink-2">
                 <p className="mb-1 font-bold text-ink">Maxfiylik — qisqacha</p>
                 Mijozlaringiz ma'lumoti faqat sizga ko'rinadi. Raqamlar faqat SMS eslatma uchun ishlatiladi. Obuna tugasa ham ma'lumotlar o'chmaydi.
@@ -514,3 +517,14 @@ function DocumentsSection({ settings }) {
     )
 }
 
+// Mobil ilovani yuklab olish (Android ilova ichida ko'rinmaydi)
+function AppCard() {
+    if (inAndroidApp()) return null
+    return (
+        <Card className="p-4">
+            <p className="font-bold">Mobil ilova</p>
+            <p className="mb-3 mt-0.5 text-[13px] text-ink-2">Android uchun Google Play'da. iPhone ilovasi tez orada.</p>
+            <AppBadges />
+        </Card>
+    )
+}
