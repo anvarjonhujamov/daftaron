@@ -3,6 +3,7 @@ import { Link, Outlet, useNavigate, useParams, useSearchParams } from 'react-rou
 import { Plus, Search, Users } from 'lucide-react'
 import { customersApi } from '../api/customers.api'
 import { useSession } from '../app/session'
+import { readCache, writeCache } from '../lib/cache'
 import { useDebounced, useOnChange, useResource } from '../lib/hooks'
 import { Avatar, EmptyState, ErrorState, List, ListSkeleton, Money, PageHeader, Pill, Row, Table } from '../ui/display'
 import { Button, Chips, cx } from '../ui/controls'
@@ -29,8 +30,10 @@ export default function CustomersPage() {
     const session = useSession()
     const [params, setParams] = useSearchParams()
     const [q, setQ] = useState(params.get('q') || '')
-    const filter = params.get('filter') || 'all'
-    const sort = params.get('sort') || 'debt'
+    // Filtr va saralash qayta kirganda ham saqlanadi (foydalanuvchi+do'kon bo'yicha); URL'dagi qiymat ustun
+    const [saved] = useState(() => readCache('customers_view') || {})
+    const filter = params.get('filter') || saved.filter || 'all'
+    const sort = params.get('sort') || (SORTS.some((s) => s.value === saved.sort) ? saved.sort : 'debt')
     const query = useDebounced(q.trim(), 300)
     const [pages, setPages] = useState(1)
     const [extra, setExtra] = useState([])
@@ -42,11 +45,12 @@ export default function CustomersPage() {
     }, { replace: true })
 
     useEffect(() => { setParam('q', query) }, [query])
+    useEffect(() => { writeCache('customers_view', { filter, sort }) }, [filter, sort])
 
     const res = useResource(
         () => customersApi.list({ q: query || undefined, sort, with_debt: filter === 'debt' ? 1 : undefined, page: 1 }),
         [query, sort, filter],
-        { cacheKey: !query && filter === 'all' && sort === 'debt' ? 'customers_first' : undefined }
+        { cacheKey: !query ? `customers_first_${filter}_${sort}` : undefined }
     )
     useOnChange(() => res.reload())
     useEffect(() => { setPages(1); setExtra([]) }, [query, sort, filter])
@@ -71,7 +75,7 @@ export default function CustomersPage() {
                     className="w-full min-w-0 bg-transparent text-base outline-none placeholder:text-ink-3" />
             </label>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Chips size="sm" ariaLabel="Filtr" value={filter} onChange={(v) => setParam('filter', v === 'all' ? '' : v)} className="flex-none"
+                <Chips size="sm" ariaLabel="Filtr" value={filter} onChange={(v) => setParam('filter', v)} className="flex-none"
                     options={[{ value: 'all', label: 'Barchasi' }, { value: 'debt', label: 'Qarzdor' }]} wrap />
                 <Link to="/overdue" className="inline-flex h-9 items-center rounded-xl border-[1.5px] border-line-2 bg-card px-3.5 text-sm font-semibold hover:bg-soft">Muddati o'tgan</Link>
                 <select value={sort} onChange={(e) => setParam('sort', e.target.value)} aria-label="Saralash"
