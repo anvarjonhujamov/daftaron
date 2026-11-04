@@ -3,12 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { BellRing, ChevronLeft, MessageSquare, Pencil, Phone, Plus, Check, ArrowDown, ArrowUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { customersApi } from '../api/customers.api'
-import { overdueApi, paymentsApi, smsApi } from '../api/debts.api'
+import { debtsApi, overdueApi, paymentsApi, smsApi } from '../api/debts.api'
 import { useSession } from '../app/session'
 import { useActions } from '../app/actions'
 import { emitChange, useOnChange, useResource } from '../lib/hooks'
 import { errorMessage } from '../lib/errors'
 import { DebtCard, SmsRow, paymentLine } from '../features/debt-ui'
+import DebtEditSheet from '../features/DebtEditSheet'
 import { Avatar, Card, EmptyState, ErrorState, KpiCard, List, ListSkeleton, Money, Pill, Row, Skeleton } from '../ui/display'
 import { Button, Chips } from '../ui/controls'
 import { Confirm } from '../ui/Sheet'
@@ -26,6 +27,7 @@ export default function CustomerPage() {
     const [cancelPay, setCancelPay] = useState(null)
     const [retrying, setRetrying] = useState(null)
     const [remind, setRemind] = useState(null)
+    const [editDebt, setEditDebt] = useState(null) // { debt, paid }
 
     const res = useResource(() => customersApi.get(id), [id], { cacheKey: `customer_${id}` })
     const timeline = useResource(() => customersApi.timeline(id, { limit: 100 }), [id], { enabled: tab === 'payments' })
@@ -188,7 +190,8 @@ export default function CustomerPage() {
                         <EmptyState icon={ArrowDown} title="Hali nasiya yo'q" action={<Button icon={Plus} onClick={() => actions.openDebt({ customer })}>Nasiya yozish</Button>} />
                     ) : (
                         <>
-                            {openDebts.map((d) => <DebtCard key={d.id} debt={d} canPay={session.can('payment.create')} onPay={(debt) => actions.openPayment({ customer, debt })} />)}
+                            {openDebts.map((d) => <DebtCard key={d.id} debt={d} canPay={session.can('payment.create')} onPay={(debt) => actions.openPayment({ customer, debt })}
+                                onEdit={session.can('debt.delete') && !session.readOnly ? (debt, paid) => setEditDebt({ debt, paid }) : undefined} />)}
                             {openDebts.length === 0 && <Card className="p-4 text-[15px] text-ink-2">Ochiq nasiya yo'q — hammasi to'langan.</Card>}
                             {closedDebts.length > 0 && (showClosed
                                 ? closedDebts.map((d) => <DebtCard key={d.id} debt={d} />)
@@ -219,6 +222,10 @@ export default function CustomerPage() {
                 </div>
             </div>
 
+            {editDebt && <DebtEditSheet open debt={editDebt.debt} paid={editDebt.paid} onClose={() => setEditDebt(null)}
+                onSave={(payload) => debtsApi.update(editDebt.debt.id, { customer_id: c.id, ...payload })
+                    .then(() => { toast.success('Saqlandi'); setEditDebt(null); emitChange('debts') })
+                    .catch((err) => toast.error(errorMessage(err)))} />}
             <Confirm open={!!remind} onClose={() => setRemind(null)} onConfirm={sendRemind} title="Qarzni eslatish" confirmText="Yuborish"
                 text={remind && `${c.name}ga muddati o'tgan qarz haqida SMS ketadi.${remind.free_count ? ' Bepul SMS hisobidan.' : remind.estimated_cost ? ` Balansdan ${formatMoney(remind.estimated_cost)} yechiladi.` : ''}`} />
             <Confirm

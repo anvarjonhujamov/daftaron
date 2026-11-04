@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Pencil } from 'lucide-react'
 import { Card, Money, Pill } from '../ui/display'
 import { Button } from '../ui/controls'
 import { formatDate, formatDateTime } from '../utils/date'
@@ -52,7 +53,7 @@ export function Progress({ value, total }) {
     )
 }
 
-export function DebtCard({ debt, onPay, canPay }) {
+export function DebtCard({ debt, onPay, canPay, onEdit }) {
     const st = debtState(debt)
     const sms = debt.status === 'open' && reminderStatus(debt.return_date_sms_status)
     const total = Number(debt.total_amount || 0)
@@ -75,9 +76,10 @@ export function DebtCard({ debt, onPay, canPay }) {
             </div>
             <div className="mt-3"><Progress value={paid} total={total} /></div>
             {debt.description && <p className="mt-2 text-sm text-ink-2">Izoh: {debt.description}</p>}
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
                 {debt.status === 'open' && canPay && <Button size="sm" variant="pay" onClick={() => onPay(debt)}>Shu nasiyaga to'lov</Button>}
                 <Link to={`/debts/${debt.id}`} className="inline-flex h-9 items-center rounded-[10px] px-3 text-sm font-bold text-brand-strong hover:bg-brand-soft">Batafsil</Link>
+                {debt.status === 'open' && onEdit && <Button size="sm" variant="secondary" icon={Pencil} onClick={() => onEdit(debt, paid)}>Tahrirlash</Button>}
             </div>
         </Card>
     )
