@@ -355,3 +355,35 @@ for (const [name, url] of [['Click', /my\.click\.uz\/services\/pay/], ['Payme', 
         expect(errors).toEqual([])
     })
 }
+
+test("Balansni to'ldirish: Xazna havolasini backend beradi", async ({ page }) => {
+    const { calls } = await mockApi(page, {
+        overrides: {
+            'POST /subscription/top-up': (route) => route.fulfill({ status: 201, json: { order_id: 7, redirect_url: 'https://pay.xazna.uz/billing/universal?merchantId=m&amount=50000&invoice=7' } })
+        }
+    })
+    await page.route(/pay\.xazna\.uz/, (route) => route.fulfill({ body: 'ok' }))
+    await page.goto('/subscription')
+    await page.getByRole('button', { name: 'Xazna', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: "Balansni to'ldirish" })
+    await expect(dialog.getByRole('radio', { name: 'Xazna', exact: true })).toBeChecked()
+    await dialog.getByLabel('Summa').fill('50000')
+    await dialog.getByRole('button', { name: "Xazna orqali to'lash" }).click()
+    await expect(page).toHaveURL(/pay\.xazna\.uz.*invoice=7/)
+    expect(calls.some((c) => c.method === 'POST' && c.path.endsWith('/subscription/top-up'))).toBe(true)
+})
+
+test("Balansni to'ldirish: Xazna ishlamasa xato ko'rinadi", async ({ page }) => {
+    await mockApi(page, {
+        overrides: {
+            'POST /subscription/top-up': (route) => route.fulfill({ status: 422, json: { message: "Bu to'lov tizimi hozircha ishlamayapti." } })
+        }
+    })
+    await page.goto('/subscription')
+    await page.getByRole('button', { name: 'Xazna', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: "Balansni to'ldirish" })
+    await dialog.getByLabel('Summa').fill('50000')
+    await dialog.getByRole('button', { name: "Xazna orqali to'lash" }).click()
+    await expect(page.getByText("Bu to'lov tizimi hozircha ishlamayapti.")).toBeVisible()
+    await expect(dialog.getByRole('button', { name: "Xazna orqali to'lash" })).toBeEnabled()
+})

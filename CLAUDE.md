@@ -112,7 +112,7 @@ Eski manzillar (`/register`, `/terms`, `/privacy-policy`, `/debts`, `/payments`,
 
 ## Ochiq vazifalar
 
-1. Backend'da yo'q: Xazna va Uzum to'lovlari (tugmalar «tez orada»), qurilma shahri (`city: null`), rus/kirill UI tarjimasi.
+1. Backend'da yo'q: Uzum to'lovi (tugma «tez orada»), qurilma shahri (`city: null`), rus/kirill UI tarjimasi.
 2. Javob shakli hujjatlashtirilmagan joylar (UI ehtiyotkor o'qiydi): `GET /shops` → `usage`, `GET /debts/{id}/reminders` → `sent[]`, `GET /staff/{id}` → `recent_debts`/`recent_payments`.
 
 ## Deploy

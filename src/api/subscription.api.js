@@ -13,6 +13,8 @@ export const subscriptionApi = {
     // months: 12 — yillik (10 oy narxi)
     choose: (planId, { months, promo_code } = {}) =>
         data(api.post(`/subscription/choose/${planId}`, clean({ months, promo_code }))),
+    // { order_id, redirect_url } — hozircha faqat provider: 'xazna'
+    topUp: (amount, provider) => data(api.post('/subscription/top-up', { amount, provider })),
     buyExtra: (packageId) => data(api.post(`/subscription/buy-extra/${packageId}`)),
     checkPromo: (code) => data(api.post('/promo-codes/check', { code })),
     setAutoRenew: (enabled) => data(api.put('/subscription/auto-renew', { enabled })),
