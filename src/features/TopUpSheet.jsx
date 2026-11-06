@@ -47,7 +47,7 @@ export default function TopUpSheet({ open, onClose, user, provider: initial = 'c
         <Sheet open={open} onClose={onClose} title="Balansni to'ldirish" width={480} onSubmit={go}
             footer={<Button type="submit" size="lg" block disabled={!(amount >= 1000)}>{provider === 'payme' ? 'Payme' : 'Click'} orqali to'lash</Button>}>
             <div className="space-y-4">
-                <Chips ariaLabel="To'lov tizimi" value={provider} onChange={setProvider} options={PROVIDERS.filter((p) => !p.disabled)} />
+                <Chips ariaLabel="To'lov tizimi" value={provider} onChange={setProvider} options={PROVIDERS.filter((p) => !p.disabled).map(({ value, label }) => ({ value, label }))} />
                 <MoneyInput label="Summa" value={amount} onChange={setAmount} autoFocus big />
                 <div className="flex flex-wrap gap-2">
                     {[30000, 50000, 100000, 200000].map((v) => <Button key={v} size="sm" variant="soft" onClick={() => setAmount(v)}>+{formatNumber(v)}</Button>)}

@@ -337,3 +337,21 @@ test("Foydalanish qo'llanmasi: xato va qayta urinish", async ({ page }) => {
     await page.getByRole('button', { name: 'Qayta urinish' }).click()
     await expect(page.getByRole('link', { name: /Telegram kanal/ })).toBeVisible()
 })
+
+for (const [name, url] of [['Click', /my\.click\.uz\/services\/pay/], ['Payme', /checkout\.paycom\.uz/]]) {
+    test(`Balansni to'ldirish: ${name} tanlanganda oyna ochiladi va to'lov sahifasiga o'tadi`, async ({ page }) => {
+        const errors = []
+        page.on('pageerror', (e) => errors.push(e.message))
+        await mockApi(page)
+        await page.route(url, (route) => route.fulfill({ body: 'ok' }))
+        await page.goto('/subscription')
+        await page.getByRole('button', { name, exact: true }).click()
+        const dialog = page.getByRole('dialog', { name: "Balansni to'ldirish" })
+        await expect(dialog).toBeVisible()
+        await expect(dialog.getByRole('radio', { name, exact: true })).toBeChecked()
+        await dialog.getByLabel('Summa').fill('50000')
+        await dialog.getByRole('button', { name: `${name} orqali to'lash` }).click()
+        await expect(page).toHaveURL(url)
+        expect(errors).toEqual([])
+    })
+}
