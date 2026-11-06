@@ -1,4 +1,4 @@
-import { Home, Users, AlarmClock, History, Package, BarChart3, UserCog, Store, CreditCard, Bell, Settings, Menu } from 'lucide-react'
+import { Home, Users, AlarmClock, History, Package, BarChart3, UserCog, Store, CreditCard, Bell, Settings, Menu, BookOpen } from 'lucide-react'
 
 // Bo'limlar: kompyuterda yon menyu (ikki guruh), telefonda pastki menyu + «Yana» sahifasi.
 // perm — /settings huquqi (backend TZ 28.8); owner — faqat do'kon egasi
@@ -16,6 +16,7 @@ export const SECOND_NAV = [
     { to: '/shops', label: "Do'konlar", icon: Store, owner: true },
     { to: '/subscription', label: "Ta'rif va balans", short: "Ta'rif", icon: CreditCard, owner: true },
     { to: '/notifications', label: 'Bildirishnomalar', short: 'Xabarlar', icon: Bell, badge: 'unread' },
+    { to: '/guides', label: "Foydalanish qo'llanmasi", short: "Qo'llanma", icon: BookOpen },
     { to: '/settings', label: 'Sozlamalar', icon: Settings }
 ]
 

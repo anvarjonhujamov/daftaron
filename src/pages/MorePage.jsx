@@ -1,4 +1,4 @@
-import { Bell, Bot, CreditCard, History, Moon, Package, Settings, Store, UserCog, AlarmClock, BarChart3 } from 'lucide-react'
+import { Bell, BookOpen, Bot, CreditCard, History, Moon, Package, Settings, Store, UserCog, AlarmClock, BarChart3 } from 'lucide-react'
 import { applyTheme, useSession } from '../app/session'
 import { profileApi } from '../api/settings.api'
 import { useState } from 'react'
@@ -22,6 +22,7 @@ export default function MorePage() {
         ['/shops', Store, "Do'konlar", session.ownsShop === false ? "O'z do'konimni ochish" : `${(session.tenants || []).length} ta do'kon`],
         ['/notifications', Bell, 'Bildirishnomalar', null, <CountBadge key="b" count={session.unread} />],
         ['/support', Bot, 'Yordam va AI yordamchi'],
+        ['/guides', BookOpen, "Foydalanish qo'llanmasi"],
         ['/subscription', CreditCard, "Ta'rif va balans", sub && `${sub.usage?.plan_name || 'Sinov'} · ${days !== undefined ? `${days} kun qoldi` : ''} · SMS ${formatNumber(sub.usage?.sms_remaining)}`],
         ['/settings', Settings, 'Sozlamalar']
     ].filter(Boolean)

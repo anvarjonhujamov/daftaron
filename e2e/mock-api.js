@@ -22,6 +22,12 @@ export const fixtures = () => {
             support: { telegram_support_url: 'https://t.me/daftaron_support', bot_url: 'https://t.me/daftaron_bot' },
             app_version: '2.0.0'
         },
+        guides: [
+            { id: 1, title: 'Kompyuterda ishlash', description: 'Yon menyu va tezkor tugmalar', platform: 'desktop', type: 'file', url: 'https://api.test/api/public/guides/1/file', file: { name: 'kompyuter.pdf', size: 2516582, mime: 'application/pdf' } },
+            { id: 2, title: 'Telefonda ishlash', description: null, platform: 'mobile', type: 'video', url: 'https://youtu.be/abc', file: null },
+            { id: 3, title: 'Telegram kanal', description: null, platform: 'all', type: 'link', url: 'https://t.me/daftaron', file: null },
+            { id: 4, title: 'Xavfsiz emas', description: null, platform: 'all', type: 'link', url: 'javascript:alert(1)', file: null }
+        ],
         subscription: {
             balance: 10550, current_plan_id: 2,
             trial_info: { trial_ends_at: `${addDays(t, 32)}T00:00:00+05:00`, days_remaining: 32, is_expired: false, status: 1 },
@@ -85,6 +91,7 @@ export async function mockApi(page, { loggedIn = true, overrides = {} } = {}) {
         switch (true) {
             case key === 'GET /auth/me': return json(route, { user: f.user, active_tenant: f.tenant, available_tenants: [f.tenant] })
             case key === 'GET /settings': return json(route, f.settings)
+            case key === 'GET /public/guides': return json(route, { data: f.guides })
             case key === 'GET /subscription/status': return json(route, f.subscription)
             case key === 'GET /subscription/transactions': return json(route, { data: [], meta: { current_page: 1, last_page: 1, total: 0 } })
             case key === 'GET /notifications/unread-count': return json(route, { count: 2 })

@@ -8,7 +8,8 @@ export const settingsApi = {
     updateShop: (payload) => data(api.put('/settings/shop', payload)),
     updateNotifications: (payload) => data(api.put('/settings/notifications', payload)),
     acceptLegal: (offer_version, privacy_version) => data(api.post('/legal/accept', { offer_version, privacy_version })),
-    publicSettings: () => data(api.get('/public/settings', { baseURL: PUBLIC_BASE }))
+    publicSettings: () => data(api.get('/public/settings', { baseURL: PUBLIC_BASE })),
+    guides: () => data(api.get('/public/guides', { baseURL: PUBLIC_BASE }))
 }
 
 export const profileApi = {

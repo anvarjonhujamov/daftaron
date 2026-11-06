@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Bot, ChevronRight, FileText, Lock, LogOut, MessageCircle, Moon, Palette, Phone, Send, Smartphone, Store, Trash2, Users, Wallet, BellRing } from 'lucide-react'
+import { BookOpen, Bot, ChevronRight, FileText, Lock, LogOut, MessageCircle, Moon, Palette, Phone, Send, Smartphone, Store, Trash2, Users, Wallet, BellRing } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { applyTheme, logout, useSession } from '../app/session'
 import { authApi } from '../api/auth.api'
@@ -122,6 +122,7 @@ function MenuList({ session }) {
                 {session.isOwner && <Row to="/staff" left={<Users size={20} aria-hidden />} title="Xodimlar" chevron />}
             </List>
             <List>
+                <Row to="/guides" left={<BookOpen size={20} aria-hidden />} title="Foydalanish qo'llanmasi" subtitle="Hujjat, video, havola" chevron />
                 <Row to="/support" left={<Bot size={20} aria-hidden />} title="Aloqa" subtitle="AI yordamchi, Telegram" chevron />
                 <Row to="/settings/documents" left={<FileText size={20} aria-hidden />} title="Hujjatlar" subtitle="Oferta, maxfiylik" chevron />
             </List>
@@ -485,6 +486,7 @@ function DocumentsSection({ settings }) {
     const support = settings.support || {}
     const legal = settings.legal || {}
     const links = [
+        ['/guides', BookOpen, "Foydalanish qo'llanmasi", 'Hujjat, video, havola', true],
         ['/support', Bot, 'AI yordamchi', 'Savolga darhol javob', true],
         [safeUrl(support.telegram_support_url), Send, "Telegram'dan yozish", 'Qo\'llab-quvvatlash'],
         [safeUrl(support.telegram_group_url), MessageCircle, 'Muhokama guruhi', "Do'kondorlar jamoasi"],

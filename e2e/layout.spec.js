@@ -3,7 +3,7 @@ import { mockApi } from './mock-api'
 
 // Har kenglikda gorizontal skroll bo'lmasin (360, 390, 768, 1024, 1440)
 const WIDTHS = [360, 390, 768, 1024, 1440]
-const PAGES = ['/', '/customers', '/customers/31', '/overdue', '/settings', '/subscription', '/login']
+const PAGES = ['/', '/customers', '/customers/31', '/overdue', '/settings', '/subscription', '/guides', '/login']
 
 test.describe('Moslashuvchanlik', () => {
     test.skip(({ isMobile }) => isMobile, 'bir marta yetarli')

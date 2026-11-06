@@ -291,3 +291,49 @@ test('Excel: backend 403 plan_feature (blob javob) — xabar o\'qiladi, obuna sa
     await page.getByRole('button', { name: /Excel/ }).click()
     await expect(page).toHaveURL(/\/subscription$/)
 })
+
+test("Foydalanish qo'llanmasi: qurilma bo'yicha guruhlar, havolalar yangi oynada", async ({ page, isMobile }) => {
+    await mockApi(page)
+    await page.goto('/settings/documents')
+    await page.getByRole('link', { name: /Foydalanish qo'llanmasi.*Hujjat, video, havola/ }).first().click()
+    await expect(page).toHaveURL(/\/guides$/)
+    await expect(page.getByRole('heading', { name: "Foydalanish qo'llanmasi" })).toBeVisible()
+
+    // Hozirgi qurilmaga mos guruh birinchi
+    const groups = await page.locator('section h2').allTextContents()
+    expect(groups).toEqual(isMobile
+        ? ['Telefon uchun', 'Kompyuter uchun', 'Barcha qurilmalar uchun']
+        : ['Kompyuter uchun', 'Telefon uchun', 'Barcha qurilmalar uchun'])
+
+    const pdf = page.getByRole('link', { name: /Kompyuterda ishlash/ })
+    await expect(pdf).toHaveAttribute('href', 'https://api.test/api/public/guides/1/file')
+    await expect(pdf).toHaveAttribute('target', '_blank')
+    await expect(pdf).toContainText('Fayl · 2,4 MB')
+    await expect(page.getByRole('link', { name: /Telefonda ishlash/ })).toContainText('Video')
+    // https bo'lmagan havola chiqmaydi
+    await expect(page.getByText('Xavfsiz emas')).toHaveCount(0)
+})
+
+test("Foydalanish qo'llanmasi: bo'sh holat", async ({ page }) => {
+    await mockApi(page, { overrides: { 'GET /public/guides': (route) => route.fulfill({ json: { data: [] } }) } })
+    await page.goto('/guides')
+    await expect(page.getByText("Hozircha qo'llanma yo'q")).toBeVisible()
+})
+
+test("Foydalanish qo'llanmasi: xato va qayta urinish", async ({ page }) => {
+    let failed = false
+    await mockApi(page, {
+        overrides: {
+            'GET /public/guides': (route, { f }) => {
+                if (!failed) {
+                    failed = true
+                    return route.fulfill({ status: 500, json: { message: 'Xato' } })
+                }
+                return route.fulfill({ json: { data: f.guides } })
+            }
+        }
+    })
+    await page.goto('/guides')
+    await page.getByRole('button', { name: 'Qayta urinish' }).click()
+    await expect(page.getByRole('link', { name: /Telegram kanal/ })).toBeVisible()
+})

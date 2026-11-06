@@ -40,6 +40,7 @@ const StaffPage = lazyPage(() => import('./pages/StaffPage'))
 const ShopsPage = lazyPage(() => import('./pages/ShopsPage'))
 const NotificationsPage = lazyPage(() => import('./pages/NotificationsPage'))
 const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
+const GuidesPage = lazyPage(() => import('./pages/GuidesPage'))
 const SubscriptionPage = lazyPage(() => import('./pages/SubscriptionPage'))
 const SupportPage = lazyPage(() => import('./pages/SupportPage'))
 const MorePage = lazyPage(() => import('./pages/MorePage'))
@@ -110,6 +111,7 @@ export default function App() {
                         <Route path="/settings/:section" element={<SettingsPage />} />
                         <Route path="/subscription" element={<SubscriptionPage />} />
                         <Route path="/support" element={<SupportPage />} />
+                        <Route path="/guides" element={<GuidesPage />} />
                         <Route path="/more" element={<MorePage />} />
                         {/* Eski manzillar (xatcho'plar, bildirishnomalardagi havolalar) */}
                         <Route path="/debts" element={<Navigate to="/history" replace />} />
