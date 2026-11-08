@@ -251,8 +251,8 @@ function AccountSection({ session }) {
                     ].map(([k, v]) => <div key={k} className="rounded-xl bg-soft/70 p-3"><div className="text-ink-2">{k}</div><strong>{v}</strong></div>)}
                 </div>
                 <p className="mb-2 mt-5 text-sm font-semibold">Balansni to'ldirish</p>
-                <ProviderButtons onSelect={setProvider} />
-                <TopUpSheet open={!!provider} provider={provider} user={session.user} onClose={() => setProvider(null)} />
+                <ProviderButtons onSelect={setProvider} enabled={sub.top_up_providers} />
+                <TopUpSheet open={!!provider} provider={provider} user={session.user} enabled={sub.top_up_providers} onClose={() => setProvider(null)} />
             </Card>
             <div>
                 <PlanCards plans={sub.plans} currentPlanId={sub.current_plan_id} expired={expired} balance={sub.balance}

@@ -87,7 +87,7 @@ export default function SubscriptionPage() {
                     <div className="text-sm text-ink-2">Joriy balans</div>
                     <Money value={s.balance} suffix className="text-[30px]" />
                     {shortfall > 0 && <p className="mt-1 text-sm font-semibold text-warn">Keyingi oy uchun {formatMoney(shortfall)} yetmaydi</p>}
-                    <ProviderButtons className="mt-4" onSelect={setProvider} />
+                    <ProviderButtons className="mt-4" onSelect={setProvider} enabled={s?.top_up_providers} />
                 </Card>
             </div>
 
@@ -146,7 +146,7 @@ export default function SubscriptionPage() {
                 </List>
             )}
 
-            <TopUpSheet open={!!provider} provider={provider} user={session.user} suggested={shortfall} onClose={() => setProvider(null)} />
+            <TopUpSheet open={!!provider} provider={provider} user={session.user} suggested={shortfall} enabled={s?.top_up_providers} onClose={() => setProvider(null)} />
             <Confirm open={!!buy} onClose={() => setBuy(null)} onConfirm={doBuy} title="Qo'shimcha paket" confirmText="Sotib olish"
                 text={buy && `+${formatNumber(buy.quantity)} ${PACKAGE_UNITS[buy.feature_type || buy.type] || ''} — balansdan ${formatMoney(buy.price)} yechiladi.`} />
         </div>
