@@ -391,21 +391,21 @@ test("Balansni to'ldirish: Xazna ishlamasa xato ko'rinadi", async ({ page }) => 
 const trialUsage = (f, debtRemaining) => ({
     ...f.subscription,
     current_plan_id: 1,
-    usage: { ...f.subscription.usage, is_trial: true, plan_name: 'Oddiy', debt_total_limit: 50, debt_remaining: debtRemaining, sms_base_limit: 20, sms_total_limit: 20, sms_remaining: 5, extra_sms_price: 190 }
+    usage: { ...f.subscription.usage, is_trial: true, plan_name: 'Oddiy', debt_total_limit: 10, debt_remaining: debtRemaining, sms_base_limit: 20, sms_total_limit: 20, sms_remaining: 5, extra_sms_price: 250 }
 })
 
 test('Bepul sinov: limitlar va limitdan keyingi SMS narxi ko\'rinadi', async ({ page }) => {
     await mockApi(page, {
         overrides: {
-            'GET /subscription/status': (route, { f }) => route.fulfill({ json: trialUsage(f, 12) }),
+            'GET /subscription/status': (route, { f }) => route.fulfill({ json: trialUsage(f, 7) }),
             'GET /sms/quota': (route) => route.fulfill({ json: { limit: 20, used: 20, free_remaining: 0, extra_sms_price: 190, balance: 10550, blocked: false } })
         }
     })
     await page.goto('/subscription')
     await expect(page.getByText('Bepul sinov', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('12 / 50')).toBeVisible()
+    await expect(page.getByText('7 / 10')).toBeVisible()
     await expect(page.getByText('5 / 20')).toBeVisible()
-    await expect(page.getByText(/Keyin 190 so'm\/SMS balansdan/)).toBeVisible()
+    await expect(page.getByText(/Keyin 250 so'm\/SMS balansdan/)).toBeVisible()
 
     await page.goto('/customers/31')
     await page.getByRole('button', { name: 'Nasiya', exact: true }).first().click()

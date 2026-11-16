@@ -272,7 +272,7 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
                         ].filter(Boolean).join(' · ') || undefined}
                     />
 
-                    {trialLeft !== null && !trialBlocked && trialLeft <= 10 && (
+                    {trialLeft !== null && !trialBlocked && trialLeft <= 3 && (
                         <p className="rounded-xl bg-warn-soft px-3 py-2 text-sm font-semibold text-warn">Bepul sinovda {formatNumber(trialLeft)} ta nasiya qoldi</p>
                     )}
                     {trialBlocked && (
