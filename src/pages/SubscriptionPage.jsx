@@ -11,7 +11,7 @@ import { Card, List, Money, PageHeader, Pill, Row, SectionTitle, Skeleton } from
 import { Button, Input, Toggle, cx } from '../ui/controls'
 import { Confirm } from '../ui/Sheet'
 import { formatDate } from '../utils/date'
-import { formatMoney, formatNumber } from '../utils/format'
+import { formatMoney, formatNumber, planLabel } from '../utils/format'
 
 // Qoldiq: null — cheksiz (∞), 0 — haqiqiy nol
 const ofLimit = (used, total) => `${formatNumber(used)} / ${total === null || total === undefined ? '∞' : formatNumber(total)}`
@@ -76,11 +76,18 @@ export default function SubscriptionPage() {
                 <Card className="p-5">
                     <div className="text-sm text-ink-2">Obuna holati</div>
                     <div className="mt-1 flex items-center gap-2">
-                        <span className="text-2xl font-extrabold">{usage.plan_name || 'Sinov muddati'}</span>
+                        <span className="text-2xl font-extrabold">{planLabel(usage)}</span>
                         <Pill tone={expired ? 'danger' : 'success'}>{expired ? 'Tugagan' : 'Faol'}</Pill>
                     </div>
                     <p className="mt-1 text-[15px] text-ink-2">{formatDate(trial.trial_ends_at)} gacha{!expired && trial.days_remaining !== undefined && ` · ${trial.days_remaining} kun qoldi`}</p>
                     {expired && <p className="mt-2 rounded-xl bg-debt-soft p-3 text-sm font-semibold text-debt">Obuna tugagan: ma'lumotlar saqlanadi, faqat ko'rish mumkin. Ta'rif tanlang.</p>}
+                    {usage.is_trial && !expired && (
+                        <p className={cx('mt-2 rounded-xl p-3 text-sm', usage.debt_remaining === 0 ? 'bg-debt-soft font-semibold text-debt' : 'bg-soft text-ink-2')}>
+                            {usage.debt_remaining === 0
+                                ? `Sinovdagi ${formatNumber(usage.debt_total_limit)} ta nasiya limiti tugadi. Yangi nasiya yozish uchun ta'rif tanlang.`
+                                : `Sinovda ${formatNumber(usage.debt_total_limit)} ta nasiya va ${formatNumber(usage.sms_base_limit)} ta bepul SMS. Bepul SMS tugagach har biri ${formatMoney(usage.extra_sms_price)} balansdan yechiladi.`}
+                        </p>
+                    )}
                     <Toggle className="mt-4" checked={autoRenew} onChange={toggleAuto} label="Balansdan avtomatik uzaytirish" description="Muddat tugash kuni balans yetsa, joriy ta'rif 30 kunga uzaytiriladi" />
                 </Card>
                 <Card className="p-5">
@@ -94,11 +101,19 @@ export default function SubscriptionPage() {
             <SectionTitle>Qoldiqlar</SectionTitle>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
                 {[
-                    ['SMS', usage.sms_remaining === null || usage.sms_remaining === undefined ? '—' : `${formatNumber(usage.sms_remaining)} ta`],
-                    ['Nasiya yozish', usage.debt_remaining === null || usage.debt_remaining === undefined ? 'Cheksiz' : `${formatNumber(usage.debt_remaining)} ta`],
+                    ['Bepul SMS', usage.sms_remaining === null || usage.sms_remaining === undefined ? '—' : `${formatNumber(usage.sms_remaining)} / ${formatNumber(usage.sms_total_limit)}`,
+                        usage.extra_sms_price > 0 && `Keyin ${formatMoney(usage.extra_sms_price)}/SMS balansdan`],
+                    ['Nasiya yozish', usage.debt_remaining === null || usage.debt_remaining === undefined ? 'Cheksiz' : `${formatNumber(usage.debt_remaining)} / ${formatNumber(usage.debt_total_limit)}`,
+                        usage.debt_remaining === 0 && (usage.is_trial ? 'Obuna olish kerak' : 'Limit tugagan')],
                     ["Do'konlar", ofLimit(usage.shop_used, usage.shop_total_limit)],
                     ['Xodimlar', ofLimit(usage.worker_used, usage.worker_total_limit)]
-                ].map(([k, v]) => <Card key={k} className="p-4"><div className="text-[13px] text-ink-2">{k}</div><div className="text-lg font-extrabold">{v}</div></Card>)}
+                ].map(([k, v, note]) => (
+                    <Card key={k} className="p-4">
+                        <div className="text-[13px] text-ink-2">{k}</div>
+                        <div className="text-lg font-extrabold">{v}</div>
+                        {note && <div className="mt-0.5 text-xs text-ink-2">{note}</div>}
+                    </Card>
+                ))}
             </div>
             {packages.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">

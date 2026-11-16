@@ -4,7 +4,7 @@ import { profileApi } from '../api/settings.api'
 import { useState } from 'react'
 import { Avatar, CountBadge, List, PageHeader, Row } from '../ui/display'
 import { Toggle } from '../ui/controls'
-import { formatNumber } from '../utils/format'
+import { formatNumber, planLabel } from '../utils/format'
 
 // Telefon: pastki menyuga sig'magan barcha bo'limlar
 export default function MorePage() {
@@ -23,7 +23,7 @@ export default function MorePage() {
         ['/notifications', Bell, 'Bildirishnomalar', null, <CountBadge key="b" count={session.unread} />],
         ['/support', Bot, 'Yordam va AI yordamchi'],
         ['/guides', BookOpen, "Foydalanish qo'llanmasi"],
-        ['/subscription', CreditCard, "Ta'rif va balans", sub && `${sub.usage?.plan_name || 'Sinov'} · ${days !== undefined ? `${days} kun qoldi` : ''} · SMS ${formatNumber(sub.usage?.sms_remaining)}`],
+        ['/subscription', CreditCard, "Ta'rif va balans", sub && `${planLabel(sub.usage)} · ${days !== undefined ? `${days} kun qoldi` : ''} · SMS ${formatNumber(sub.usage?.sms_remaining)}`],
         ['/settings', Settings, 'Sozlamalar']
     ].filter(Boolean)
 

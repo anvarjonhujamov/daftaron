@@ -12,7 +12,7 @@ import { useOnChange, useOnline } from '../lib/hooks'
 import { overdueApi } from '../api/debts.api'
 import { migrateLegacySupplierRecords } from '../api/suppliers.api'
 import { formatDate } from '../utils/date'
-import { formatNumber } from '../utils/format'
+import { formatNumber, planLabel } from '../utils/format'
 
 function useBadges(session) {
     const [overdue, setOverdue] = useState(0)
@@ -75,7 +75,7 @@ function Sidebar({ session, badges }) {
             <div className="flex-1" />
             {sub && (
                 <Link to="/subscription" className="hidden rounded-xl bg-soft/70 p-3 text-[13px] leading-relaxed text-ink-2 lg:block">
-                    Obuna: <strong className="text-ink">{usage.plan_name || 'Sinov'} · {formatDate(trial.trial_ends_at)} gacha</strong>
+                    Obuna: <strong className="text-ink">{planLabel(usage)} · {formatDate(trial.trial_ends_at)} gacha</strong>
                     <br />SMS: <strong className="text-ink">{formatNumber(usage.sms_remaining)} ta</strong> · Balans: <strong className="text-ink">{formatNumber(sub.balance)}</strong>
                 </Link>
             )}

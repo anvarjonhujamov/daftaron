@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { CalendarDays, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { customersApi } from '../api/customers.api'
-import { debtsApi } from '../api/debts.api'
+import { debtsApi, smsApi } from '../api/debts.api'
 import { useSession } from '../app/session'
 import { emitChange, useDebounced } from '../lib/hooks'
 import { errorMessage } from '../lib/errors'
@@ -11,7 +11,7 @@ import { Avatar } from '../ui/display'
 import { Button, Chips, MoneyInput, Toggle, cx } from '../ui/controls'
 import CustomerPicker from './CustomerPicker'
 import { addDaysYmd, formatDate, todayYmd, toYmd } from '../utils/date'
-import { formatMoney, formatNumber } from '../utils/format'
+import { formatMoney, formatNumber, smsQuotaText } from '../utils/format'
 
 export const PAYMENT_METHODS = [
     { value: 'cash', label: 'Naqd' },
@@ -41,6 +41,7 @@ export default function PaymentSheet({ open, onClose, customer: initialCustomer,
     const [dateMode, setDateMode] = useState('today')
     const [dateOther, setDateOther] = useState('')
     const [sendSms, setSendSms] = useState(false)
+    const [quota, setQuota] = useState(null)
     const [preview, setPreview] = useState(null)
     const [saving, setSaving] = useState(false)
     const [result, setResult] = useState(null)
@@ -57,6 +58,7 @@ export default function PaymentSheet({ open, onClose, customer: initialCustomer,
         setDateMode('today')
         setDateOther('')
         setSendSms(session.notifications.sms_on_payment ?? true)
+        smsApi.quota().then(setQuota).catch(() => setQuota(null))
         setPreview(null)
         setResult(null)
     }, [open])
@@ -240,7 +242,7 @@ export default function PaymentSheet({ open, onClose, customer: initialCustomer,
                         <p className="text-[13px] text-ink-2">Qarzdan ortiq to'lansa, farq mijoz balansiga yoziladi.</p>
                     )}
 
-                    <Toggle checked={sendSms} onChange={setSendSms} label="Mijozga SMS" description="«To'lov qabul qilindi» va qolgan qarz" />
+                    <Toggle checked={sendSms} onChange={setSendSms} label="Mijozga SMS" description={["«To'lov qabul qilindi» va qolgan qarz", quota && smsQuotaText(quota)].filter(Boolean).join(' · ')} />
                 </div>
             )}
         </Sheet>

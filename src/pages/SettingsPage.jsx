@@ -17,7 +17,7 @@ import { Avatar, Card, List, PageHeader, Pill, Row, Skeleton } from '../ui/displ
 import { Button, Chips, Input, PhoneInput, Select, Toggle } from '../ui/controls'
 import { Confirm, Sheet } from '../ui/Sheet'
 import { formatDate, formatDateTime } from '../utils/date'
-import { formatMoney, formatNumber } from '../utils/format'
+import { formatMoney, formatNumber, planLabel } from '../utils/format'
 import { formatPhone, isValidPhone, toApiPhone } from '../utils/phone'
 import { telegramInitData } from '../utils/telegram'
 
@@ -107,7 +107,7 @@ function MenuList({ session }) {
                 <Row to="/settings/profile" left={<Avatar name={p?.name || session.user?.name} size={44} />} title={p?.name || session.user?.name}
                     subtitle={`${session.tenant?.name || ''} · ${formatPhone(p?.phone || session.user?.phone)}`} chevron />
                 <Row to="/subscription" left={<Wallet size={22} className="text-brand-strong" aria-hidden />} title={`Ta'rif va balans · ${formatMoney(sub?.balance)}`}
-                    subtitle={`${sub?.usage?.plan_name || 'Sinov'} · ${formatDate(sub?.trial_info?.trial_ends_at)} gacha · SMS ${formatNumber(sub?.usage?.sms_remaining)}`} chevron />
+                    subtitle={`${planLabel(sub?.usage)} · ${formatDate(sub?.trial_info?.trial_ends_at)} gacha · SMS ${formatNumber(sub?.usage?.sms_remaining)}`} chevron />
             </List>
             <List>
                 <Row to="/settings/reminders" left={<BellRing size={20} aria-hidden />} title="Eslatmalar va SMS"
@@ -246,7 +246,7 @@ function AccountSection({ session }) {
                     <Link to="/subscription" className="flex items-center gap-1 text-sm font-semibold text-brand-strong">Obuna va to'lovlar <ChevronRight size={16} aria-hidden /></Link>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                    {[['Ta\'rif', usage.plan_name || 'Sinov'], ['Muddati', `${formatDate(sub.trial_info?.trial_ends_at)} gacha`],
+                    {[['Ta\'rif', planLabel(usage)], ['Muddati', `${formatDate(sub.trial_info?.trial_ends_at)} gacha`],
                         ['SMS qoldig\'i', formatNumber(usage.sms_remaining)], ['Nasiya qoldig\'i', usage.debt_remaining === null || usage.debt_remaining === undefined ? 'Cheksiz' : formatNumber(usage.debt_remaining)]
                     ].map(([k, v]) => <div key={k} className="rounded-xl bg-soft/70 p-3"><div className="text-ink-2">{k}</div><strong>{v}</strong></div>)}
                 </div>

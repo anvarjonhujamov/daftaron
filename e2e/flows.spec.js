@@ -387,3 +387,41 @@ test("Balansni to'ldirish: Xazna ishlamasa xato ko'rinadi", async ({ page }) => 
     await expect(page.getByText("Bu to'lov tizimi hozircha ishlamayapti.")).toBeVisible()
     await expect(dialog.getByRole('button', { name: "Xazna orqali to'lash" })).toBeEnabled()
 })
+
+const trialUsage = (f, debtRemaining) => ({
+    ...f.subscription,
+    current_plan_id: 1,
+    usage: { ...f.subscription.usage, is_trial: true, plan_name: 'Oddiy', debt_total_limit: 50, debt_remaining: debtRemaining, sms_base_limit: 20, sms_total_limit: 20, sms_remaining: 5, extra_sms_price: 190 }
+})
+
+test('Bepul sinov: limitlar va limitdan keyingi SMS narxi ko\'rinadi', async ({ page }) => {
+    await mockApi(page, {
+        overrides: {
+            'GET /subscription/status': (route, { f }) => route.fulfill({ json: trialUsage(f, 12) }),
+            'GET /sms/quota': (route) => route.fulfill({ json: { limit: 20, used: 20, free_remaining: 0, extra_sms_price: 190, balance: 10550, blocked: false } })
+        }
+    })
+    await page.goto('/subscription')
+    await expect(page.getByText('Bepul sinov', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('12 / 50')).toBeVisible()
+    await expect(page.getByText('5 / 20')).toBeVisible()
+    await expect(page.getByText(/Keyin 190 so'm\/SMS balansdan/)).toBeVisible()
+
+    await page.goto('/customers/31')
+    await page.getByRole('button', { name: 'Nasiya', exact: true }).first().click()
+    await expect(page.getByRole('dialog').getByText(/Bepul SMS tugagan · 190 so'm balansdan yechiladi/)).toBeVisible()
+})
+
+test('Bepul sinov: nasiya limiti tugasa yozib bo\'lmaydi, ta\'rif tanlashga yo\'naltiradi', async ({ page }) => {
+    const { calls } = await mockApi(page, {
+        overrides: { 'GET /subscription/status': (route, { f }) => route.fulfill({ json: trialUsage(f, 0) }) }
+    })
+    await page.goto('/customers/31')
+    await page.getByRole('button', { name: 'Nasiya', exact: true }).first().click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByText('Sinovdagi nasiya limiti tugadi')).toBeVisible()
+    await expect(dialog.getByRole('button', { name: /^Saqlash/ })).toBeDisabled()
+    await dialog.getByRole('button', { name: "Ta'rif tanlash" }).click()
+    await expect(page).toHaveURL(/\/subscription$/)
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/debts')).toBe(false)
+})

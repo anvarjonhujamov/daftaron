@@ -12,7 +12,7 @@ import { Avatar } from '../ui/display'
 import { Button, Chips, Toggle, cx } from '../ui/controls'
 import CustomerPicker from './CustomerPicker'
 import { addDaysYmd, addMonthsYmd, formatDate, todayYmd } from '../utils/date'
-import { formatMoney, formatNumber } from '../utils/format'
+import { formatMoney, formatNumber, smsQuotaText } from '../utils/format'
 import { formatPhone } from '../utils/phone'
 
 const GIVEN_MAX_DAYS_BACK = 30 // backend: berilgan sana bugundan 30 kundan oldin bo'lmaydi
@@ -44,7 +44,12 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
     const [quota, setQuota] = useState(null)
     const [saving, setSaving] = useState(false)
     const [overLimit, setOverLimit] = useState(null)
+    const [trialLimit, setTrialLimit] = useState(null)
     const [result, setResult] = useState(null)
+    // Bepul sinovdagi nasiya limiti (null — sinovda emas): tugasa obuna olmaguncha nasiya yozilmaydi
+    const usage = session.subscription?.usage
+    const trialLeft = usage?.is_trial && typeof usage.debt_remaining === 'number' ? usage.debt_remaining : null
+    const trialBlocked = !!trialLimit || trialLeft === 0
 
     const today = todayYmd()
     const reset = (keepCustomer) => {
@@ -58,6 +63,7 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
         setNoteOpen(false)
         setSendSms(settings.sms_on_debt ?? true)
         setOverLimit(null)
+        setTrialLimit(null)
         setResult(null)
     }
 
@@ -84,7 +90,7 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
     const limit = summary?.credit_limit ?? customer?.credit_limit ?? null
     const limitLeft = limit !== null ? limit - newTotal : null
 
-    const valid = customer && amount > 0 && givenAt && (!dueMode || dueDate)
+    const valid = customer && amount > 0 && givenAt && (!dueMode || dueDate) && !trialBlocked
 
     const save = async (force = false) => {
         if (!valid || saving) return
@@ -102,9 +108,11 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
             setOverLimit(null)
             setResult({ ...res, amount, dueDate, customer })
             emitChange('debts')
+            if (usage?.is_trial || res?.sms?.free === false) session.refresh?.()
         } catch (err) {
             const d = err?.response?.data
             if (d?.reason === 'limit_exceeded') setOverLimit(d)
+            else if (d?.reason === 'trial_debt_limit') setTrialLimit(d)
             else toast.error(errorMessage(err))
         } finally {
             setSaving(false)
@@ -260,9 +268,22 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
                         label="Mijozga SMS yuborish"
                         description={[
                             dueDate && settings.reminder_enabled !== false && `Eslatma: ${formatDate(dueDate)}, ${settings.reminder_time || '09:00'}`,
-                            quota && (quota.free_remaining !== null ? `Qolgan SMS: ${formatNumber(quota.free_remaining)} ta` : 'SMS cheksiz')
+                            quota && smsQuotaText(quota)
                         ].filter(Boolean).join(' · ') || undefined}
                     />
+
+                    {trialLeft !== null && !trialBlocked && trialLeft <= 10 && (
+                        <p className="rounded-xl bg-warn-soft px-3 py-2 text-sm font-semibold text-warn">Bepul sinovda {formatNumber(trialLeft)} ta nasiya qoldi</p>
+                    )}
+                    {trialBlocked && (
+                        <div role="alert" className="rounded-ctl border-[1.5px] border-debt bg-debt-soft p-3.5 text-[15px] text-ink">
+                            <p className="font-bold">Sinovdagi nasiya limiti tugadi</p>
+                            <p className="mt-1 text-sm text-ink-2">
+                                {trialLimit?.message || `Bepul sinovda ${formatNumber(usage?.debt_total_limit)} ta nasiya yozish mumkin.`} Davom etish uchun ta'rif tanlang.
+                            </p>
+                            <Button className="mt-3 w-full" onClick={() => { onClose(); navigate('/subscription') }}>Ta'rif tanlash</Button>
+                        </div>
+                    )}
 
                     {overLimit && (
                         <div role="alert" className="rounded-ctl border-[1.5px] border-warn bg-warn-soft p-3.5 text-[15px] text-ink">

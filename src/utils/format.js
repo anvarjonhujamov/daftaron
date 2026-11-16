@@ -37,3 +37,15 @@ export const avatarClass = (name) => {
     for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
     return AVATARS[h % AVATARS.length]
 }
+
+// Obuna nomi: bepul sinovda do'konga Oddiy ta'rif biriktirilgan bo'lsa ham «Bepul sinov» (limitlari boshqa)
+export const planLabel = (usage) => (usage?.is_trial ? 'Bepul sinov' : usage?.plan_name || 'Sinov')
+
+// SMS kvotasi: bepul qolgani va limitdan keyingi narx (balansdan yechiladi)
+export const smsQuotaText = (quota) => {
+    if (quota.free_remaining === null || quota.free_remaining === undefined) return 'SMS cheksiz'
+    const price = quota.extra_sms_price > 0 ? `${formatMoney(quota.extra_sms_price)}` : null
+    if (quota.free_remaining > 0) return `Bepul SMS: ${formatNumber(quota.free_remaining)} ta${price ? ` · keyin ${price}/SMS` : ''}`
+    if (quota.blocked) return `Bepul SMS tugagan · balans yetmaydi (${price || '—'}/SMS)`
+    return `Bepul SMS tugagan · ${price || '—'} balansdan yechiladi`
+}
