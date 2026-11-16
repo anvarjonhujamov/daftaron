@@ -16,6 +16,7 @@ import { addDaysYmd, addMonthsYmd, formatDate, todayYmd } from '../utils/date'
 import { formatMoney } from '../utils/format'
 import { formatPhone } from '../utils/phone'
 import { AuthShell } from './LoginPage'
+import TrialFeatures from '../features/TrialFeatures'
 
 const STEPS = ['shop', 'customer', 'debt']
 
@@ -210,7 +211,10 @@ function Finish({ done, onGo, session }) {
                 ))}
             </div>
             {days > 0 && (
-                <p className="mt-4 rounded-ctl bg-soft p-4 text-sm text-ink-2"><strong className="text-ink">Bepul sinov muddati: {days} kun qoldi.</strong> Karta kerak emas.</p>
+                <div className="mt-4 rounded-ctl bg-soft p-4 text-sm text-ink-2">
+                    <p><strong className="text-ink">Bepul sinov muddati: {days} kun qoldi.</strong> Karta kerak emas.</p>
+                    <TrialFeatures trial={session.subscription?.trial_policy} className="mt-2 text-sm" />
+                </div>
             )}
             <div className="flex-1" />
             <Button size="lg" block className="mt-8" onClick={onGo}>Bosh sahifaga o'tish</Button>

@@ -7,6 +7,7 @@ import { useResource } from '../lib/hooks'
 import { errorMessage } from '../lib/errors'
 import TopUpSheet, { ProviderButtons } from '../features/TopUpSheet'
 import PlanCards, { PACKAGE_UNITS } from '../features/PlanCards'
+import TrialFeatures from '../features/TrialFeatures'
 import { Card, List, Money, PageHeader, Pill, Row, SectionTitle, Skeleton } from '../ui/display'
 import { Button, Input, Toggle, cx } from '../ui/controls'
 import { Confirm } from '../ui/Sheet'
@@ -81,11 +82,9 @@ export default function SubscriptionPage() {
                     </div>
                     <p className="mt-1 text-[15px] text-ink-2">{formatDate(trial.trial_ends_at)} gacha{!expired && trial.days_remaining !== undefined && ` · ${trial.days_remaining} kun qoldi`}</p>
                     {expired && <p className="mt-2 rounded-xl bg-debt-soft p-3 text-sm font-semibold text-debt">Obuna tugagan: ma'lumotlar saqlanadi, faqat ko'rish mumkin. Ta'rif tanlang.</p>}
-                    {usage.is_trial && !expired && (
-                        <p className={cx('mt-2 rounded-xl p-3 text-sm', usage.debt_remaining === 0 ? 'bg-debt-soft font-semibold text-debt' : 'bg-soft text-ink-2')}>
-                            {usage.debt_remaining === 0
-                                ? `Sinovdagi ${formatNumber(usage.debt_total_limit)} ta nasiya limiti tugadi. Yangi nasiya yozish uchun ta'rif tanlang.`
-                                : `Sinovda ${formatNumber(usage.debt_total_limit)} ta nasiya va ${formatNumber(usage.sms_base_limit)} ta bepul SMS. Bepul SMS tugagach har biri ${formatMoney(usage.extra_sms_price)} balansdan yechiladi.`}
+                    {usage.is_trial && !expired && usage.debt_remaining === 0 && (
+                        <p className="mt-2 rounded-xl bg-debt-soft p-3 text-sm font-semibold text-debt">
+                            Sinovdagi {formatNumber(usage.debt_total_limit)} ta nasiya limiti tugadi. Yangi nasiya yozish uchun ta'rif tanlang.
                         </p>
                     )}
                     <Toggle className="mt-4" checked={autoRenew} onChange={toggleAuto} label="Balansdan avtomatik uzaytirish" description="Muddat tugash kuni balans yetsa, joriy ta'rif 30 kunga uzaytiriladi" />
@@ -102,7 +101,7 @@ export default function SubscriptionPage() {
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
                 {[
                     ['Bepul SMS', usage.sms_remaining === null || usage.sms_remaining === undefined ? '—' : `${formatNumber(usage.sms_remaining)} / ${formatNumber(usage.sms_total_limit)}`,
-                        usage.extra_sms_price > 0 && `Keyin ${formatMoney(usage.extra_sms_price)}/SMS balansdan`],
+                        usage.sms_overage_allowed === false ? "Keyin SMS yuborilmaydi" : usage.extra_sms_price > 0 && `Keyin ${formatMoney(usage.extra_sms_price)}/SMS balansdan`],
                     ['Nasiya yozish', usage.debt_remaining === null || usage.debt_remaining === undefined ? 'Cheksiz' : `${formatNumber(usage.debt_remaining)} / ${formatNumber(usage.debt_total_limit)}`,
                         usage.debt_remaining === 0 && (usage.is_trial ? 'Obuna olish kerak' : 'Limit tugagan')],
                     ["Do'konlar", ofLimit(usage.shop_used, usage.shop_total_limit)],
@@ -115,6 +114,13 @@ export default function SubscriptionPage() {
                     </Card>
                 ))}
             </div>
+            {usage.is_trial && usage.trial && (
+                <Card className="mt-3 p-5">
+                    <p className="font-bold">Bepul sinovda nimalar bor</p>
+                    <p className="mt-0.5 text-sm text-ink-2">{usage.trial.days > 0 ? `${formatNumber(usage.trial.days)} kun davomida. ` : ''}Ta'rif olsangiz, uning limitlari ishlaydi.</p>
+                    <TrialFeatures trial={usage.trial} className="mt-3 sm:columns-2" />
+                </Card>
+            )}
             {packages.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                     {packages.map((p) => (

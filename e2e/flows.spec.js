@@ -391,7 +391,8 @@ test("Balansni to'ldirish: Xazna ishlamasa xato ko'rinadi", async ({ page }) => 
 const trialUsage = (f, debtRemaining) => ({
     ...f.subscription,
     current_plan_id: 1,
-    usage: { ...f.subscription.usage, is_trial: true, plan_name: 'Oddiy', debt_total_limit: 10, debt_remaining: debtRemaining, sms_base_limit: 20, sms_total_limit: 20, sms_remaining: 5, extra_sms_price: 250 }
+    usage: { ...f.subscription.usage, is_trial: true, plan_name: 'Oddiy', debt_total_limit: 10, debt_remaining: debtRemaining, sms_base_limit: 20, sms_total_limit: 20, sms_remaining: 5, extra_sms_price: 250, sms_overage_allowed: true,
+        trial: { days: 15, debt_limit: 10, sms_limit: 20, sms_overage: true, sms_price: 250, shop_limit: 1, worker_limit: 0, supplier_limit: null, allow_export: false, extra_packages: ['sms'] } }
 })
 
 test('Bepul sinov: limitlar va limitdan keyingi SMS narxi ko\'rinadi', async ({ page }) => {
@@ -424,4 +425,28 @@ test('Bepul sinov: nasiya limiti tugasa yozib bo\'lmaydi, ta\'rif tanlashga yo\'
     await dialog.getByRole('button', { name: "Ta'rif tanlash" }).click()
     await expect(page).toHaveURL(/\/subscription$/)
     expect(calls.some((c) => c.method === 'POST' && c.path === '/debts')).toBe(false)
+})
+
+test("Bepul sinov: admin sozlagan imkoniyatlar ro'yxati, SMS o'chiq bo'lsa ko'rsatiladi", async ({ page }) => {
+    await mockApi(page, {
+        overrides: {
+            'GET /subscription/status': (route, { f }) => {
+                const s = trialUsage(f, 7)
+                s.usage = { ...s.usage, sms_overage_allowed: false, trial: { ...s.usage.trial, sms_overage: false, worker_limit: 3 } }
+                return route.fulfill({ json: s })
+            },
+            'GET /sms/quota': (route) => route.fulfill({ json: { limit: 20, used: 20, free_remaining: 0, extra_sms_price: 250, balance: 10550, blocked: true, overage_allowed: false } })
+        }
+    })
+    await page.goto('/subscription')
+    const list = page.getByRole('list', { name: 'Bepul sinovda' })
+    await expect(list.getByText('10 ta nasiya yozish')).toBeVisible()
+    await expect(list.getByText('3 ta xodim')).toBeVisible()
+    await expect(list.getByText("Cheksiz ta'minotchi")).toBeVisible()
+    await expect(list.getByText('Bepul SMS tugagach SMS yuborilmaydi')).toBeVisible()
+    await expect(page.getByText('Keyin SMS yuborilmaydi')).toBeVisible()
+
+    await page.goto('/customers/31')
+    await page.getByRole('button', { name: 'Nasiya', exact: true }).first().click()
+    await expect(page.getByRole('dialog').getByText(/sinovda keyingi SMS yuborilmaydi/)).toBeVisible()
 })

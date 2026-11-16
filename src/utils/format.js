@@ -45,7 +45,8 @@ export const planLabel = (usage) => (usage?.is_trial ? 'Bepul sinov' : usage?.pl
 export const smsQuotaText = (quota) => {
     if (quota.free_remaining === null || quota.free_remaining === undefined) return 'SMS cheksiz'
     const price = quota.extra_sms_price > 0 ? `${formatMoney(quota.extra_sms_price)}` : null
-    if (quota.free_remaining > 0) return `Bepul SMS: ${formatNumber(quota.free_remaining)} ta${price ? ` · keyin ${price}/SMS` : ''}`
+    if (quota.free_remaining > 0) return `Bepul SMS: ${formatNumber(quota.free_remaining)} ta${quota.overage_allowed === false ? ' · keyin SMS to\'xtaydi' : price ? ` · keyin ${price}/SMS` : ''}`
+    if (quota.overage_allowed === false) return "Bepul SMS tugagan · sinovda keyingi SMS yuborilmaydi"
     if (quota.blocked) return `Bepul SMS tugagan · balans yetmaydi (${price || '—'}/SMS)`
     return `Bepul SMS tugagan · ${price || '—'} balansdan yechiladi`
 }

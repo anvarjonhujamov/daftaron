@@ -112,7 +112,7 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
         } catch (err) {
             const d = err?.response?.data
             if (d?.reason === 'limit_exceeded') setOverLimit(d)
-            else if (d?.reason === 'trial_debt_limit') setTrialLimit(d)
+            else if (d?.reason === 'trial_debt_limit') { setTrialLimit(d); session.refresh?.() }
             else toast.error(errorMessage(err))
         } finally {
             setSaving(false)
