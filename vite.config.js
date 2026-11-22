@@ -4,18 +4,22 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'node:fs'
 
 const DEFAULT_API_URL = 'https://daftaron.firstcoder.uz/api/v1'
+// Yandex Metrika hisoblagichi (daftaron.uz va web.daftaron.uz uchun bitta). 0 — o'chiq
+const DEFAULT_METRIKA_ID = 114490025
 
 // Content-Security-Policy faqat build'da: dev server inline skript (HMR) ishlatadi.
 // Token localStorage'da — begona skript yuklanmasligi shart (XSS'dan himoya).
-function cspPlugin(apiUrl) {
+// Metrika yoqilgan bo'lsa, faqat mc.yandex.ru qo'shiladi (tag.js, hit'lar).
+function cspPlugin(apiUrl, metrika) {
     const apiOrigin = new URL(apiUrl).origin
+    const ym = metrika ? ' https://mc.yandex.ru' : ''
     const csp = [
         "default-src 'self'",
-        "script-src 'self' https://telegram.org",
+        `script-src 'self' https://telegram.org${ym}`,
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob:",
+        `img-src 'self' data: blob:${ym}`,
         "font-src 'self' data:",
-        `connect-src 'self' ${apiOrigin}`,
+        `connect-src 'self' ${apiOrigin}${ym}`,
         "worker-src 'self'",
         "manifest-src 'self'",
         "object-src 'none'",
@@ -39,13 +43,15 @@ function cspPlugin(apiUrl) {
 
     export default defineConfig(({ mode }) => {
         const env = loadEnv(mode, process.cwd(), 'VITE_')
+        const metrikaId = Number(env.VITE_METRIKA_ID ?? DEFAULT_METRIKA_ID) || 0
         return {
         define: {
-            __APP_VERSION__: JSON.stringify(APP_VERSION)
+            __APP_VERSION__: JSON.stringify(APP_VERSION),
+            __METRIKA_ID__: JSON.stringify(metrikaId)
         },
         plugins: [
             react(),
-            cspPlugin(env.VITE_API_URL || DEFAULT_API_URL),
+            cspPlugin(env.VITE_API_URL || DEFAULT_API_URL, metrikaId > 0),
             VitePWA({
                 registerType: 'autoUpdate',
                 // Ro'yxatdan o'tkazish src/main.jsx da (virtual:pwa-register): yangilanishni tekshirish + avtomatik reload

@@ -6,6 +6,7 @@ import Layout from './app/Layout'
 import { SessionProvider, useSession } from './app/session'
 import { getToken, getUser } from './lib/session'
 import { initTelegramWebApp } from './utils/telegram'
+import { trackPage } from './lib/metrika'
 
 // Kirish va bosh sahifa asosiy bundle'da, qolganlari kerak bo'lganda yuklanadi
 import LoginPage from './pages/LoginPage'
@@ -64,6 +65,13 @@ function Private({ children, onboarding }) {
 }
 
 export default function App() {
+    const { pathname, search, hash } = useLocation()
+
+    // Metrika: har bir sahifa o'tishi alohida ko'rinish (query/hash o'zgarishi — faqat toza URL'ni kutish uchun)
+    useEffect(() => {
+        trackPage()
+    }, [pathname, search, hash])
+
     useEffect(() => {
         // SDK async yuklanadi: hali tayyor bo'lmasa, yuklangach ishga tushiramiz
         if (initTelegramWebApp()) return

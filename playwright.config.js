@@ -18,7 +18,7 @@ export default defineConfig({
         { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } }
     ],
     webServer: {
-        command: 'VITE_API_URL=http://api.test/api/v1 npx vite build --outDir e2e/.dist --emptyOutDir && npx vite preview --outDir e2e/.dist --port 4174 --strictPort',
+        command: 'VITE_API_URL=http://api.test/api/v1 VITE_METRIKA_ID=0 npx vite build --outDir e2e/.dist --emptyOutDir && npx vite preview --outDir e2e/.dist --port 4174 --strictPort',
         port: 4174,
         reuseExistingServer: !process.env.CI,
         timeout: 120000
