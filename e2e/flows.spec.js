@@ -450,3 +450,42 @@ test("Bepul sinov: admin sozlagan imkoniyatlar ro'yxati, SMS o'chiq bo'lsa ko'rs
     await page.getByRole('button', { name: 'Nasiya', exact: true }).first().click()
     await expect(page.getByRole('dialog').getByText(/sinovda keyingi SMS yuborilmaydi/)).toBeVisible()
 })
+
+test("Bepul sinov tugagan: ma'lumotlar ko'rinmaydi — faqat «Ta'rif va balans», menyu yo'q, chiqish bor", async ({ page }) => {
+    const trialExpired = (route) => route.fulfill({ status: 403, json: { error: true, reason: 'trial_expired', message: 'Bepul sinov muddati tugadi.', remaining_limit: 0 } })
+    const { calls } = await mockApi(page, {
+        overrides: {
+            'GET /subscription/status': (route, { f }) => route.fulfill({ json: {
+                ...f.subscription,
+                trial_info: { ...f.subscription.trial_info, is_expired: true, days_remaining: 0, status: 0 },
+                usage: { ...f.subscription.usage, subscription_status: 'expired', is_trial: true },
+                read_only: true,
+                trial_expired: true
+            } }),
+            'GET /settings': trialExpired,
+            'GET /dashboard': trialExpired,
+            'GET /customers': trialExpired,
+            'GET /overdue': trialExpired,
+            'GET /notifications/unread-count': trialExpired
+        }
+    })
+    // Oldingi sessiyadan qolgan mijozlar keshi — sinov tugagach o'chishi kerak
+    await page.addInitScript(() => localStorage.setItem('c:7:12:customers_v1', JSON.stringify({ data: [{ id: 31, name: 'Aziz aka' }] })))
+
+    await page.goto('/customers')
+    await expect(page).toHaveURL(/\/subscription$/)
+    await expect(page.getByText('Bepul sinov muddati tugadi', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Chiqish/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Mijozlar' })).toHaveCount(0)
+    await expect(page.getByText('Aziz aka')).toHaveCount(0)
+    await expect(page.getByText("faqat ko'rish mumkin")).toHaveCount(0)
+    expect(await page.evaluate(() => localStorage.getItem('c:7:12:customers_v1'))).toBeNull()
+
+    // Qayta ochilganda (sessiya keshda) boshqa sahifaga o'tib bo'lmaydi va ma'lumot so'ralmaydi
+    const dataCalls = () => calls.filter((c) => ['/customers', '/dashboard', '/overdue', '/history'].includes(c.path)).length
+    const before = dataCalls()
+    await page.goto('/history')
+    await expect(page).toHaveURL(/\/subscription$/)
+    await expect(page.getByText('Bepul sinov muddati tugadi', { exact: true })).toBeVisible()
+    expect(dataCalls()).toBe(before)
+})

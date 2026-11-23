@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { authApi } from '../api/auth.api'
 import { settingsApi } from '../api/settings.api'
 import { subscriptionApi } from '../api/subscription.api'
 import { notificationsApi } from '../api/reports.api'
-import { readCache, writeCache } from '../lib/cache'
+import { TRIAL_EXPIRED_EVENT } from '../api/client'
+import { clearDataCache, readCache, writeCache } from '../lib/cache'
 import { clearLocalData, getToken, getUser, setSession, setUser } from '../lib/session'
 
 // Kirgan foydalanuvchi holati: /auth/me + /settings (huquqlar, eslatmalar) + /subscription/status.
@@ -16,6 +17,12 @@ export const applyTheme = (theme) => {
     document.documentElement.classList.toggle('dark', dark)
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0B1220' : '#2563EB')
     try { localStorage.setItem('theme', dark ? 'dark' : 'light') } catch { /* ignore */ }
+}
+
+// Bepul sinov tugagan: oldingi ro'yxatlar keshdan ham ko'rinmasin (sessiya va obuna holati qoladi)
+const withLockedCache = (subscription) => {
+    if (subscription?.trial_expired) clearDataCache([CACHE_KEY, 'subscription_status'])
+    return subscription
 }
 
 export function SessionProvider({ children }) {
@@ -41,15 +48,31 @@ export function SessionProvider({ children }) {
                 next.settings = settings.value
                 if (settings.value?.profile?.theme && !prev.settings) applyTheme(settings.value.profile.theme)
             }
-            if (subscription.status === 'fulfilled') next.subscription = subscription.value
+            if (subscription.status === 'fulfilled') next.subscription = withLockedCache(subscription.value)
             writeCache(CACHE_KEY, next)
             return next
         })
         setLoading(false)
     }, [])
 
+    // Biror so'rov 403 trial_expired qaytardi (sinov shu orada tugagan): faqat obuna holati qayta o'qiladi —
+    // u 403 bermaydi, shuning uchun aylanib qolmaydi. Bir vaqtda kelgan bir nechta 403 — bitta so'rov
+    const lastLockCheck = useRef(0)
+    const refreshSubscription = useCallback(() => {
+        if (!getToken() || Date.now() - lastLockCheck.current < 5000) return
+        lastLockCheck.current = Date.now()
+        subscriptionApi.status().then((value) => setState((prev) => {
+            const next = { ...prev, subscription: withLockedCache(value) }
+            writeCache(CACHE_KEY, next)
+            return next
+        })).catch(() => {})
+    }, [])
+
+    const locked = useRef(false)
+    locked.current = !!state.subscription?.trial_expired
+
     const refreshUnread = useCallback(() => {
-        if (!getToken()) return
+        if (!getToken() || locked.current) return
         notificationsApi.unreadCount().then((r) => setUnread(r?.count || 0)).catch(() => {})
     }, [])
 
@@ -68,12 +91,14 @@ export function SessionProvider({ children }) {
         refreshUnread()
         const onVisible = () => document.visibilityState === 'visible' && refreshUnread()
         document.addEventListener('visibilitychange', onVisible)
+        window.addEventListener(TRIAL_EXPIRED_EVENT, refreshSubscription)
         const timer = setInterval(refreshUnread, 120000)
         return () => {
             document.removeEventListener('visibilitychange', onVisible)
+            window.removeEventListener(TRIAL_EXPIRED_EVENT, refreshSubscription)
             clearInterval(timer)
         }
-    }, [refresh, refreshUnread])
+    }, [refresh, refreshUnread, refreshSubscription])
 
     const value = useMemo(() => {
         const user = state.user || getUser()
@@ -98,6 +123,8 @@ export function SessionProvider({ children }) {
             // Ikki rolli hisob (TZ 28.21): o'z do'koni bormi — available_tenants → owner_id. Hali yuklanmagan — null
             ownsShop: state.tenants ? state.tenants.some((t) => Number(t.owner_id) === Number(user?.id)) : null,
             readOnly: !!(trial.is_expired || sub?.read_only || sub?.usage?.subscription_status === 'expired'),
+            // Bepul sinov tugagan, ta'rif olinmagan: ma'lumotlar yopiq — faqat «Ta'rif va balans» sahifasi (Layout)
+            trialExpired: !!sub?.trial_expired,
             // Excel eksport ta'rifga bog'liq (Oddiy'da yo'q); ma'lumot kelmagan bo'lsa backend tekshiradi (403)
             canExport: sub?.usage?.export_allowed !== false,
             notifications: state.settings?.notifications || {},

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, Gift } from 'lucide-react'
+import { Copy, Gift, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { subscriptionApi } from '../api/subscription.api'
 import { useSession } from '../app/session'
@@ -35,6 +35,8 @@ export default function SubscriptionPage() {
     const usage = s.usage || {}
     const trial = s.trial_info || {}
     const expired = trial.is_expired || usage.subscription_status === 'expired'
+    // Bepul sinov tugagan, ta'rif olinmagan: ilovada faqat shu sahifa ochiq (Layout)
+    const trialExpired = !!(s.trial_expired ?? session.trialExpired)
     const plans = s.plans || []
     const currentPlan = plans.find((p) => p.id === s.current_plan_id)
     const shortfall = currentPlan ? Number(currentPlan.price) - Number(s.balance || 0) : 0
@@ -72,7 +74,20 @@ export default function SubscriptionPage() {
     const referral = session.user?.referral_code
     return (
         <div className="page">
-            <PageHeader back title="Ta'rif va balans" />
+            <PageHeader back={!trialExpired} title="Ta'rif va balans" />
+            {trialExpired && (
+                <Card className="mb-4 flex items-start gap-3 border-debt/30 bg-debt-soft p-5">
+                    <Lock size={22} className="mt-0.5 shrink-0 text-debt" aria-hidden />
+                    <div>
+                        <p className="text-lg font-extrabold text-debt">Bepul sinov muddati tugadi</p>
+                        <p className="mt-1 text-[15px] text-ink">
+                            Mijozlar, nasiyalar va to'lovlar saqlangan, lekin ta'rif olinmaguncha ko'rinmaydi.
+                            {session.isOwner !== false ? " Ta'rif tanlang — hammasi darhol qaytadi." : " Do'kon egasi ta'rif olgach, hammasi qaytadi."}
+                        </p>
+                        {trial.trial_ends_at && <p className="mt-1 text-sm text-ink-2">Sinov {formatDate(trial.trial_ends_at)} da tugagan</p>}
+                    </div>
+                </Card>
+            )}
             <div className="grid gap-4 lg:grid-cols-2">
                 <Card className="p-5">
                     <div className="text-sm text-ink-2">Obuna holati</div>
@@ -81,7 +96,7 @@ export default function SubscriptionPage() {
                         <Pill tone={expired ? 'danger' : 'success'}>{expired ? 'Tugagan' : 'Faol'}</Pill>
                     </div>
                     <p className="mt-1 text-[15px] text-ink-2">{formatDate(trial.trial_ends_at)} gacha{!expired && trial.days_remaining !== undefined && ` · ${trial.days_remaining} kun qoldi`}</p>
-                    {expired && <p className="mt-2 rounded-xl bg-debt-soft p-3 text-sm font-semibold text-debt">Obuna tugagan: ma'lumotlar saqlanadi, faqat ko'rish mumkin. Ta'rif tanlang.</p>}
+                    {expired && !trialExpired && <p className="mt-2 rounded-xl bg-debt-soft p-3 text-sm font-semibold text-debt">Obuna tugagan: ma'lumotlar saqlanadi, faqat ko'rish mumkin. Ta'rif tanlang.</p>}
                     {usage.is_trial && !expired && usage.debt_remaining === 0 && (
                         <p className="mt-2 rounded-xl bg-debt-soft p-3 text-sm font-semibold text-debt">
                             Sinovdagi {formatNumber(usage.debt_total_limit)} ta nasiya limiti tugadi. Yangi nasiya yozish uchun ta'rif tanlang.

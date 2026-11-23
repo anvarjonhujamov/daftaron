@@ -20,6 +20,9 @@ api.interceptors.request.use((config) => {
     return config
 })
 
+// Bepul sinov tugadi (403 trial_expired): sessiya obuna holatini qayta o'qiydi va faqat ta'rif sahifasini qoldiradi
+export const TRIAL_EXPIRED_EVENT = 'daftaron:trial-expired'
+
 // 401 — token eskirgan yoki boshqa qurilmadan chiqarilgan: hamma narsani tozalab kirishga
 api.interceptors.response.use(
     (response) => response,
@@ -27,6 +30,9 @@ api.interceptors.response.use(
         if (error.response?.status === 401 && getToken()) {
             clearLocalData()
             if (!window.location.pathname.startsWith('/login')) window.location.replace('/login')
+        }
+        if (error.response?.status === 403 && error.response.data?.reason === 'trial_expired') {
+            window.dispatchEvent(new Event(TRIAL_EXPIRED_EVENT))
         }
         return Promise.reject(error)
     }

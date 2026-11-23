@@ -76,6 +76,7 @@ e2e/                  # Playwright testlari (UserFlow bandlari bo'yicha nomlanga
 - Huquqlar: `GET /settings → permissions` (backend TZ 28.8). UI'da `session.can('debt.delete')` — tugmani yashirish uchun; tekshiruv baribir backend'da (403). Egasi — `staff.manage` bor.
 - Faol do'kon: `user.tenant_id` → `X-Tenant-Id`; almashtirish `PUT /tenants/active` (`ShopsPage`). Kesh kalitlari foydalanuvchi+do'kon bo'yicha (`lib/cache.js`).
 - Obuna tugasa (`session.readOnly`): ilova ochiladi, yozish tugmalari o'chadi, tepada banner (backend yozishni 403 qiladi).
+- Bepul sinov tugagan, ta'rif olinmagan (`session.trialExpired` ← `GET /subscription/status → trial_expired`): `Layout` → `LockedLayout` — menyu yo'q, faqat `/subscription` va «Chiqish», boshqa yo'llar `/subscription`ga. Ma'lumot keshlari o'chiriladi (`clearDataCache`). Backend GET'ni ham `403 {reason: "trial_expired"}` qiladi; bunday javob `client.js` → `TRIAL_EXPIRED_EVENT` → sessiya obuna holatini qayta o'qiydi.
 
 ## Routing
 

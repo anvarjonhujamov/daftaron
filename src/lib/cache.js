@@ -26,3 +26,12 @@ export const writeCache = (key, data) => {
         } catch { /* ignore */ }
     }
 }
+
+// Bepul sinov tugaganda qurilmadagi do'kon ma'lumotlari keshi o'chiriladi (barcha do'konlar):
+// ta'rif olinmaguncha mijoz/nasiya ro'yxatlari keshdan ham ko'rinmasin. keepKeys — joriy sessiyada qoladigan kalitlar.
+export const clearDataCache = (keepKeys = []) => {
+    try {
+        const keep = new Set(keepKeys.map((key) => scope() + key))
+        Object.keys(localStorage).filter((k) => k.startsWith('c:') && !keep.has(k)).forEach((k) => localStorage.removeItem(k))
+    } catch { /* ignore */ }
+}

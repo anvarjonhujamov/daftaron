@@ -1,8 +1,8 @@
 import { Suspense, useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { ChevronsUpDown, Loader2, Lock } from 'lucide-react'
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { ChevronsUpDown, Loader2, Lock, LogOut } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useSession } from './session'
+import { logout, useSession } from './session'
 import { MAIN_NAV, SECOND_NAV, bottomNav, visibleNav } from './nav'
 import { ActionsProvider, useActions } from './actions'
 import LegalAcceptSheet from './LegalAcceptSheet'
@@ -16,8 +16,8 @@ import { formatNumber, planLabel } from '../utils/format'
 
 function useBadges(session) {
     const [overdue, setOverdue] = useState(0)
-    const load = () => overdueApi.list().then((r) => setOverdue(r?.summary?.count || 0)).catch(() => {})
-    useEffect(() => { load() }, [session.user?.tenant_id])
+    const load = () => !session.trialExpired && overdueApi.list().then((r) => setOverdue(r?.summary?.count || 0)).catch(() => {})
+    useEffect(() => { load() }, [session.user?.tenant_id, session.trialExpired])
     useOnChange(load)
     return { overdue, unread: session.unread }
 }
@@ -140,22 +140,54 @@ function Shortcuts() {
     return null
 }
 
+// Bepul sinov tugagan: menyu va ma'lumot sahifalari yo'q — faqat «Ta'rif va balans» (sinov tugagani shu yerda) va chiqish
+const LOCKED_PATH = '/subscription'
+
+function LockedLayout({ session, online }) {
+    const { pathname } = useLocation()
+    if (pathname !== LOCKED_PATH) return <Navigate to={LOCKED_PATH} replace />
+    return (
+        <div className="min-h-screen">
+            <header className="flex items-center justify-between gap-3 border-b border-line bg-card px-4 py-2.5 md:px-6">
+                <span className="flex min-w-0 items-center gap-2.5">
+                    <img src="/logo.png" alt="DaftarOn" className="h-9 w-9 shrink-0 object-contain" />
+                    <strong className="truncate text-[15px]">{session.tenant?.name || 'DaftarOn'}</strong>
+                </span>
+                <button type="button" onClick={logout} className="flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 font-semibold text-debt hover:bg-debt-soft">
+                    <LogOut size={18} aria-hidden /> Chiqish
+                </button>
+            </header>
+            {!online && <OfflineBanner />}
+            <main>
+                <Suspense fallback={<div className="flex justify-center pt-24"><Loader2 className="animate-spin text-ink-3" aria-label="Yuklanmoqda" /></div>}>
+                    <Outlet />
+                </Suspense>
+            </main>
+            <LegalAcceptSheet />
+        </div>
+    )
+}
+
 export default function Layout() {
     const session = useSession()
     const online = useOnline()
     const badges = useBadges(session)
     const { pathname } = useLocation()
+    const locked = session.trialExpired
 
     useEffect(() => {
+        if (locked) return
         migrateLegacySupplierRecords()
             .then(({ synced, failed }) => {
                 if (synced) toast.success(`${synced} ta ta'minotchi yozuvi serverga yuborildi`)
                 if (failed) toast.error(`${failed} ta ta'minotchi yozuvi yuborilmadi. Ta'minotchilar sahifasida ko'ring`, { duration: 8000 })
             })
             .catch(() => {})
-    }, [])
+    }, [locked])
 
-    useEffect(() => { session.refreshUnread() }, [pathname])
+    useEffect(() => { if (!locked) session.refreshUnread() }, [pathname, locked])
+
+    if (locked) return <LockedLayout session={session} online={online} />
 
     return (
         <ActionsProvider>
