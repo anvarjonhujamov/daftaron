@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 // Helper to build Click.uz payment URL based on openapi.yaml description.
 // Uses Vite env variables:
 // - VITE_CLICK_SERVICE_ID
@@ -14,7 +15,7 @@ export function buildClickUrl(user, amount) {
     import.meta.env.VITE_CLICK_RETURN_URL || `${window.location.origin}/subscription`
 
   if (!user) {
-    throw new Error("Foydalanuvchi ma'lumotlari topilmadi.")
+    throw new Error(t("Foydalanuvchi ma'lumotlari topilmadi."))
   }
 
   // As per openapi description: merchant_trans_id can be payment_orders.id, public_id or phone
@@ -25,7 +26,7 @@ export function buildClickUrl(user, amount) {
 
   if (!merchantTransId) {
     throw new Error(
-      "Foydalanuvchi uchun public_id yoki telefon raqami topilmadi."
+      t("Foydalanuvchi uchun public_id yoki telefon raqami topilmadi.")
     )
   }
 

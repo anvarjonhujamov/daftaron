@@ -17,7 +17,7 @@ Backend alohida repo: `/Applications/MAMP/htdocs/daftaron` (Laravel 12), API `ht
 - `axios`, `react-hot-toast` (xabarlar), `lucide-react` (ikonlar)
 - `vite-plugin-pwa` (workbox, `autoUpdate`)
 - State kutubxonasi yo'q: hook'lar + `localStorage` keshi, kontekstlar — `app/session.jsx` (sessiya) va `app/actions.jsx` (nasiya/to'lov oynalari)
-- i18n yo'q: UI matnlari o'zbekcha (lotin). Sozlamalardagi til tanlovi faqat backend'ga saqlanadi (SMS/bot uchun)
+- i18n: o'zimizniki, kutubxonasiz (`src/i18n/`) — uch til: `uz_latn` (asosiy), `uz_cyrl`, `ru`. Batafsil — «Tillar» bo'limi
 
 ## Buyruqlar
 
@@ -28,7 +28,7 @@ npm run preview
 npm run test:e2e  # Playwright: build + API to'liq mock (e2e/mock-api.js), telefon 390px va kompyuter 1440px
 ```
 
-ESLint yo'q. O'zgarishdan keyin kamida `npm run build`, katta o'zgarishda `npm run test:e2e`.
+ESLint yo'q. O'zgarishdan keyin kamida `npm run build` (UI matni o'zgarsa `npm run i18n:check` ham), katta o'zgarishda `npm run test:e2e`.
 API manzili `.env.local` dagi `VITE_API_URL` (namuna `.env.example`), bo'lmasa **prod**. Dev'ni prod'ga ulasangiz,
 yaratilgan mijoz/nasiya/to'lov haqiqiy bazaga tushadi va mijozlarga haqiqiy SMS ketadi.
 
@@ -101,7 +101,7 @@ Eski manzillar (`/register`, `/terms`, `/privacy-policy`, `/debts`, `/payments`,
 ## Kod uslubi
 
 - 4 bo'shliq, nuqta-vergulsiz, bitta qo'shtirnoq, funksional komponentlar + hook'lar, `export default function XxxPage()`.
-- Izohlar va UI matnlari o'zbekcha. Xatolar — `toast.error(errorMessage(err))`, 422 maydon xatolari — maydon ostida.
+- Izohlar va UI matnlari o'zbekcha (lotin), UI matni doim `t()` ichida («Tillar»). Xatolar — `toast.error(errorMessage(err))`, 422 maydon xatolari — maydon ostida.
 - **Sanalar:** API'ga `YYYY-MM-DD`, Toshkent vaqti (UTC+5). `toISOString().slice(0, 10)` ishlatmang — `utils/date.js` (`todayYmd`, `toYmd`, `addDaysYmd`). API sanasini ko'rsatishdan oldin `toYmd`/`formatDate`.
 - Ma'lumot yuklash — `useResource(fetcher, deps, { cacheKey })` (avval keshdan, keyin fonda yangilash).
 - Production'da soxta/dummy ma'lumot ko'rsatmang.
@@ -111,9 +111,21 @@ Eski manzillar (`/register`, `/terms`, `/privacy-policy`, `/debts`, `/payments`,
 - `public/boot.js` SDK'ni faqat Telegram ichida async yuklaydi va `telegram-sdk-loaded` chiqaradi; `utils/telegram.js` — `waitTelegram`, `initTelegramWebApp`, `requestTelegramContact`.
 - Bot menyu tugmasi `web.daftaron.uz/telegram/web-login` ni parametrsiz ochadi → `/login` → `init_data` bilan kirish.
 
+## Tillar (`src/i18n/`)
+
+- Kalit — o'zbekcha lotin matnning o'zi: `t("Mijoz qo'shish")`, o'zgaruvchi bilan `t('{n} kun qoldi', { n })`. Qiymat React element bo'lsa (havola, `<strong>`) natija massiv: `t('{offer} va {privacy} yangilandi', { offer: <Link…/>, … })`.
+- Ruscha — `ru.js` (qo'lda). Son bilan kelishish: `"{n} клиент|{n} клиента|{n} клиентов"`, son `vars.count ?? vars.n`.
+- Kirill alohida yozilmaydi: `cyrillic.js` lotindan transliteratsiya qiladi (brend/qisqartmalar, `{o'zgaruvchi}`, domenlar lotinda qoladi). Xato chiqsa — so'z qoidasi `cyrillic.js`ga (`WORDS`/`STEMS`/`KEEP_RE`), butun matn `uz_cyrl.js`ga.
+- Jumlani bo'laklab o'ramang (`t('Jami')} {n} {t('ta')`): rus tilida so'z tartibi boshqa — butun jumla bitta kalit.
+- Modul darajasida `t()` chaqirmang (til almashganda qayta hisoblanmaydi): matnni `tk('…')` bilan belgilang, ko'rsatishda `t(item.label)`; Chips/Select variantlari — `tOpts(LIST)`.
+- Foydalanuvchi ma'lumoti (mijoz ismi, izoh, do'kon nomi) va backend matnlari (`message`, bildirishnomalar) `t()`ga berilmaydi — kirill rejimida transliteratsiya bo'lib ketadi.
+- Til tanlovi: kirish sahifasida (`LangSwitch`, kirgach serverga yoziladi — `lang_pending`) va Sozlamalar → Ko'rinish va til. Qurilmada `localStorage.lang`, serverda `profile.language`; sessiya yuklanganda server qiymati qo'llanadi (`session.jsx` → `syncLang`). Til almashsa `App` sahifalarni qayta chizadi (`Suspense key={lang}`).
+- API'ga `X-Locale: uz_latn|uz_cyrl|ru` ketadi (`client.js`) — backend validatsiya xabarlarini shu tilda qaytaradi.
+- Yangi matn qo'shgach: `npm run i18n:check` (ru.js'da yo'q kalitlar, `{o'zgaruvchi}` mosligi) va `e2e/i18n.spec.js`.
+
 ## Ochiq vazifalar
 
-1. Backend'da yo'q: Uzum to'lovi (tugma «tez orada»), qurilma shahri (`city: null`), rus/kirill UI tarjimasi.
+1. Backend'da yo'q: Uzum to'lovi (tugma «tez orada»), qurilma shahri (`city: null`). Backend'ning o'z matnlari (`message`, bildirishnomalar, ruxsatlar katalogi, oferta) hozircha faqat o'zbekcha.
 2. Javob shakli hujjatlashtirilmagan joylar (UI ehtiyotkor o'qiydi): `GET /shops` → `usage`, `GET /debts/{id}/reminders` → `sent[]`, `GET /staff/{id}` → `recent_debts`/`recent_payments`.
 
 ## Deploy

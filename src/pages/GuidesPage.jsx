@@ -3,21 +3,22 @@ import { settingsApi } from '../api/settings.api'
 import { useResource } from '../lib/hooks'
 import { safeUrl } from '../lib/sanitize'
 import { EmptyState, ErrorState, List, ListSkeleton, PageHeader, SectionTitle } from '../ui/display'
+import { t, tk } from '../i18n'
 
 const GROUPS = {
-    mobile: 'Telefon uchun',
-    desktop: 'Kompyuter uchun',
-    all: 'Barcha qurilmalar uchun'
+    mobile: tk('Telefon uchun'),
+    desktop: tk('Kompyuter uchun'),
+    all: tk('Barcha qurilmalar uchun')
 }
 const TYPES = {
-    file: [FileText, 'Fayl'],
-    video: [PlayCircle, 'Video'],
-    link: [Link2, 'Havola']
+    file: [FileText, tk('Fayl')],
+    video: [PlayCircle, tk('Video')],
+    link: [Link2, tk('Havola')]
 }
 
 const fileSize = (bytes) => {
     if (!bytes) return null
-    return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
+    return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1).replace('.', ',')} ${t('MB')}` : `${Math.max(1, Math.round(bytes / 1024))} ${t('KB')}`
 }
 
 // Hozirgi qurilmaga mos qo'llanmalar birinchi
@@ -30,18 +31,18 @@ export default function GuidesPage() {
 
     return (
         <div className="page md:max-w-2xl">
-            <PageHeader back title="Foydalanish qo'llanmasi" />
+            <PageHeader back title={t("Foydalanish qo'llanmasi")} />
             {!data && loading && <ListSkeleton rows={4} />}
             {!data && error && <ErrorState onRetry={reload} />}
             {data && guides.length === 0 && (
-                <EmptyState icon={BookOpen} title="Hozircha qo'llanma yo'q" text="Savolingiz bo'lsa, «Yordam» bo'limiga yozing." />
+                <EmptyState icon={BookOpen} title={t("Hozircha qo'llanma yo'q")} text={t("Savolingiz bo'lsa, «Yordam» bo'limiga yozing.")} />
             )}
             {groupOrder().map((platform) => {
                 const items = guides.filter((g) => g.platform === platform)
                 if (items.length === 0) return null
                 return (
                     <section key={platform}>
-                        <SectionTitle>{GROUPS[platform]}</SectionTitle>
+                        <SectionTitle>{t(GROUPS[platform])}</SectionTitle>
                         <List>
                             {items.map((g) => <GuideRow key={g.id} guide={g} />)}
                         </List>
@@ -54,7 +55,7 @@ export default function GuidesPage() {
 
 function GuideRow({ guide }) {
     const [Icon, label] = TYPES[guide.type] || TYPES.link
-    const meta = [label, fileSize(guide.file?.size)].filter(Boolean).join(' · ')
+    const meta = [t(label), fileSize(guide.file?.size)].filter(Boolean).join(' · ')
     return (
         <a href={guide.href} target="_blank" rel="noopener noreferrer" className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-soft/60">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-strong">

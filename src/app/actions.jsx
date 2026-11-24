@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import DebtSheet from '../features/DebtSheet'
 import PaymentSheet from '../features/PaymentSheet'
 import { useSession } from './session'
+import { t } from '../i18n'
 
 // Nasiya va to'lov oynalari istalgan sahifadan ochiladi (bosh sahifa, mijoz kartasi, N/T tugmalari)
 const ActionsContext = createContext(null)
@@ -14,7 +15,7 @@ export function ActionsProvider({ children }) {
 
     const guard = useCallback((perm, text) => {
         if (session.readOnly) {
-            toast.error("Obuna tugagan — yangi yozuv qo'shib bo'lmaydi")
+            toast.error(t("Obuna tugagan — yangi yozuv qo'shib bo'lmaydi"))
             return false
         }
         if (!session.can(perm)) {
@@ -25,8 +26,8 @@ export function ActionsProvider({ children }) {
     }, [session])
 
     const value = useMemo(() => ({
-        openDebt: ({ customer } = {}) => guard('debt.create', "Nasiya yozishga huquqingiz yo'q") && setDebt({ customer }),
-        openPayment: ({ customer, debt: d } = {}) => guard('payment.create', "To'lov olishga huquqingiz yo'q") && setPayment({ customer, debt: d })
+        openDebt: ({ customer } = {}) => guard('debt.create', t("Nasiya yozishga huquqingiz yo'q")) && setDebt({ customer }),
+        openPayment: ({ customer, debt: d } = {}) => guard('payment.create', t("To'lov olishga huquqingiz yo'q")) && setPayment({ customer, debt: d })
     }), [guard])
 
     return (

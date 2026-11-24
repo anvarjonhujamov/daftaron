@@ -7,6 +7,7 @@ import { errorMessage, fieldErrors } from '../lib/errors'
 import { Avatar, Money, Row } from '../ui/display'
 import { Button, Input, PhoneInput, cx } from '../ui/controls'
 import { formatPhone, isValidPhone, toApiPhone } from '../utils/phone'
+import { t } from '../i18n'
 
 // Mijoz tanlash: qidiruv (ism, raqam yoki oxirgi 4 xona), oxirgi mijozlar va «+ Yangi» (ism + telefon)
 export default function CustomerPicker({ onSelect, withDebt, allowCreate = true }) {
@@ -30,12 +31,12 @@ export default function CustomerPicker({ onSelect, withDebt, allowCreate = true 
                     autoFocus
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
-                    placeholder="Kimga? Ism yoki telefon"
-                    aria-label="Mijozni qidirish"
+                    placeholder={t('Kimga? Ism yoki telefon')}
+                    aria-label={t('Mijozni qidirish')}
                     className="w-full min-w-0 bg-transparent text-base text-ink outline-none placeholder:text-ink-3"
                 />
             </label>
-            <p className="mb-1 mt-3 section-label">{query ? 'Topilganlar' : 'Oxirgi mijozlar'}</p>
+            <p className="mb-1 mt-3 section-label">{query ? t('Topilganlar') : t('Oxirgi mijozlar')}</p>
             <div className={cx('-mx-3.5 divide-y divide-line', loading && !list.length && 'opacity-60')}>
                 {list.map((c) => (
                     <Row
@@ -47,11 +48,11 @@ export default function CustomerPicker({ onSelect, withDebt, allowCreate = true 
                         right={c.total_debt > 0 && <Money value={c.total_debt} tone="debt" className="text-[15px]" />}
                     />
                 ))}
-                {!loading && !list.length && <p className="px-3.5 py-4 text-[15px] text-ink-2">{query ? 'Mijoz topilmadi.' : "Hali mijoz yo'q."}</p>}
+                {!loading && !list.length && <p className="px-3.5 py-4 text-[15px] text-ink-2">{query ? t('Mijoz topilmadi.') : t("Hali mijoz yo'q.")}</p>}
             </div>
             {allowCreate && (
                 <Button variant="ghost" icon={Plus} className="mt-2 w-full border-[1.5px] border-dashed border-brand" onClick={() => setCreating(true)}>
-                    Yangi mijoz
+                    {t('Yangi mijoz')}
                 </Button>
             )}
         </div>
@@ -68,8 +69,8 @@ export function QuickCustomerForm({ initialName = '', initialPhone = '', onCreat
 
     const submit = async () => {
         const errs = {}
-        if (!name.trim()) errs.name = 'Ismni kiriting'
-        if (!isValidPhone(phone)) errs.phone = "Raqam to'liq emas: 9 ta raqam"
+        if (!name.trim()) errs.name = t('Ismni kiriting')
+        if (!isValidPhone(phone)) errs.phone = t("Raqam to'liq emas: 9 ta raqam")
         setErrors(errs)
         if (Object.keys(errs).length) return
         setSaving(true)
@@ -88,17 +89,17 @@ export function QuickCustomerForm({ initialName = '', initialPhone = '', onCreat
 
     return (
         <div className="space-y-4" onKeyDown={(e) => e.key === 'Enter' && e.target.tagName === 'INPUT' && (e.preventDefault(), submit())}>
-            <Input label="Ismi" required autoFocus value={name} onChange={(e) => setName(e.target.value)} error={errors.name} maxLength={255} />
-            <PhoneInput label="Telefon" required value={phone} onChange={setPhone} error={errors.phone} hint="Raqam o'zi 90 123 45 67 ko'rinishiga keladi." />
+            <Input label={t('Ismi')} required autoFocus value={name} onChange={(e) => setName(e.target.value)} error={errors.name} maxLength={255} />
+            <PhoneInput label={t('Telefon')} required value={phone} onChange={setPhone} error={errors.phone} hint={t("Raqam o'zi 90 123 45 67 ko'rinishiga keladi.")} />
             {existing && (
                 <div role="alert" className="rounded-ctl bg-warn-soft p-3.5 text-[15px] text-ink">
-                    Bu raqam bilan mijoz bor: <strong>{existing.name}</strong>.
-                    <Button size="sm" className="mt-2 w-full" onClick={() => onCreated(existing)}>Shu mijozni tanlash</Button>
+                    {t('Bu raqam bilan mijoz bor:')} <strong>{existing.name}</strong>.
+                    <Button size="sm" className="mt-2 w-full" onClick={() => onCreated(existing)}>{t('Shu mijozni tanlash')}</Button>
                 </div>
             )}
             <div className="flex gap-2">
-                {onCancel && <Button variant="secondary" size="lg" className="flex-1" onClick={onCancel}>Orqaga</Button>}
-                <Button size="lg" className="flex-1" loading={saving} onClick={submit}>Saqlash</Button>
+                {onCancel && <Button variant="secondary" size="lg" className="flex-1" onClick={onCancel}>{t('Orqaga')}</Button>}
+                <Button size="lg" className="flex-1" loading={saving} onClick={submit}>{t('Saqlash')}</Button>
             </div>
         </div>
     )

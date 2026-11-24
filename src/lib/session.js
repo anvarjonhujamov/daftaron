@@ -2,9 +2,10 @@
 // Chiqishda shu qurilmadagi barcha ma'lumot (keshlar ham) o'chiriladi — umumiy kompyuterda
 // keyingi odam oldingi do'kon mijozlarini ko'rmasin.
 
-// theme — qurilma sozlamasi; supplier_* — eski versiyadan qolgan, hali serverga yuborilmagan
-// ta'minotchi yozuvlari (suppliers.api.js migratsiyasi) — o'chsa qayta tiklab bo'lmaydi
-const keep = (key) => key === 'theme' || /^supplier_(\d+_(purchases|payments)|unsynced_v1)$/.test(key)
+// theme, lang — qurilma sozlamasi (lang_pending — kirish sahifasida tanlangan til, kirgach serverga yoziladi);
+// supplier_* — eski versiyadan qolgan, hali serverga yuborilmagan ta'minotchi yozuvlari
+// (suppliers.api.js migratsiyasi) — o'chsa qayta tiklab bo'lmaydi
+const keep = (key) => ['theme', 'lang', 'lang_pending'].includes(key) || /^supplier_(\d+_(purchases|payments)|unsynced_v1)$/.test(key)
 
 export const getToken = () => {
     try { return localStorage.getItem('token') } catch { return null }

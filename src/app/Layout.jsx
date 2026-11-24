@@ -13,6 +13,7 @@ import { overdueApi } from '../api/debts.api'
 import { migrateLegacySupplierRecords } from '../api/suppliers.api'
 import { formatDate } from '../utils/date'
 import { formatNumber, planLabel } from '../utils/format'
+import { t } from '../i18n'
 
 function useBadges(session) {
     const [overdue, setOverdue] = useState(0)
@@ -28,7 +29,7 @@ function SideLink({ item, badges }) {
         <NavLink
             to={item.to}
             end={item.end}
-            title={item.label}
+            title={t(item.label)}
             className={({ isActive }) => cx(
                 'relative flex items-center gap-3 rounded-[10px] transition-colors',
                 'h-14 flex-col justify-center gap-0.5 px-1 lg:h-[42px] lg:flex-row lg:justify-start lg:px-3',
@@ -37,8 +38,8 @@ function SideLink({ item, badges }) {
         >
             <item.icon size={20} className="shrink-0" aria-hidden />
             <span className="max-w-full truncate text-[11px] lg:flex-1 lg:text-[15px]">
-                <span className="lg:hidden">{item.short || item.label}</span>
-                <span className="hidden lg:inline">{item.label}</span>
+                <span className="lg:hidden">{t(item.short || item.label)}</span>
+                <span className="hidden lg:inline">{t(item.label)}</span>
             </span>
             {count > 0 && <CountBadge count={count} className="absolute right-1 top-1 lg:static" />}
         </NavLink>
@@ -52,41 +53,41 @@ function Sidebar({ session, badges }) {
     return (
         <aside className="fixed inset-y-0 left-0 z-30 hidden w-24 flex-col border-r border-line bg-card px-2 py-4 md:flex lg:w-[248px] lg:px-3.5 lg:py-5">
             <Link to="/" className="mb-4 flex items-center justify-center gap-2.5 lg:justify-start lg:px-2">
-                <img src="/logo.png" alt="DaftarOn" className="h-9 w-9 object-contain" />
-                <span className="hidden text-lg font-extrabold lg:inline">DaftarOn</span>
+                <img src="/logo.png" alt={t('DaftarOn')} className="h-9 w-9 object-contain" />
+                <span className="hidden text-lg font-extrabold lg:inline">{t('DaftarOn')}</span>
             </Link>
             <Link
                 to="/shops"
                 className="mb-3 hidden h-[52px] items-center justify-between rounded-xl border-[1.5px] border-line bg-soft/60 px-3 lg:flex"
             >
                 <span className="min-w-0 leading-tight">
-                    <span className="block text-[11px] font-bold tracking-wide text-ink-2">DO'KON</span>
+                    <span className="block text-[11px] font-bold tracking-wide text-ink-2">{t("DO'KON")}</span>
                     <strong className="block truncate text-sm">{session.tenant?.name || '—'}</strong>
                 </span>
                 <ChevronsUpDown size={16} className="shrink-0 text-ink-2" aria-hidden />
             </Link>
-            <nav aria-label="Asosiy bo'limlar" className="flex flex-col gap-0.5">
+            <nav aria-label={t("Asosiy bo'limlar")} className="flex flex-col gap-0.5">
                 {visibleNav(MAIN_NAV, session).map((i) => <SideLink key={i.to} item={i} badges={badges} />)}
             </nav>
             <div className="mx-2 my-2.5 h-px bg-line" />
-            <nav aria-label="Boshqaruv" className="flex flex-col gap-0.5">
+            <nav aria-label={t('Boshqaruv')} className="flex flex-col gap-0.5">
                 {visibleNav(SECOND_NAV, session).map((i) => <SideLink key={i.to} item={i} badges={badges} />)}
             </nav>
             <div className="flex-1" />
             {sub && (
                 <Link to="/subscription" className="hidden rounded-xl bg-soft/70 p-3 text-[13px] leading-relaxed text-ink-2 lg:block">
-                    Obuna: <strong className="text-ink">{planLabel(usage)} · {formatDate(trial.trial_ends_at)} gacha</strong>
-                    <br />SMS: <strong className="text-ink">{formatNumber(usage.sms_remaining)} ta</strong> · Balans: <strong className="text-ink">{formatNumber(sub.balance)}</strong>
+                    {t('Obuna:')} <strong className="text-ink">{planLabel(usage)} · {t('{date} gacha', { date: formatDate(trial.trial_ends_at) })}</strong>
+                    <br />SMS: <strong className="text-ink">{formatNumber(usage.sms_remaining)}</strong> · {t('Balans:')} <strong className="text-ink">{formatNumber(sub.balance)}</strong>
                 </Link>
             )}
-            <span className="hidden px-2 pt-2.5 text-xs text-ink-3 lg:block">Versiya {__APP_VERSION__.split('+')[0]}</span>
+            <span className="hidden px-2 pt-2.5 text-xs text-ink-3 lg:block">{t('Versiya')} {__APP_VERSION__.split('+')[0]}</span>
         </aside>
     )
 }
 
 function BottomNav({ session, badges }) {
     return (
-        <nav aria-label="Asosiy bo'limlar" className="pb-safe fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-card px-2 pt-1.5 md:hidden">
+        <nav aria-label={t("Asosiy bo'limlar")} className="pb-safe fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-card px-2 pt-1.5 md:hidden">
             {bottomNav(session).map((item) => {
                 const count = item.badge ? badges[item.badge] : 0
                 return (
@@ -100,7 +101,7 @@ function BottomNav({ session, badges }) {
                         )}
                     >
                         <item.icon size={24} aria-hidden />
-                        {item.label}
+                        {t(item.label)}
                         {count > 0 && <CountBadge count={count} className="absolute left-1/2 top-0 ml-2" />}
                     </NavLink>
                 )
@@ -150,16 +151,16 @@ function LockedLayout({ session, online }) {
         <div className="min-h-screen">
             <header className="flex items-center justify-between gap-3 border-b border-line bg-card px-4 py-2.5 md:px-6">
                 <span className="flex min-w-0 items-center gap-2.5">
-                    <img src="/logo.png" alt="DaftarOn" className="h-9 w-9 shrink-0 object-contain" />
-                    <strong className="truncate text-[15px]">{session.tenant?.name || 'DaftarOn'}</strong>
+                    <img src="/logo.png" alt={t('DaftarOn')} className="h-9 w-9 shrink-0 object-contain" />
+                    <strong className="truncate text-[15px]">{session.tenant?.name || t('DaftarOn')}</strong>
                 </span>
                 <button type="button" onClick={logout} className="flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 font-semibold text-debt hover:bg-debt-soft">
-                    <LogOut size={18} aria-hidden /> Chiqish
+                    <LogOut size={18} aria-hidden /> {t('Chiqish')}
                 </button>
             </header>
             {!online && <OfflineBanner />}
             <main>
-                <Suspense fallback={<div className="flex justify-center pt-24"><Loader2 className="animate-spin text-ink-3" aria-label="Yuklanmoqda" /></div>}>
+                <Suspense fallback={<div className="flex justify-center pt-24"><Loader2 className="animate-spin text-ink-3" aria-label={t('Yuklanmoqda')} /></div>}>
                     <Outlet />
                 </Suspense>
             </main>
@@ -179,8 +180,8 @@ export default function Layout() {
         if (locked) return
         migrateLegacySupplierRecords()
             .then(({ synced, failed }) => {
-                if (synced) toast.success(`${synced} ta ta'minotchi yozuvi serverga yuborildi`)
-                if (failed) toast.error(`${failed} ta ta'minotchi yozuvi yuborilmadi. Ta'minotchilar sahifasida ko'ring`, { duration: 8000 })
+                if (synced) toast.success(t("{n} ta ta'minotchi yozuvi serverga yuborildi", { n: synced }))
+                if (failed) toast.error(t("{n} ta ta'minotchi yozuvi yuborilmadi. Ta'minotchilar sahifasida ko'ring", { n: failed }), { duration: 8000 })
             })
             .catch(() => {})
     }, [locked])
@@ -196,11 +197,11 @@ export default function Layout() {
                 {!online && <OfflineBanner />}
                 {session.readOnly && pathname !== '/subscription' && (
                     <Link to="/subscription" className="flex items-center justify-center gap-2 bg-debt-soft px-4 py-2 text-center text-sm font-semibold text-debt">
-                        <Lock size={16} aria-hidden /> Obuna tugagan — faqat ko'rish mumkin. Uzaytirish
+                        <Lock size={16} aria-hidden /> {t("Obuna tugagan — faqat ko'rish mumkin. Uzaytirish")}
                     </Link>
                 )}
                 <main>
-                    <Suspense fallback={<div className="flex justify-center pt-24"><Loader2 className="animate-spin text-ink-3" aria-label="Yuklanmoqda" /></div>}>
+                    <Suspense fallback={<div className="flex justify-center pt-24"><Loader2 className="animate-spin text-ink-3" aria-label={t('Yuklanmoqda')} /></div>}>
                         <Outlet />
                     </Suspense>
                 </main>

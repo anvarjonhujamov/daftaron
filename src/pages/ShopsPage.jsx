@@ -15,6 +15,7 @@ import { Button, Checkbox, Chips, Input, Select } from '../ui/controls'
 import { Confirm, Sheet } from '../ui/Sheet'
 import { CodeInput } from './LoginPage'
 import { formatNumber } from '../utils/format'
+import { t } from '../i18n'
 
 // Ta'rif bo'yicha do'konlar limiti (javob shakli: used / total_limit yoki shunga o'xshash)
 const usageText = (u) => {
@@ -22,7 +23,7 @@ const usageText = (u) => {
     const used = u.used ?? u.shop_used
     const total = u.total_limit ?? u.total ?? u.shop_total_limit
     if (used === undefined) return null
-    return total === null || total === undefined ? `Do'konlar: ${used} ta (cheksiz)` : `Ta'rifingizda ${total} tagacha do'kon. Hozir: ${used} ta.`
+    return total === null || total === undefined ? t("Do'konlar: {n} ta (cheksiz)", { n: used }) : t("Ta'rifingizda {total} tagacha do'kon. Hozir: {n} ta.", { total, n: used })
 }
 
 // Yana do'kon qo'shsa bo'ladimi: /shops → usage, bo'lmasa /subscription/status → usage. null limit — cheksiz
@@ -74,7 +75,7 @@ export default function ShopsPage() {
     const remove = async () => {
         try {
             await shopsApi.remove(confirm.id)
-            toast.success("Do'kon o'chirildi")
+            toast.success(t("Do'kon o'chirildi"))
             setConfirm(null)
             await session.refresh()
             res.reload()
@@ -87,15 +88,15 @@ export default function ShopsPage() {
 
     return (
         <div className="page">
-            <PageHeader back title="Do'konlar" subtitle="Do'konni tanlang — butun ilova shu do'konga o'tadi."
+            <PageHeader back title={t("Do'konlar")} subtitle={t("Do'konni tanlang — butun ilova shu do'konga o'tadi.")}
                 actions={!session.readOnly && (canAdd
-                    ? <Button icon={Plus} onClick={() => setForm({})}>Do'kon</Button>
-                    : <Button variant="secondary" icon={Lock} onClick={() => navigate('/subscription')}>Do'kon</Button>)} />
+                    ? <Button icon={Plus} onClick={() => setForm({})}>{t("Do'kon")}</Button>
+                    : <Button variant="secondary" icon={Lock} onClick={() => navigate('/subscription')}>{t("Do'kon")}</Button>)} />
             {usageText(res.data?.usage) && <p className="mb-3 rounded-xl bg-brand-soft px-3.5 py-2.5 text-sm font-semibold text-brand-strong">{usageText(res.data.usage)}</p>}
             {!canAdd && !session.readOnly && (
                 <p className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-warn-soft px-3.5 py-2.5 text-sm text-ink">
-                    <span>Do'kon limiti tugagan. Yangi do'kon uchun yuqoriroq ta'rifga o'ting yoki qo'shimcha do'kon paketini oling.</span>
-                    <Button size="sm" onClick={() => navigate('/subscription')}>Ta'riflar</Button>
+                    <span>{t("Do'kon limiti tugagan. Yangi do'kon uchun yuqoriroq ta'rifga o'ting yoki qo'shimcha do'kon paketini oling.")}</span>
+                    <Button size="sm" onClick={() => navigate('/subscription')}>{t("Ta'riflar")}</Button>
                 </p>
             )}
             {res.error && !res.data ? <ErrorState onRetry={res.reload} /> : res.loading && !res.data ? <ListSkeleton rows={2} /> : (
@@ -108,24 +109,24 @@ export default function ShopsPage() {
                                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-strong"><Store size={22} aria-hidden /></span>
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-base font-bold">{s.name}</p>
-                                        <p className="text-[13px] text-ink-2">{s.address || 'Manzil kiritilmagan'} · SMS'da: «{s.sms_name || s.name}»</p>
+                                        <p className="text-[13px] text-ink-2">{s.address || t('Manzil kiritilmagan')} · {t("SMS'da: «{text}»", { text: s.sms_name || s.name })}</p>
                                     </div>
-                                    {active && <Pill tone="info">Hozir tanlangan</Pill>}
+                                    {active && <Pill tone="info">{t('Hozir tanlangan')}</Pill>}
                                 </div>
                                 <div className="mt-3 grid grid-cols-4 gap-2 rounded-xl bg-soft/70 p-3 text-sm">
-                                    <div><div className="text-ink-2">Mijoz</div><strong>{formatNumber(s.stats?.customers)}</strong></div>
-                                    <div className="col-span-1"><div className="text-ink-2">Qarz</div><Money value={s.stats?.total_debt} tone="debt" /></div>
-                                    <div><div className="text-ink-2">Xodim</div><strong>{formatNumber(s.stats?.staff)}</strong></div>
-                                    <div><div className="text-ink-2">Kechikkan</div><strong className={s.stats?.overdue_count ? 'text-debt' : ''}>{formatNumber(s.stats?.overdue_count)}</strong></div>
+                                    <div><div className="text-ink-2">{t('Mijoz')}</div><strong>{formatNumber(s.stats?.customers)}</strong></div>
+                                    <div className="col-span-1"><div className="text-ink-2">{t('Qarz')}</div><Money value={s.stats?.total_debt} tone="debt" /></div>
+                                    <div><div className="text-ink-2">{t('Xodim')}</div><strong>{formatNumber(s.stats?.staff)}</strong></div>
+                                    <div><div className="text-ink-2">{t('Kechikkan')}</div><strong className={s.stats?.overdue_count ? 'text-debt' : ''}>{formatNumber(s.stats?.overdue_count)}</strong></div>
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    {!active && <Button size="sm" loading={switching === s.id} onClick={() => switchTo(s)}>O'tish</Button>}
+                                    {!active && <Button size="sm" loading={switching === s.id} onClick={() => switchTo(s)}>{t("O'tish")}</Button>}
                                     {s.is_owner !== false && !session.readOnly && (
                                         <>
-                                            <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setForm(s)}>Tahrirlash</Button>
-                                            {active && shops.length > 1 && <Button size="sm" variant="secondary" icon={ArrowRightLeft} onClick={() => setTransfer(true)}>Mijozlarni ko'chirish</Button>}
-                                            <Button size="sm" variant="danger-ghost" icon={Eraser} onClick={() => setPurge(s)}>Ma'lumotlarni tozalash</Button>
-                                            {!active && <Button size="sm" variant="danger-ghost" icon={Trash2} onClick={() => setConfirm(s)}>O'chirish</Button>}
+                                            <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setForm(s)}>{t('Tahrirlash')}</Button>
+                                            {active && shops.length > 1 && <Button size="sm" variant="secondary" icon={ArrowRightLeft} onClick={() => setTransfer(true)}>{t("Mijozlarni ko'chirish")}</Button>}
+                                            <Button size="sm" variant="danger-ghost" icon={Eraser} onClick={() => setPurge(s)}>{t("Ma'lumotlarni tozalash")}</Button>
+                                            {!active && <Button size="sm" variant="danger-ghost" icon={Trash2} onClick={() => setConfirm(s)}>{t("O'chirish")}</Button>}
                                         </>
                                     )}
                                 </div>
@@ -134,13 +135,13 @@ export default function ShopsPage() {
                     })}
                 </div>
             )}
-            {shops.length > 1 && <p className="mt-4 text-[15px] text-ink-2">Barcha do'konlar bo'yicha jami qarz: <strong className="text-ink">{formatNumber(totalDebt)} so'm</strong></p>}
+            {shops.length > 1 && <p className="mt-4 text-[15px] text-ink-2">{t("Barcha do'konlar bo'yicha jami qarz:")} <strong className="text-ink">{formatMoney(totalDebt)}</strong></p>}
 
             <ShopFormSheet open={!!form} shop={form?.id ? form : null} onClose={() => setForm(null)} onSaved={async () => { setForm(null); await session.refresh(); res.reload() }} />
             <TransferSheet open={transfer} from={activeId} shops={shops.filter((s) => s.id !== activeId)} onClose={() => setTransfer(false)} onDone={() => { setTransfer(false); res.reload(); emitChange('customers') }} />
             <PurgeSheet shop={purge} onClose={() => setPurge(null)} onDone={() => { setPurge(null); res.reload(); emitChange('shop') }} />
-            <Confirm open={!!confirm} onClose={() => setConfirm(null)} onConfirm={remove} danger title="Do'konni o'chirish"
-                text={confirm && `«${confirm.name}» va undagi barcha mijoz, nasiya va to'lovlar o'chiriladi.`} confirmText="O'chirish" />
+            <Confirm open={!!confirm} onClose={() => setConfirm(null)} onConfirm={remove} danger title={t("Do'konni o'chirish")}
+                text={confirm && t("«{name}» va undagi barcha mijoz, nasiya va to'lovlar o'chiriladi.", { name: confirm.name })} confirmText={t("O'chirish")} />
         </div>
     )
 }
@@ -164,10 +165,10 @@ function ShopFormSheet({ open, shop, onClose, onSaved }) {
 
     const submit = async () => {
         const errs = {}
-        if (!f.name?.trim()) errs.name = "Do'kon nomini kiriting"
-        if (!editing && !f.category_id) errs.category_id = 'Faoliyat turini tanlang'
-        if (!editing && !f.region_id) errs.region_id = 'Viloyatni tanlang'
-        if (!editing && !f.district_id) errs.district_id = 'Tumanni tanlang'
+        if (!f.name?.trim()) errs.name = t("Do'kon nomini kiriting")
+        if (!editing && !f.category_id) errs.category_id = t('Faoliyat turini tanlang')
+        if (!editing && !f.region_id) errs.region_id = t('Viloyatni tanlang')
+        if (!editing && !f.district_id) errs.district_id = t('Tumanni tanlang')
         setErrors(errs)
         if (Object.keys(errs).length) return
         setBusy(true)
@@ -176,7 +177,7 @@ function ShopFormSheet({ open, shop, onClose, onSaved }) {
         try {
             if (editing) await shopsApi.update(shop.id, payload)
             else await shopsApi.create(payload)
-            toast.success(editing ? 'Saqlandi' : "Do'kon qo'shildi")
+            toast.success(editing ? t('Saqlandi') : t("Do'kon qo'shildi"))
             onSaved()
         } catch (err) {
             if (err?.response?.data?.reason === 'plan_limit') toast.error(errorMessage(err))
@@ -187,17 +188,17 @@ function ShopFormSheet({ open, shop, onClose, onSaved }) {
         }
     }
 
-    const smsName = f.sms_sender_name?.trim() || f.name?.trim() || "Do'kon"
+    const smsName = f.sms_sender_name?.trim() || f.name?.trim() || t("Do'kon")
     return (
-        <Sheet open={open} onClose={onClose} title={editing ? "Do'konni tahrirlash" : "Yangi do'kon"} onSubmit={submit}
-            footer={<Button type="submit" size="lg" block loading={busy}>{editing ? 'Saqlash' : "Do'konni qo'shish"}</Button>}>
+        <Sheet open={open} onClose={onClose} title={editing ? t("Do'konni tahrirlash") : t("Yangi do'kon")} onSubmit={submit}
+            footer={<Button type="submit" size="lg" block loading={busy}>{editing ? t('Saqlash') : t("Do'konni qo'shish")}</Button>}>
             <div className="space-y-4">
-                <Input label="Do'kon nomi" required value={f.name || ''} onChange={(e) => set({ name: e.target.value })} error={errors.name} autoFocus maxLength={255} />
-                <Input size="md" label="SMS'dagi nom" value={f.sms_sender_name || ''} onChange={(e) => set({ sms_sender_name: e.target.value })} maxLength={40}
-                    placeholder={f.name || ''} hint={`SMS'da shu nom chiqadi: «${smsName}: qarzingiz…»`} error={errors.sms_sender_name} />
-                <Select label="Faoliyat turi" options={categories.map((c) => ({ value: c.id, label: c.name }))} value={f.category_id} onChange={(v) => set({ category_id: v })} error={errors.category_id} />
+                <Input label={t("Do'kon nomi")} required value={f.name || ''} onChange={(e) => set({ name: e.target.value })} error={errors.name} autoFocus maxLength={255} />
+                <Input size="md" label={t("SMS'dagi nom")} value={f.sms_sender_name || ''} onChange={(e) => set({ sms_sender_name: e.target.value })} maxLength={40}
+                    placeholder={f.name || ''} hint={t("SMS'da shu nom chiqadi: «{text}»", { text: `${smsName}: qarzingiz…` })} error={errors.sms_sender_name} />
+                <Select label={t('Faoliyat turi')} options={categories.map((c) => ({ value: c.id, label: c.name }))} value={f.category_id} onChange={(v) => set({ category_id: v })} error={errors.category_id} />
                 <LocationFields value={f} withStreet={false} errors={errors} onChange={(loc) => set(loc)} />
-                <Input size="md" label="Manzil" placeholder="Ko'cha, uy, mo'ljal" value={f.address || ''} onChange={(e) => set({ address: e.target.value })} maxLength={500} />
+                <Input size="md" label={t('Manzil')} placeholder={t("Ko'cha, uy, mo'ljal")} value={f.address || ''} onChange={(e) => set({ address: e.target.value })} maxLength={500} />
             </div>
         </Sheet>
     )
@@ -216,7 +217,10 @@ function TransferSheet({ open, from, shops, onClose, onDone }) {
         setBusy(true)
         try {
             const r = await shopsApi.transferCustomers(from, to, selected)
-            toast.success(`${r.moved?.length || 0} ta mijoz ko'chirildi${r.skipped?.length ? `, ${r.skipped.length} tasi o'tkazib yuborildi (shu raqam u yerda bor)` : ''}`)
+            toast.success([
+                t("{n} ta mijoz ko'chirildi", { n: r.moved?.length || 0 }),
+                r.skipped?.length ? t("{n} tasi o'tkazib yuborildi (shu raqam u yerda bor)", { n: r.skipped.length }) : null
+            ].filter(Boolean).join(', '))
             onDone()
         } catch (err) {
             toast.error(errorMessage(err))
@@ -226,17 +230,17 @@ function TransferSheet({ open, from, shops, onClose, onDone }) {
     }
 
     return (
-        <Sheet open={open} onClose={onClose} title="Mijozlarni ko'chirish" subtitle="Nasiya va to'lovlari bilan birga" onSubmit={submit}
-            footer={<Button type="submit" size="lg" block loading={busy} disabled={!to || !selected.length}>Ko'chirish ({selected.length})</Button>}>
-            <p className="mb-2 text-sm font-semibold">Qaysi do'konga</p>
-            <Chips wrap ariaLabel="Qaysi do'konga" value={to} onChange={setTo} options={shops.map((s) => ({ value: s.id, label: s.name }))} />
-            <p className="mb-1 mt-4 text-sm font-semibold">Mijozlar</p>
+        <Sheet open={open} onClose={onClose} title={t("Mijozlarni ko'chirish")} subtitle={t("Nasiya va to'lovlari bilan birga")} onSubmit={submit}
+            footer={<Button type="submit" size="lg" block loading={busy} disabled={!to || !selected.length}>{t("Ko'chirish ({n})", { n: selected.length })}</Button>}>
+            <p className="mb-2 text-sm font-semibold">{t("Qaysi do'konga")}</p>
+            <Chips wrap ariaLabel={t("Qaysi do'konga")} value={to} onChange={setTo} options={shops.map((s) => ({ value: s.id, label: s.name }))} />
+            <p className="mb-1 mt-4 text-sm font-semibold">{t('Mijozlar')}</p>
             <div className="divide-y divide-line">
                 {(list.data?.data || []).map((c) => (
-                    <Checkbox key={c.id} className="py-2.5" label={c.name} description={c.total_debt > 0 ? `qarzi ${formatNumber(c.total_debt)}` : undefined}
+                    <Checkbox key={c.id} className="py-2.5" label={c.name} description={c.total_debt > 0 ? t('qarzi {amount}', { amount: formatNumber(c.total_debt) }) : undefined}
                         checked={selected.includes(c.id)} onChange={(on) => setSelected((x) => (on ? [...x, c.id] : x.filter((i) => i !== c.id)))} />
                 ))}
-                {list.loading && <p className="py-3 text-sm text-ink-2">Yuklanmoqda…</p>}
+                {list.loading && <p className="py-3 text-sm text-ink-2">{t('Yuklanmoqda…')}</p>}
             </div>
         </Sheet>
     )
@@ -257,7 +261,7 @@ function PurgeSheet({ shop, onClose, onDone }) {
         setBusy(true)
         try {
             await shopsApi.purgeConfirm(shop.id, value)
-            toast.success("Do'kon ma'lumotlari tozalandi")
+            toast.success(t("Do'kon ma'lumotlari tozalandi"))
             onDone()
         } catch (err) {
             toast.error(errorMessage(err))
@@ -268,12 +272,12 @@ function PurgeSheet({ shop, onClose, onDone }) {
     }
 
     return (
-        <Sheet open={!!shop} onClose={onClose} title="Ma'lumotlarni tozalash" width={480}
+        <Sheet open={!!shop} onClose={onClose} title={t("Ma'lumotlarni tozalash")} width={480}
             footer={sent
-                ? <Button variant="danger" size="lg" block loading={busy} disabled={code.length < 4} onClick={() => confirm()}>Tozalash</Button>
-                : <Button variant="danger" size="lg" block loading={busy} onClick={request}>SMS-kod olish</Button>}>
+                ? <Button variant="danger" size="lg" block loading={busy} disabled={code.length < 4} onClick={() => confirm()}>{t('Tozalash')}</Button>
+                : <Button variant="danger" size="lg" block loading={busy} onClick={request}>{t('SMS-kod olish')}</Button>}>
             <p className="text-[15px] leading-relaxed text-ink-2">
-                «{shop?.name}» do'konidagi barcha mijozlar, nasiyalar va to'lovlar o'chiriladi. Do'konning o'zi qoladi. Tasdiqlash uchun telefoningizga kod yuboriladi.
+                {t("«{name}» do'konidagi barcha mijozlar, nasiyalar va to'lovlar o'chiriladi. Do'konning o'zi qoladi. Tasdiqlash uchun telefoningizga kod yuboriladi.", { name: shop?.name })}
             </p>
             {sent && <div className="mt-5"><CodeInput value={code} onChange={setCode} onComplete={confirm} /></div>}
         </Sheet>
@@ -294,7 +298,7 @@ function StaffShops() {
 
     return (
         <div className="page md:max-w-2xl">
-            <PageHeader back title="Do'konlar" subtitle="Siz ishlaydigan do'konlar. Tanlangan do'konda ishlaysiz." />
+            <PageHeader back title={t("Do'konlar")} subtitle={t("Siz ishlaydigan do'konlar. Tanlangan do'konda ishlaysiz.")} />
             {res.error && !res.data ? <ErrorState onRetry={res.reload} /> : res.loading && !res.data ? <ListSkeleton rows={2} /> : (
                 <div className="grid gap-3">
                     {shops.map((s) => {
@@ -305,22 +309,22 @@ function StaffShops() {
                                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-strong"><Store size={22} aria-hidden /></span>
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-base font-bold">{s.name}</p>
-                                        <p className="text-[13px] text-ink-2">{s.is_owner ? "O'z do'koningiz" : 'Xodim sifatida'}</p>
+                                        <p className="text-[13px] text-ink-2">{s.is_owner ? t("O'z do'koningiz") : t('Xodim sifatida')}</p>
                                     </div>
                                     {active
-                                        ? <Pill tone="info">Hozir tanlangan</Pill>
-                                        : <Button size="sm" loading={switching === s.id} onClick={() => switchTo(s)}>O'tish</Button>}
+                                        ? <Pill tone="info">{t('Hozir tanlangan')}</Pill>
+                                        : <Button size="sm" loading={switching === s.id} onClick={() => switchTo(s)}>{t("O'tish")}</Button>}
                                 </div>
                             </Card>
                         )
                     })}
                     {!ownsShop && (
                         <Card className="p-4">
-                            <p className="text-base font-bold">O'z do'koningiz bormi?</p>
+                            <p className="text-base font-bold">{t("O'z do'koningiz bormi?")}</p>
                             <p className="mt-1 text-[15px] text-ink-2">
-                                Shu raqam bilan o'z do'koningizni oching. Bu do'konda xodimligingiz saqlanadi — do'konlar orasida shu yerda almashasiz.
+                                {t("Shu raqam bilan o'z do'koningizni oching. Bu do'konda xodimligingiz saqlanadi — do'konlar orasida shu yerda almashasiz.")}
                             </p>
-                            <Button icon={Plus} className="mt-3" onClick={() => navigate('/onboarding?new=1')}>O'z do'konimni ochish</Button>
+                            <Button icon={Plus} className="mt-3" onClick={() => navigate('/onboarding?new=1')}>{t("O'z do'konimni ochish")}</Button>
                         </Card>
                     )}
                 </div>

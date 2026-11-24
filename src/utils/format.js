@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 // Pul: 1250000 -> "1 250 000". Qiymat yo'q yoki noto'g'ri bo'lsa "—" (hech qachon NaN yoki bo'sh joy emas)
 export const formatNumber = (value) => {
     if (value === null || value === undefined || value === '') return '—'
@@ -10,7 +11,7 @@ export const formatNumber = (value) => {
 
 export const formatMoney = (value) => {
     const n = formatNumber(value)
-    return n === '—' ? n : `${n} so'm`
+    return n === '—' ? n : `${n} ${t("so'm")}`
 }
 
 // Kiritilgan matndan butun so'm: "1 250 000" -> 1250000
@@ -39,14 +40,17 @@ export const avatarClass = (name) => {
 }
 
 // Obuna nomi: bepul sinovda do'konga Oddiy ta'rif biriktirilgan bo'lsa ham «Bepul sinov» (limitlari boshqa)
-export const planLabel = (usage) => (usage?.is_trial ? 'Bepul sinov' : usage?.plan_name || 'Sinov')
+export const planLabel = (usage) => (usage?.is_trial ? t('Bepul sinov') : usage?.plan_name || t('Sinov'))
 
 // SMS kvotasi: bepul qolgani va limitdan keyingi narx (balansdan yechiladi)
 export const smsQuotaText = (quota) => {
-    if (quota.free_remaining === null || quota.free_remaining === undefined) return 'SMS cheksiz'
+    if (quota.free_remaining === null || quota.free_remaining === undefined) return t('SMS cheksiz')
     const price = quota.extra_sms_price > 0 ? `${formatMoney(quota.extra_sms_price)}` : null
-    if (quota.free_remaining > 0) return `Bepul SMS: ${formatNumber(quota.free_remaining)} ta${quota.overage_allowed === false ? ' · keyin SMS to\'xtaydi' : price ? ` · keyin ${price}/SMS` : ''}`
-    if (quota.overage_allowed === false) return "Bepul SMS tugagan · sinovda keyingi SMS yuborilmaydi"
-    if (quota.blocked) return `Bepul SMS tugagan · balans yetmaydi (${price || '—'}/SMS)`
-    return `Bepul SMS tugagan · ${price || '—'} balansdan yechiladi`
+    if (quota.free_remaining > 0) {
+        const after = quota.overage_allowed === false ? t("keyin SMS to'xtaydi") : price ? t('keyin {price}/SMS', { price }) : null
+        return [t('Bepul SMS: {n} ta', { n: formatNumber(quota.free_remaining) }), after].filter(Boolean).join(' · ')
+    }
+    if (quota.overage_allowed === false) return t("Bepul SMS tugagan · sinovda keyingi SMS yuborilmaydi")
+    if (quota.blocked) return t('Bepul SMS tugagan · balans yetmaydi ({price}/SMS)', { price: price || '—' })
+    return t('Bepul SMS tugagan · {price} balansdan yechiladi', { price: price || '—' })
 }

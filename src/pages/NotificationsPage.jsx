@@ -8,6 +8,7 @@ import { errorMessage } from '../lib/errors'
 import { Card, EmptyState, ErrorState, ListSkeleton, PageHeader } from '../ui/display'
 import { Button, Chips, cx } from '../ui/controls'
 import { dayTitle, formatTime, toYmd } from '../utils/date'
+import { t, tk, tOpts } from '../i18n'
 
 const CATEGORY = {
     overdue_today: { icon: AlarmClock, cls: 'bg-debt-soft text-debt' },
@@ -22,13 +23,13 @@ const CATEGORY = {
 }
 
 const FILTERS = [
-    { value: '', label: 'Hammasi' },
-    { value: 'overdue_today', label: "Muddati o'tgan" },
-    { value: 'payment_received', label: "To'lovlar" },
-    { value: 'debt_created', label: 'Nasiyalar' },
+    { value: '', label: tk('Hammasi') },
+    { value: 'overdue_today', label: tk("Muddati o'tgan") },
+    { value: 'payment_received', label: tk("To'lovlar") },
+    { value: 'debt_created', label: tk('Nasiyalar') },
     { value: 'sms_failed', label: 'SMS' },
-    { value: 'balance_low', label: 'Balans' },
-    { value: 'subscription_renewal', label: 'Obuna' }
+    { value: 'balance_low', label: tk('Balans') },
+    { value: 'subscription_renewal', label: tk('Obuna') }
 ]
 
 const target = (link) => {
@@ -100,11 +101,11 @@ export default function NotificationsPage() {
 
     return (
         <div className="page md:max-w-3xl">
-            <PageHeader back title="Bildirishnomalar" actions={session.unread > 0 && <Button size="sm" variant="ghost" onClick={markAll}>Hammasini o'qish</Button>} />
-            <Chips size="sm" scroll ariaLabel="Turi" value={type} onChange={setType} options={FILTERS} />
+            <PageHeader back title={t('Bildirishnomalar')} actions={session.unread > 0 && <Button size="sm" variant="ghost" onClick={markAll}>{t("Hammasini o'qish")}</Button>} />
+            <Chips size="sm" scroll ariaLabel={t('Turi')} value={type} onChange={setType} options={tOpts(FILTERS)} />
             <div className="mt-4">
                 {error && !items.length ? <ErrorState onRetry={() => load(1)} /> : loading && !items.length ? <ListSkeleton /> : items.length === 0 ? (
-                    <EmptyState icon={Bell} title="Bildirishnoma yo'q" text="Muddati o'tgan qarzlar, to'lovlar va SMS holati shu yerda ko'rinadi." />
+                    <EmptyState icon={Bell} title={t("Bildirishnoma yo'q")} text={t("Muddati o'tgan qarzlar, to'lovlar va SMS holati shu yerda ko'rinadi.")} />
                 ) : (
                     <div className="space-y-4">
                         {groups.map((g) => (
@@ -118,17 +119,17 @@ export default function NotificationsPage() {
                                                 className={cx('flex w-full items-start gap-3 px-3.5 py-3 text-left hover:bg-soft/60', !n.is_read && 'bg-brand-soft/50')}>
                                                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${c.cls}`}><c.icon size={17} aria-hidden /></span>
                                                 <span className="min-w-0 flex-1 text-[15px] leading-snug">
-                                                    <span className={cx('block', !n.is_read ? 'font-bold' : 'font-medium')}>{n.message || n.data?.message || 'Bildirishnoma'}</span>
+                                                    <span className={cx('block', !n.is_read ? 'font-bold' : 'font-medium')}>{n.message || n.data?.message || t('Bildirishnoma')}</span>
                                                     <span className="text-[13px] text-ink-3">{formatTime(n.created_at)}</span>
                                                 </span>
-                                                {!n.is_read && <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-brand" aria-label="O'qilmagan" />}
+                                                {!n.is_read && <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-brand" aria-label={t("O'qilmagan")} />}
                                             </button>
                                         )
                                     })}
                                 </Card>
                             </section>
                         ))}
-                        {meta && page < meta.last_page && <Button variant="secondary" block loading={loading} onClick={() => load(page + 1)}>Yana ko'rsatish</Button>}
+                        {meta && page < meta.last_page && <Button variant="secondary" block loading={loading} onClick={() => load(page + 1)}>{t("Yana ko'rsatish")}</Button>}
                     </div>
                 )}
             </div>

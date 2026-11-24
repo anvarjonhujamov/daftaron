@@ -14,16 +14,17 @@ import CustomerPicker from './CustomerPicker'
 import { addDaysYmd, addMonthsYmd, formatDate, todayYmd } from '../utils/date'
 import { formatMoney, formatNumber, smsQuotaText } from '../utils/format'
 import { formatPhone } from '../utils/phone'
+import { t } from '../i18n'
 
 const GIVEN_MAX_DAYS_BACK = 30 // backend: berilgan sana bugundan 30 kundan oldin bo'lmaydi
 
 const smsText = (sms) => {
     if (!sms) return null
-    if (sms.status === 'sent') return 'Mijozga SMS yuborildi'
-    if (sms.skipped_reason === 'disabled' || sms.skipped_reason === 'not_applicable') return 'SMS yuborilmadi (o\'chirilgan)'
-    if (sms.skipped_reason === 'quota_exhausted') return "SMS ketmadi: SMS limiti tugagan va balans yetmaydi"
-    if (sms.skipped_reason === 'no_phone') return "SMS ketmadi: mijozning raqami yo'q"
-    return `SMS ketmadi${sms.error ? `: ${sms.error}` : ''}`
+    if (sms.status === 'sent') return t('Mijozga SMS yuborildi')
+    if (sms.skipped_reason === 'disabled' || sms.skipped_reason === 'not_applicable') return t('SMS yuborilmadi (o\'chirilgan)')
+    if (sms.skipped_reason === 'quota_exhausted') return t("SMS ketmadi: SMS limiti tugagan va balans yetmaydi")
+    if (sms.skipped_reason === 'no_phone') return t("SMS ketmadi: mijozning raqami yo'q")
+    return sms.error ? t('SMS ketmadi: {error}', { error: sms.error }) : t('SMS ketmadi')
 }
 
 // Nasiya yozish: bitta oyna. customer berilsa (mijoz kartasidan) — mijoz tanlangan va almashtirilmaydi
@@ -124,12 +125,12 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
             <Sheet
                 open={open}
                 onClose={onClose}
-                title="Nasiya yozildi"
+                title={t('Nasiya yozildi')}
                 width={520}
                 footer={
                     <div className="flex gap-2">
-                        <Button variant="secondary" size="lg" className="flex-1" onClick={() => reset(true)}>Yana yozish</Button>
-                        <Button size="lg" className="flex-1" onClick={() => { onClose(); navigate(`/customers/${result.customer.id}`) }}>Mijoz kartasi</Button>
+                        <Button variant="secondary" size="lg" className="flex-1" onClick={() => reset(true)}>{t('Yana yozish')}</Button>
+                        <Button size="lg" className="flex-1" onClick={() => { onClose(); navigate(`/customers/${result.customer.id}`) }}>{t('Mijoz kartasi')}</Button>
                     </div>
                 }
             >
@@ -137,13 +138,13 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
                     <CheckCircle2 size={56} className="text-pay" aria-hidden />
                     <p className="mt-3 text-[30px] font-extrabold text-debt">{formatMoney(result.amount)}</p>
                     <p className="mt-1 text-[15px] text-ink-2">
-                        {result.customer.name}{result.dueDate && ` · ${formatDate(result.dueDate)} gacha`}
+                        {result.customer.name}{result.dueDate && ` · ${t('{date} gacha', { date: formatDate(result.dueDate) })}`}
                     </p>
                     {result.customer_total_debt !== undefined && (
-                        <p className="mt-1 text-[15px] text-ink-2">Jami qarzi: <strong className="text-ink">{formatMoney(result.customer_total_debt)}</strong></p>
+                        <p className="mt-1 text-[15px] text-ink-2">{t('Jami qarzi:')} <strong className="text-ink">{formatMoney(result.customer_total_debt)}</strong></p>
                     )}
                     {result.applied_from_balance > 0 && (
-                        <p className="mt-1 text-[15px] text-pay">Balansdan yechildi: {formatMoney(result.applied_from_balance)}</p>
+                        <p className="mt-1 text-[15px] text-pay">{t('Balansdan yechildi:')} {formatMoney(result.applied_from_balance)}</p>
                     )}
                     {result.sms && (
                         <p className={cx('mt-3 rounded-xl px-3 py-2 text-sm font-semibold', result.sms.status === 'sent' ? 'bg-pay-soft text-pay' : 'bg-warn-soft text-warn')}>
@@ -159,12 +160,12 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
         <Sheet
             open={open}
             onClose={onClose}
-            title={customer ? (lockedCustomer ? `${customer.name}ga nasiya` : 'Yangi nasiya') : 'Yangi nasiya'}
-            subtitle={customer ? `${formatPhone(customer.phone)} · qarzi ${formatNumber(currentDebt)}` : undefined}
+            title={customer ? (lockedCustomer ? t('{name}ga nasiya', { name: customer.name }) : t('Yangi nasiya')) : t('Yangi nasiya')}
+            subtitle={customer ? `${formatPhone(customer.phone)} · ${t('qarzi {amount}', { amount: formatNumber(currentDebt) })}` : undefined}
             onSubmit={() => save(false)}
             footer={customer && (
                 <Button type="submit" size="lg" block loading={saving} disabled={!valid}>
-                    Saqlash{amount > 0 && ` — ${formatMoney(amount)}`}
+                    {t('Saqlash')}{amount > 0 && ` — ${formatMoney(amount)}`}
                 </Button>
             )}
         >
@@ -176,39 +177,39 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
                         <button type="button" onClick={() => setCustomer(null)} className="flex w-full items-center gap-3 rounded-ctl border-2 border-brand bg-brand-soft px-3 py-2 text-left">
                             <Avatar name={customer.name} size={32} />
                             <span className="min-w-0 flex-1 truncate font-bold text-brand-strong">{customer.name}</span>
-                            <span className="text-sm font-semibold text-brand-strong">Almashtirish</span>
+                            <span className="text-sm font-semibold text-brand-strong">{t('Almashtirish')}</span>
                         </button>
                     )}
                     <AmountPad
                         value={amount}
                         onChange={setAmount}
                         autoFocus
-                        hint={amount > 0 && `Jami qarzi bo'ladi: ${formatNumber(newTotal)}${limitLeft !== null ? ` · limit ${formatNumber(limit)}` : ''}`}
+                        hint={amount > 0 && `${t("Jami qarzi bo'ladi: {amount}", { amount: formatNumber(newTotal) })}${limitLeft !== null ? ` · ${t('limit {amount}', { amount: formatNumber(limit) })}` : ''}`}
                     />
                     {limitLeft !== null && amount > 0 && limitLeft < 0 && (
                         <p role="alert" className="rounded-xl bg-warn-soft px-3 py-2 text-sm font-semibold text-warn">
-                            Limitdan {formatNumber(-limitLeft)} so'm oshadi
+                            {t("Limitdan {amount} so'm oshadi", { amount: formatNumber(-limitLeft) })}
                         </p>
                     )}
 
                     <div className="flex items-center gap-2">
-                        <span className="w-[72px] shrink-0 text-[13px] font-bold text-ink-2">Berildi</span>
+                        <span className="w-[72px] shrink-0 text-[13px] font-bold text-ink-2">{t('Berildi')}</span>
                         <Chips
-                            ariaLabel="Nasiya berilgan sana"
+                            ariaLabel={t('Nasiya berilgan sana')}
                             value={givenMode}
                             onChange={(v) => { setGivenMode(v); if (v === 'other' && !givenOther) setGivenOther(addDaysYmd(today, -2)) }}
                             className="flex-1"
                             options={[
-                                { value: 'today', label: 'Bugun' },
-                                { value: 'yesterday', label: 'Kecha' },
-                                { value: 'other', label: 'Boshqa', icon: CalendarDays }
+                                { value: 'today', label: t('Bugun') },
+                                { value: 'yesterday', label: t('Kecha') },
+                                { value: 'other', label: t('Boshqa'), icon: CalendarDays }
                             ]}
                         />
                     </div>
                     {givenMode === 'other' && (
                         <input
                             type="date"
-                            aria-label="Berilgan sana"
+                            aria-label={t('Berilgan sana')}
                             value={givenOther}
                             min={addDaysYmd(today, -GIVEN_MAX_DAYS_BACK)}
                             max={today}
@@ -218,24 +219,24 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
                     )}
 
                     <div className="flex items-center gap-2">
-                        <span className="w-[72px] shrink-0 text-[13px] font-bold text-ink-2">Qaytaradi</span>
+                        <span className="w-[72px] shrink-0 text-[13px] font-bold text-ink-2">{t('Qaytaradi')}</span>
                         <Chips
-                            ariaLabel="Qaytarish muddati"
+                            ariaLabel={t('Qaytarish muddati')}
                             value={dueMode}
                             onChange={(v) => { setDueMode(v === dueMode ? null : v); if (v === 'custom' && !dueCustom) setDueCustom(presets['2w']) }}
                             className="flex-1"
                             options={[
-                                { value: '1w', label: '1 hafta', disabled: presets['1w'] < today },
-                                { value: '2w', label: '2 hafta', disabled: presets['2w'] < today },
-                                { value: '1m', label: '1 oy', disabled: presets['1m'] < today },
-                                { value: 'custom', label: <CalendarDays size={18} aria-label="Sana tanlash" />, narrow: true }
+                                { value: '1w', label: t('1 hafta'), disabled: presets['1w'] < today },
+                                { value: '2w', label: t('2 hafta'), disabled: presets['2w'] < today },
+                                { value: '1m', label: t('1 oy'), disabled: presets['1m'] < today },
+                                { value: 'custom', label: <CalendarDays size={18} aria-label={t('Sana tanlash')} />, narrow: true }
                             ]}
                         />
                     </div>
                     {dueMode === 'custom' && (
                         <input
                             type="date"
-                            aria-label="Qaytarish sanasi"
+                            aria-label={t('Qaytarish sanasi')}
                             value={dueCustom}
                             min={givenAt > today ? givenAt : today}
                             onChange={(e) => setDueCustom(e.target.value)}
@@ -251,50 +252,50 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
                                 value={note}
                                 maxLength={500}
                                 onChange={(e) => setNote(e.target.value)}
-                                placeholder="Izoh: nima oldi? (un, yog', shakar…)"
-                                aria-label="Izoh"
+                                placeholder={t("Izoh: nima oldi? (un, yog', shakar…)")}
+                                aria-label={t('Izoh')}
                                 className="w-full bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-3"
                             />
                         </label>
                     ) : (
                         <button type="button" onClick={() => setNoteOpen(true)} className="flex items-center gap-2 text-[15px] font-semibold text-brand-strong">
-                            <PencilLine size={18} aria-hidden /> Izoh qo'shish
+                            <PencilLine size={18} aria-hidden /> {t("Izoh qo'shish")}
                         </button>
                     )}
 
                     <Toggle
                         checked={sendSms}
                         onChange={setSendSms}
-                        label="Mijozga SMS yuborish"
+                        label={t('Mijozga SMS yuborish')}
                         description={[
-                            dueDate && settings.reminder_enabled !== false && `Eslatma: ${formatDate(dueDate)}, ${settings.reminder_time || '09:00'}`,
+                            dueDate && settings.reminder_enabled !== false && t('Eslatma: {date}, {time}', { date: formatDate(dueDate), time: settings.reminder_time || '09:00' }),
                             quota && smsQuotaText(quota)
                         ].filter(Boolean).join(' · ') || undefined}
                     />
 
                     {trialLeft !== null && !trialBlocked && trialLeft <= 3 && (
-                        <p className="rounded-xl bg-warn-soft px-3 py-2 text-sm font-semibold text-warn">Bepul sinovda {formatNumber(trialLeft)} ta nasiya qoldi</p>
+                        <p className="rounded-xl bg-warn-soft px-3 py-2 text-sm font-semibold text-warn">{t('Bepul sinovda {n} ta nasiya qoldi', { n: formatNumber(trialLeft) })}</p>
                     )}
                     {trialBlocked && (
                         <div role="alert" className="rounded-ctl border-[1.5px] border-debt bg-debt-soft p-3.5 text-[15px] text-ink">
-                            <p className="font-bold">Sinovdagi nasiya limiti tugadi</p>
+                            <p className="font-bold">{t('Sinovdagi nasiya limiti tugadi')}</p>
                             <p className="mt-1 text-sm text-ink-2">
-                                {trialLimit?.message || `Bepul sinovda ${formatNumber(usage?.debt_total_limit)} ta nasiya yozish mumkin.`} Davom etish uchun ta'rif tanlang.
+                                {trialLimit?.message || t('Bepul sinovda {n} ta nasiya yozish mumkin.', { n: formatNumber(usage?.debt_total_limit) })} {t("Davom etish uchun ta'rif tanlang.")}
                             </p>
-                            <Button className="mt-3 w-full" onClick={() => { onClose(); navigate('/subscription') }}>Ta'rif tanlash</Button>
+                            <Button className="mt-3 w-full" onClick={() => { onClose(); navigate('/subscription') }}>{t("Ta'rif tanlash")}</Button>
                         </div>
                     )}
 
                     {overLimit && (
                         <div role="alert" className="rounded-ctl border-[1.5px] border-warn bg-warn-soft p-3.5 text-[15px] text-ink">
-                            <p className="font-bold">Nasiya limiti oshadi</p>
+                            <p className="font-bold">{t('Nasiya limiti oshadi')}</p>
                             <p className="mt-1 text-sm text-ink-2">
-                                Limit {formatMoney(overLimit.credit_limit)}, yangi jami {formatMoney(overLimit.new_total)} — {formatMoney(overLimit.exceeded_by)} ortiq.
+                                {t('Limit {limit}, yangi jami {total} — {over} ortiq.', { limit: formatMoney(overLimit.credit_limit), total: formatMoney(overLimit.new_total), over: formatMoney(overLimit.exceeded_by) })}
                             </p>
                             {overLimit.can_force && session.can('debt.over_limit') ? (
-                                <Button variant="dark" className="mt-3 w-full" loading={saving} onClick={() => save(true)}>Baribir yozish</Button>
+                                <Button variant="dark" className="mt-3 w-full" loading={saving} onClick={() => save(true)}>{t('Baribir yozish')}</Button>
                             ) : (
-                                <p className="mt-2 text-sm font-semibold">Limitdan oshirishga huquqingiz yo'q.</p>
+                                <p className="mt-2 text-sm font-semibold">{t("Limitdan oshirishga huquqingiz yo'q.")}</p>
                             )}
                         </div>
                     )}

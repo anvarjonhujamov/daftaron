@@ -9,12 +9,14 @@ import { Button, Chips, Input, MoneyInput, PhoneInput, TextArea } from '../ui/co
 import { todayYmd } from '../utils/date'
 import { formatMoney, formatNumber } from '../utils/format'
 import { phoneDigits, isValidPhone, toApiPhone } from '../utils/phone'
+import { t, tk } from '../i18n'
 
 const MAX_FILES = 5
 const MAX_SIZE = 5 * 1024 * 1024
 const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf'
 
-export const SUPPLIER_METHODS = { credit: 'nasiyaga', cash: 'naqd', transfer: "o'tkazma" }
+export const SUPPLIER_METHODS = { credit: tk('nasiyaga'), cash: tk('naqd'), transfer: tk("o'tkazma") }
+const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
 // Xarid (mol oldim) yoki to'lov (to'lov qildim)
 export function SupplierTxSheet({ open, onClose, supplier, initialType = 'debt' }) {
@@ -47,14 +49,14 @@ export function SupplierTxSheet({ open, onClose, supplier, initialType = 'debt' 
     const addFiles = (list) => {
         const picked = [...list]
         const tooBig = picked.find((f) => f.size > MAX_SIZE)
-        if (tooBig) toast.error(`${tooBig.name}: 5 MB dan katta`)
+        if (tooBig) toast.error(t('{name}: 5 MB dan katta', { name: tooBig.name }))
         setFiles((prev) => [...prev, ...picked.filter((f) => f.size <= MAX_SIZE)].slice(0, MAX_FILES))
     }
 
     const debt = Number(supplier?.current_debt || 0)
     const submit = async () => {
-        if (!(amount > 0)) return setErrors({ amount: 'Summani kiriting' })
-        if (type === 'payment' && amount > debt) return setErrors({ amount: `Qarzimizdan (${formatNumber(debt)}) ko'p to'lab bo'lmaydi` })
+        if (!(amount > 0)) return setErrors({ amount: t('Summani kiriting') })
+        if (type === 'payment' && amount > debt) return setErrors({ amount: t("Qarzimizdan ({amount}) ko'p to'lab bo'lmaydi", { amount: formatNumber(debt) }) })
         setBusy(true)
         const payload = {
             amount, transaction_date: date, payment_method: method, doc_number: doc.trim() || undefined,
@@ -63,7 +65,7 @@ export function SupplierTxSheet({ open, onClose, supplier, initialType = 'debt' 
         try {
             if (type === 'debt') await suppliersApi.addPurchase(supplier.id, payload)
             else await suppliersApi.addPayment(supplier.id, payload)
-            toast.success(type === 'debt' ? 'Xarid saqlandi' : "To'lov saqlandi")
+            toast.success(type === 'debt' ? t('Xarid saqlandi') : t("To'lov saqlandi"))
             emitChange('suppliers')
             onClose()
         } catch (err) {
@@ -75,47 +77,47 @@ export function SupplierTxSheet({ open, onClose, supplier, initialType = 'debt' 
     }
 
     return (
-        <Sheet open={open} onClose={onClose} title={supplier?.name || "Ta'minotchi"} subtitle={`Bizning qarzimiz: ${formatMoney(debt)}`} onSubmit={submit}
+        <Sheet open={open} onClose={onClose} title={supplier?.name || t("Ta'minotchi")} subtitle={t('Bizning qarzimiz: {amount}', { amount: formatMoney(debt) })} onSubmit={submit}
             footer={<Button type="submit" variant={type === 'debt' ? 'primary' : 'pay'} size="lg" block loading={busy}>
-                {type === 'debt' ? 'Xaridni saqlash' : "To'lovni saqlash"}{amount > 0 && ` — ${formatMoney(amount)}`}
+                {type === 'debt' ? t('Xaridni saqlash') : t("To'lovni saqlash")}{amount > 0 && ` — ${formatMoney(amount)}`}
             </Button>}>
             <div className="space-y-4">
-                <Chips ariaLabel="Turi" value={type} onChange={(v) => { setType(v); setMethod(v === 'debt' ? 'credit' : 'cash'); setErrors({}) }}
-                    options={[{ value: 'debt', label: 'Xarid (mol oldim)' }, { value: 'payment', label: "To'lov qildim" }]} />
-                <MoneyInput label="Summa" value={amount} onChange={(v) => { setAmount(v); setErrors({}) }} error={errors.amount} autoFocus big />
+                <Chips ariaLabel={t('Turi')} value={type} onChange={(v) => { setType(v); setMethod(v === 'debt' ? 'credit' : 'cash'); setErrors({}) }}
+                    options={[{ value: 'debt', label: t('Xarid (mol oldim)') }, { value: 'payment', label: t("To'lov qildim") }]} />
+                <MoneyInput label={t('Summa')} value={amount} onChange={(v) => { setAmount(v); setErrors({}) }} error={errors.amount} autoFocus big />
                 <div>
-                    <p className="mb-2 text-sm font-semibold">{type === 'debt' ? 'Qanday to\'laysiz?' : 'Qanday to\'ladingiz?'}</p>
-                    <Chips ariaLabel="To'lov usuli" value={method} onChange={setMethod} options={(type === 'debt' ? ['credit', 'cash', 'transfer'] : ['cash', 'transfer'])
-                        .map((m) => ({ value: m, label: SUPPLIER_METHODS[m][0].toUpperCase() + SUPPLIER_METHODS[m].slice(1) }))} />
+                    <p className="mb-2 text-sm font-semibold">{type === 'debt' ? t('Qanday to\'laysiz?') : t('Qanday to\'ladingiz?')}</p>
+                    <Chips ariaLabel={t("To'lov usuli")} value={method} onChange={setMethod} options={(type === 'debt' ? ['credit', 'cash', 'transfer'] : ['cash', 'transfer'])
+                        .map((m) => ({ value: m, label: capital(t(SUPPLIER_METHODS[m])) }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                    <label className="text-sm font-semibold">Sana
+                    <label className="text-sm font-semibold">{t('Sana')}
                         <input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} className="mt-2 h-12 w-full rounded-xl border-[1.5px] border-line-2 bg-card px-3 font-normal text-ink" />
                     </label>
                     {type === 'debt' && (
-                        <label className="text-sm font-semibold">To'lov muddati
+                        <label className="text-sm font-semibold">{t("To'lov muddati")}
                             <input type="date" value={due} min={date} onChange={(e) => setDue(e.target.value)} className="mt-2 h-12 w-full rounded-xl border-[1.5px] border-line-2 bg-card px-3 font-normal text-ink" />
                         </label>
                     )}
                 </div>
                 {errors.due_date && <p className="text-sm text-debt">{errors.due_date}</p>}
-                <Input size="md" label="Hujjat raqami (INV)" value={doc} onChange={(e) => setDoc(e.target.value)} placeholder="INV-0043" maxLength={100} error={errors.doc_number} />
-                <TextArea label="Izoh (ixtiyoriy)" value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} placeholder="Un 20 qop, shakar 10 qop" />
+                <Input size="md" label={t('Hujjat raqami (INV)')} value={doc} onChange={(e) => setDoc(e.target.value)} placeholder={t('INV-0043')} maxLength={100} error={errors.doc_number} />
+                <TextArea label={t('Izoh (ixtiyoriy)')} value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} placeholder={t('Un 20 qop, shakar 10 qop')} />
                 <div>
                     <input ref={fileRef} type="file" accept={ACCEPT} multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
-                    {files.length < MAX_FILES && <Button variant="secondary" icon={Paperclip} onClick={() => fileRef.current?.click()}>Faktura rasmini qo'shish</Button>}
+                    {files.length < MAX_FILES && <Button variant="secondary" icon={Paperclip} onClick={() => fileRef.current?.click()}>{t("Faktura rasmini qo'shish")}</Button>}
                     {files.length > 0 && (
                         <ul className="mt-2 space-y-1.5">
                             {files.map((f, i) => (
                                 <li key={`${f.name}${i}`} className="flex items-center gap-2 rounded-xl bg-soft px-3 py-2 text-sm">
                                     <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                                    <button type="button" aria-label={`${f.name}ni olib tashlash`} onClick={() => setFiles((x) => x.filter((_, j) => j !== i))}><X size={16} aria-hidden /></button>
+                                    <button type="button" aria-label={t('{name}ni olib tashlash', { name: f.name })} onClick={() => setFiles((x) => x.filter((_, j) => j !== i))}><X size={16} aria-hidden /></button>
                                 </li>
                             ))}
                         </ul>
                     )}
                     {errors.attachments && <p className="mt-1 text-sm text-debt">{errors.attachments}</p>}
-                    <p className="mt-1.5 text-[13px] text-ink-3">JPG, PNG, WEBP yoki PDF · 5 MB gacha · {MAX_FILES} ta</p>
+                    <p className="mt-1.5 text-[13px] text-ink-3">{t('JPG, PNG, WEBP yoki PDF · 5 MB gacha · {n} ta', { n: MAX_FILES })}</p>
                 </div>
             </div>
         </Sheet>
@@ -143,9 +145,9 @@ export function SupplierFormSheet({ open, onClose, supplier, onSaved }) {
 
     const submit = async (andPurchase) => {
         const errs = {}
-        if (!f.name?.trim()) errs.name = 'Nomini kiriting'
-        if (!isValidPhone(f.phone)) errs.phone = "Raqam to'liq emas"
-        if (f.inn && !/^\d{9}$/.test(f.inn)) errs.inn = 'INN 9 ta raqam'
+        if (!f.name?.trim()) errs.name = t('Nomini kiriting')
+        if (!isValidPhone(f.phone)) errs.phone = t("Raqam to'liq emas")
+        if (f.inn && !/^\d{9}$/.test(f.inn)) errs.inn = t('INN 9 ta raqam')
         setErrors(errs)
         if (Object.keys(errs).length) return
         setBusy(andPurchase ? 'buy' : 'save')
@@ -156,7 +158,7 @@ export function SupplierFormSheet({ open, onClose, supplier, onSaved }) {
         if (!editing && f.opening_balance > 0) Object.assign(payload, { opening_balance: f.opening_balance, opening_direction: f.opening_direction })
         try {
             const saved = editing ? await suppliersApi.update(supplier.id, payload) : await suppliersApi.create(payload)
-            toast.success(editing ? 'Saqlandi' : "Ta'minotchi qo'shildi")
+            toast.success(editing ? t('Saqlandi') : t("Ta'minotchi qo'shildi"))
             emitChange('suppliers')
             onSaved?.(saved, andPurchase)
             onClose()
@@ -169,31 +171,31 @@ export function SupplierFormSheet({ open, onClose, supplier, onSaved }) {
     }
 
     return (
-        <Sheet open={open} onClose={onClose} title={editing ? "Ta'minotchini tahrirlash" : "Yangi ta'minotchi"} onSubmit={() => submit(false)}
+        <Sheet open={open} onClose={onClose} title={editing ? t("Ta'minotchini tahrirlash") : t("Yangi ta'minotchi")} onSubmit={() => submit(false)}
             footer={<div className="flex flex-col gap-2 sm:flex-row-reverse">
-                {!editing && <Button size="lg" className="sm:flex-1" loading={busy === 'buy'} disabled={!!busy} onClick={() => submit(true)}>Saqlash va xarid yozish</Button>}
-                <Button type="submit" size="lg" variant={editing ? 'primary' : 'secondary'} className="sm:flex-1" loading={busy === 'save'} disabled={!!busy}>Saqlash</Button>
+                {!editing && <Button size="lg" className="sm:flex-1" loading={busy === 'buy'} disabled={!!busy} onClick={() => submit(true)}>{t('Saqlash va xarid yozish')}</Button>}
+                <Button type="submit" size="lg" variant={editing ? 'primary' : 'secondary'} className="sm:flex-1" loading={busy === 'save'} disabled={!!busy}>{t('Saqlash')}</Button>
             </div>}>
             <div className="space-y-4">
-                <Input label="Nomi" required value={f.name || ''} onChange={(e) => set({ name: e.target.value })} error={errors.name} autoFocus maxLength={255} />
-                <PhoneInput label="Telefon" required value={f.phone || ''} onChange={(v) => set({ phone: v })} error={errors.phone} />
-                <p className="section-label">Ixtiyoriy</p>
+                <Input label={t('Nomi')} required value={f.name || ''} onChange={(e) => set({ name: e.target.value })} error={errors.name} autoFocus maxLength={255} />
+                <PhoneInput label={t('Telefon')} required value={f.phone || ''} onChange={(v) => set({ phone: v })} error={errors.phone} />
+                <p className="section-label">{t('Ixtiyoriy')}</p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                    <Input size="md" label="Kompaniya" value={f.company_name || ''} onChange={(e) => set({ company_name: e.target.value })} maxLength={255} />
-                    <Input size="md" label="INN" inputMode="numeric" placeholder="9 xonali" value={f.inn || ''} onChange={(e) => set({ inn: e.target.value.replace(/\D/g, '').slice(0, 9) })} error={errors.inn} />
-                    <Input size="md" label="Mahsulot" placeholder="Masalan: ichimliklar" value={f.product_type || ''} onChange={(e) => set({ product_type: e.target.value })} maxLength={255} />
-                    <Input size="md" label="Manzil" placeholder="Shahar, ko'cha" value={f.address || ''} onChange={(e) => set({ address: e.target.value })} maxLength={500} />
+                    <Input size="md" label={t('Kompaniya')} value={f.company_name || ''} onChange={(e) => set({ company_name: e.target.value })} maxLength={255} />
+                    <Input size="md" label={t('INN')} inputMode="numeric" placeholder={t('9 xonali')} value={f.inn || ''} onChange={(e) => set({ inn: e.target.value.replace(/\D/g, '').slice(0, 9) })} error={errors.inn} />
+                    <Input size="md" label={t('Mahsulot')} placeholder={t('Masalan: ichimliklar')} value={f.product_type || ''} onChange={(e) => set({ product_type: e.target.value })} maxLength={255} />
+                    <Input size="md" label={t('Manzil')} placeholder={t("Shahar, ko'cha")} value={f.address || ''} onChange={(e) => set({ address: e.target.value })} maxLength={500} />
                 </div>
                 {!editing && (
                     <div className="rounded-ctl border-[1.5px] border-line p-3.5">
-                        <MoneyInput label="Eski qarz bo'lsa" value={f.opening_balance} onChange={(v) => set({ opening_balance: v })} error={errors.opening_balance} />
+                        <MoneyInput label={t("Eski qarz bo'lsa")} value={f.opening_balance} onChange={(v) => set({ opening_balance: v })} error={errors.opening_balance} />
                         {f.opening_balance > 0 && (
-                            <Chips className="mt-2" size="sm" ariaLabel="Kim qarzdor" value={f.opening_direction} onChange={(v) => set({ opening_direction: v })}
-                                options={[{ value: 'we_owe', label: 'Biz qarzdormiz' }, { value: 'they_owe', label: 'U qarzdor' }]} />
+                            <Chips className="mt-2" size="sm" ariaLabel={t('Kim qarzdor')} value={f.opening_direction} onChange={(v) => set({ opening_direction: v })}
+                                options={[{ value: 'we_owe', label: t('Biz qarzdormiz') }, { value: 'they_owe', label: t('U qarzdor') }]} />
                         )}
                     </div>
                 )}
-                <TextArea label="Izoh" value={f.note || ''} onChange={(e) => set({ note: e.target.value })} rows={2} maxLength={1000} placeholder="Qachon keladi, kim bilan gaplashiladi" />
+                <TextArea label={t('Izoh')} value={f.note || ''} onChange={(e) => set({ note: e.target.value })} rows={2} maxLength={1000} placeholder={t('Qachon keladi, kim bilan gaplashiladi')} />
             </div>
         </Sheet>
     )

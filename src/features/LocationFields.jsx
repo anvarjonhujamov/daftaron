@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { locationsApi } from '../api/settings.api'
 import { readCache, writeCache } from '../lib/cache'
 import { Select } from '../ui/controls'
+import { t } from '../i18n'
 
 const asList = (r) => (Array.isArray(r) ? r : r?.data || [])
 
@@ -33,12 +34,12 @@ export default function LocationFields({ value, onChange, withStreet = true, err
 
     return (
         <div className="grid gap-3 sm:grid-cols-2">
-            <Select label="Viloyat" options={opts(regions)} value={value.region_id} error={errors.region_id}
+            <Select label={t('Viloyat')} options={opts(regions)} value={value.region_id} error={errors.region_id}
                 onChange={(v) => onChange({ region_id: num(v), district_id: null, street_id: null })} />
-            <Select label="Tuman" options={opts(districts)} value={value.district_id} error={errors.district_id} disabled={!value.region_id}
+            <Select label={t('Tuman')} options={opts(districts)} value={value.district_id} error={errors.district_id} disabled={!value.region_id}
                 onChange={(v) => onChange({ ...value, district_id: num(v), street_id: null })} />
             {withStreet && (
-                <Select label="MFY" className="sm:col-span-2" options={opts(streets)} value={value.street_id} disabled={!value.district_id}
+                <Select label={t('MFY')} className="sm:col-span-2" options={opts(streets)} value={value.street_id} disabled={!value.district_id}
                     onChange={(v) => onChange({ ...value, street_id: num(v) })} />
             )}
         </div>

@@ -8,8 +8,10 @@ import { deviceName, getToken } from '../lib/session'
 import { errorMessage, errorReason } from '../lib/errors'
 import { Button, Input, PhoneInput, cx } from '../ui/controls'
 import AppBadges from '../features/AppBadges'
+import LangSwitch from '../features/LangSwitch'
 import { formatPhone, isValidPhone, toApiPhone } from '../utils/phone'
 import { requestTelegramContact, telegramInitData, waitTelegram } from '../utils/telegram'
+import { t } from '../i18n'
 
 // Kod uzunligi backend sozlamasi (TZ 28.1: hozir 4, Eskiz yangi shablonni tasdiqlasa 6)
 export const OTP_LENGTH = Number(import.meta.env.VITE_OTP_LENGTH) || 4
@@ -19,7 +21,7 @@ export function Logo() {
     return (
         <div className="flex items-center gap-2.5">
             <img src="/logo.png" alt="" className="h-11 w-11 object-contain" />
-            <span className="text-xl font-extrabold tracking-tight">DaftarOn</span>
+            <span className="text-xl font-extrabold tracking-tight">{t('DaftarOn')}</span>
         </div>
     )
 }
@@ -29,7 +31,7 @@ export function AuthShell({ children, onBack }) {
         <div className="min-h-screen bg-card md:flex md:items-center md:justify-center md:bg-bg md:p-6">
             <div className="pb-safe mx-auto flex min-h-screen w-full max-w-[440px] flex-col px-6 pb-7 pt-6 md:min-h-0 md:rounded-[24px] md:bg-card md:p-10 md:shadow-sm">
                 {onBack && (
-                    <button type="button" aria-label="Orqaga" onClick={onBack} className="-ml-2.5 mb-2 flex h-11 w-11 items-center justify-center rounded-xl hover:bg-soft">
+                    <button type="button" aria-label={t('Orqaga')} onClick={onBack} className="-ml-2.5 mb-2 flex h-11 w-11 items-center justify-center rounded-xl hover:bg-soft">
                         <ChevronLeft size={26} aria-hidden />
                     </button>
                 )}
@@ -50,7 +52,7 @@ export function CodeInput({ value, onChange, onComplete, error, length = OTP_LEN
                 value={value}
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                aria-label={`${length} xonali kod`}
+                aria-label={t('{n} xonali kod', { n: length })}
                 aria-invalid={!!error}
                 maxLength={length}
                 onChange={(e) => {
@@ -184,7 +186,7 @@ export default function LoginPage() {
     if (getToken() && !busy) return <Navigate to="/" replace />
 
     const requestCode = async () => {
-        if (!isValidPhone(phone)) return setError("Raqam to'liq emas: 9 ta raqam kiriting")
+        if (!isValidPhone(phone)) return setError(t("Raqam to'liq emas: 9 ta raqam kiriting"))
         setBusy(true)
         setError('')
         try {
@@ -220,17 +222,17 @@ export default function LoginPage() {
         } catch (err) {
             const status = err?.response?.status
             setCode('')
-            setError(status === 410 ? "Kod muddati o'tdi. Yangi kod oling."
-                : status === 429 ? "Ko'p marta xato kiritildi. Yangi kod oling."
-                : errorMessage(err, "Kod noto'g'ri"))
+            setError(status === 410 ? t("Kod muddati o'tdi. Yangi kod oling.")
+                : status === 429 ? t("Ko'p marta xato kiritildi. Yangi kod oling.")
+                : errorMessage(err, t("Kod noto'g'ri")))
         } finally {
             setBusy(false)
         }
     }
 
     const loginWithPassword = async () => {
-        if (!isValidPhone(phone)) return setError("Raqam to'liq emas: 9 ta raqam kiriting")
-        if (!password) return setError('Parolni kiriting')
+        if (!isValidPhone(phone)) return setError(t("Raqam to'liq emas: 9 ta raqam kiriting"))
+        if (!password) return setError(t('Parolni kiriting'))
         setBusy(true)
         setError('')
         try {
@@ -244,7 +246,7 @@ export default function LoginPage() {
                 setResendIn(60)
                 setStep('code')
             } else {
-                setError(errorMessage(err, "Telefon yoki parol noto'g'ri"))
+                setError(errorMessage(err, t("Telefon yoki parol noto'g'ri")))
             }
         } finally {
             setBusy(false)
@@ -255,7 +257,7 @@ export default function LoginPage() {
         return (
             <AuthShell>
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 text-ink-2">
-                    <Loader2 className="animate-spin" aria-hidden /> Telegram orqali kirilmoqda…
+                    <Loader2 className="animate-spin" aria-hidden /> {t('Telegram orqali kirilmoqda…')}
                 </div>
             </AuthShell>
         )
@@ -264,40 +266,40 @@ export default function LoginPage() {
     if (step === 'code') {
         return (
             <AuthShell onBack={() => { setStep(codeType === 'login' ? 'password' : 'phone'); setError('') }}>
-                <h1 className="mt-6 text-[28px] font-extrabold tracking-tight">Kodni kiriting</h1>
+                <h1 className="mt-6 text-[28px] font-extrabold tracking-tight">{t('Kodni kiriting')}</h1>
                 <p className="mb-8 mt-2 text-base leading-relaxed text-ink-2">
                     {sent?.channel === 'telegram'
-                        ? <>Kod Telegram'dagi <strong className="text-ink">@daftaron_bot</strong> ga yuborildi.</>
-                        : <>{formatPhone(toApiPhone(phone))} raqamiga {OTP_LENGTH} xonali kod yubordik.</>}
+                        ? t("Kod Telegram'dagi {bot} ga yuborildi.", { bot: <strong className="text-ink">@daftaron_bot</strong> })
+                        : t('{phone} raqamiga {n} xonali kod yubordik.', { phone: formatPhone(toApiPhone(phone)), n: OTP_LENGTH })}
                 </p>
                 <CodeInput value={code} onChange={(v) => { setCode(v); setError('') }} onComplete={verify} error={error} />
                 {sent?.channel === 'telegram' && (
                     <a href={sent.bot_url || BOT_URL} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 text-[15px] font-semibold text-brand-strong">
-                        <Send size={18} aria-hidden /> Botni ochish
+                        <Send size={18} aria-hidden /> {t('Botni ochish')}
                     </a>
                 )}
                 <p className="mt-5 text-[15px] text-ink-2">
                     {resendIn > 0
-                        ? <>Kodni qayta yuborish: <strong className="text-ink">{fmtTimer(resendIn)}</strong></>
-                        : codeType === 'otp' && <button type="button" onClick={requestCode} className="font-semibold text-brand-strong">Kodni qayta yuborish</button>}
+                        ? <>{t('Kodni qayta yuborish:')} <strong className="text-ink">{fmtTimer(resendIn)}</strong></>
+                        : codeType === 'otp' && <button type="button" onClick={requestCode} className="font-semibold text-brand-strong">{t('Kodni qayta yuborish')}</button>}
                 </p>
                 {sent?.channel === 'telegram' && resendIn <= 0 && (
                     <button type="button" className="mt-2 text-left text-[15px] font-semibold text-brand-strong"
                         onClick={async () => {
                             try { setSent(await authApi.otpRequest(toApiPhone(phone), 'sms')); setResendIn(60) } catch (err) { setError(errorMessage(err)) }
                         }}>
-                        SMS orqali olish
+                        {t('SMS orqali olish')}
                     </button>
                 )}
                 <button type="button" onClick={() => { setStep('phone'); setError('') }} className="mt-2 text-left text-[15px] font-semibold text-brand-strong">
-                    Raqamni o'zgartirish
+                    {t("Raqamni o'zgartirish")}
                 </button>
                 <div className="flex-1" />
                 <div className="mb-4 mt-8 flex items-start gap-3 rounded-ctl bg-soft p-4 text-sm leading-relaxed text-ink-2">
                     <Lock size={20} className="mt-0.5 shrink-0 text-brand-strong" aria-hidden />
-                    Telefon almashsa ham ma'lumotlaringiz saqlanadi — shu raqam bilan kirsangiz bas.
+                    {t("Telefon almashsa ham ma'lumotlaringiz saqlanadi — shu raqam bilan kirsangiz bas.")}
                 </div>
-                <Button size="lg" block loading={busy} disabled={code.length < OTP_LENGTH} onClick={() => verify()}>Davom etish</Button>
+                <Button size="lg" block loading={busy} disabled={code.length < OTP_LENGTH} onClick={() => verify()}>{t('Davom etish')}</Button>
             </AuthShell>
         )
     }
@@ -305,51 +307,50 @@ export default function LoginPage() {
     if (step === 'password') {
         return (
             <AuthShell onBack={() => { setStep('phone'); setError('') }}>
-                <h1 className="mt-6 text-[28px] font-extrabold tracking-tight">Parol bilan kirish</h1>
+                <h1 className="mt-6 text-[28px] font-extrabold tracking-tight">{t('Parol bilan kirish')}</h1>
                 <form className="mt-8 space-y-4" onSubmit={(e) => { e.preventDefault(); loginWithPassword() }} noValidate>
                     <PhoneInput value={phone} onChange={(v) => { setPhone(v); setError('') }} autoFocus={!phone} />
-                    <Input label="Parol" type="password" autoComplete="current-password" value={password} autoFocus={!!phone}
+                    <Input label={t('Parol')} type="password" autoComplete="current-password" value={password} autoFocus={!!phone}
                         onChange={(e) => { setPassword(e.target.value); setError('') }} />
                     {error && <p role="alert" className="text-[15px] font-semibold text-debt">{error}</p>}
-                    <Button type="submit" size="lg" block loading={busy}>Kirish</Button>
+                    <Button type="submit" size="lg" block loading={busy}>{t('Kirish')}</Button>
                 </form>
-                <Link to="/forgot-password" className="mt-5 text-[15px] font-semibold text-brand-strong">Parolni unutdingizmi?</Link>
+                <Link to="/forgot-password" className="mt-5 text-[15px] font-semibold text-brand-strong">{t('Parolni unutdingizmi?')}</Link>
             </AuthShell>
         )
     }
 
     return (
         <AuthShell>
-            <div className="mt-6"><Logo /></div>
-            <h1 className="mb-2 mt-12 text-[30px] font-extrabold leading-tight tracking-tight">Nasiya daftaringiz —<br />telefoningizda</h1>
-            <p className="mb-8 text-base leading-relaxed text-ink-2">Telefon raqamingizni kiriting. Parol shart emas — kod yuboramiz.</p>
+            <div className="mt-6 flex items-center justify-between gap-3"><Logo /><LangSwitch /></div>
+            <h1 className="mb-2 mt-12 text-[30px] font-extrabold leading-tight tracking-tight">{t('Nasiya daftaringiz —')}<br />{t('telefoningizda')}</h1>
+            <p className="mb-8 text-base leading-relaxed text-ink-2">{t('Telefon raqamingizni kiriting. Parol shart emas — kod yuboramiz.')}</p>
             <form onSubmit={(e) => { e.preventDefault(); requestCode() }} noValidate>
                 <PhoneInput value={phone} onChange={(v) => { setPhone(v); setError('') }} error={error} autoFocus />
-                <Button type="submit" size="lg" block loading={busy} className="mt-4">Kod olish</Button>
+                <Button type="submit" size="lg" block loading={busy} className="mt-4">{t('Kod olish')}</Button>
             </form>
             <div className="my-5 flex items-center gap-3 text-sm text-ink-3">
-                <div className="h-px flex-1 bg-line" />yoki<div className="h-px flex-1 bg-line" />
+                <div className="h-px flex-1 bg-line" />{t('yoki')}<div className="h-px flex-1 bg-line" />
             </div>
             {botExpired && (
                 <p role="alert" className="mb-3 rounded-ctl bg-warn-soft p-3 text-[15px] font-semibold text-warn">
-                    Kirish havolasi eskirgan yoki ishlatilgan. Telegram orqali qayta kiring.
+                    {t('Kirish havolasi eskirgan yoki ishlatilgan. Telegram orqali qayta kiring.')}
                 </p>
             )}
             <Button size="lg" variant="secondary" block icon={Send} loading={botBusy} onClick={loginWithBot}>
-                {botExpired ? 'Telegram orqali qayta kirish' : 'Telegram bot orqali kirish'}
+                {botExpired ? t('Telegram orqali qayta kirish') : t('Telegram bot orqali kirish')}
             </Button>
             <button type="button" onClick={() => { setStep('password'); setError('') }} className="mt-4 text-[15px] font-semibold text-brand-strong">
-                Parol bilan kirish
+                {t('Parol bilan kirish')}
             </button>
             <div className="flex-1" />
             <div className="mt-8 rounded-ctl bg-soft p-4 text-[13px] leading-relaxed text-ink-2">
-                <strong className="text-ink">Bitta hisob — hamma qurilmada:</strong> telefon, planshet, kompyuter va Telegram bot.
-                iPhone'da brauzer orqali ishlaydi — <Link to="/install" className="font-semibold text-brand-strong">o'rnatish</Link>.
+                <strong className="text-ink">{t('Bitta hisob — hamma qurilmada:')}</strong> {t("telefon, planshet, kompyuter va Telegram bot. iPhone'da brauzer orqali ishlaydi —")} <Link to="/install" className="font-semibold text-brand-strong">{t("o'rnatish")}</Link>.
             </div>
             <AppBadges className="mt-3" />
             <p className="mt-3.5 text-center text-[13px] text-ink-3">
-                Yangi foydalanuvchimisiz? Shu raqam bilan kiring — hisob o'zi ochiladi.{' '}
-                <Link to="/legal/offer" className="underline">Oferta</Link> · <Link to="/legal/privacy" className="underline">Maxfiylik</Link>
+                {t("Yangi foydalanuvchimisiz? Shu raqam bilan kiring — hisob o'zi ochiladi.")}{' '}
+                <Link to="/legal/offer" className="underline">{t('Oferta')}</Link> · <Link to="/legal/privacy" className="underline">{t('Maxfiylik')}</Link>
             </p>
         </AuthShell>
     )

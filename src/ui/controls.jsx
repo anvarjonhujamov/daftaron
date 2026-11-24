@@ -2,6 +2,7 @@ import { forwardRef, useId } from 'react'
 import { Loader2 } from 'lucide-react'
 import { formatNumber, parseCurrency } from '../utils/format'
 import { formatLocal, phoneDigits } from '../utils/phone'
+import { t } from '../i18n'
 
 const cx = (...c) => c.filter(Boolean).join(' ')
 export { cx }
@@ -109,14 +110,14 @@ export function MoneyInput({ value, onChange, label, hint, error, className, aut
                     onChange={(e) => onChange(Math.min(parseCurrency(e.target.value), 99999999999))}
                     className={cx('w-full min-w-0 bg-transparent font-extrabold text-ink outline-none placeholder:text-ink-3', big ? 'text-[28px]' : 'text-[19px]')}
                 />
-                <span className="shrink-0 font-semibold text-ink-2">so'm</span>
+                <span className="shrink-0 font-semibold text-ink-2">{t("so'm")}</span>
             </div>
         </Field>
     )
 }
 
 // Telefon: "+998" doimiy, 9 raqam yozish paytida "90 123 45 67" bo'lib turadi
-export function PhoneInput({ value, onChange, label = 'Telefon raqam', required, hint, error, className, autoFocus, id, onEnter, children }) {
+export function PhoneInput({ value, onChange, label = t('Telefon raqam'), required, hint, error, className, autoFocus, id, onEnter, children }) {
     const autoId = useId()
     const inputId = id || autoId
     return (
@@ -222,7 +223,7 @@ export function Checkbox({ checked, onChange, label, description, className, dis
     )
 }
 
-export function Select({ label, error, hint, options, value, onChange, placeholder = 'Tanlang', className, id, disabled }) {
+export function Select({ label, error, hint, options, value, onChange, placeholder = t('Tanlang'), className, id, disabled }) {
     const autoId = useId()
     return (
         <Field label={label} error={error} hint={hint} className={className} htmlFor={id || autoId}>

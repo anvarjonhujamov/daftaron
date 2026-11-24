@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 // Sana helperlari (Asia/Tashkent, UTC+5, DST yo'q)
 // toISOString().slice(0, 10) ishlatmang: Toshkentda 00:00-05:00 oralig'ida kechagi sanani beradi.
 
@@ -68,22 +69,22 @@ export const formatTime = (value) => {
 }
 
 export const formatDateTime = (value) => {
-    const t = formatTime(value)
-    return t ? `${formatDate(value)}, ${t}` : formatDate(value)
+    const time = formatTime(value)
+    return time ? `${formatDate(value)}, ${time}` : formatDate(value)
 }
 
 // Qaytarish sanasigacha: "Bugun", "3 kun qoldi", "5 kun o'tdi" va holati (rang uchun)
 export const dueInfo = (dueYmd) => {
     if (!dueYmd) return null
     const days = diffDaysYmd(toYmd(dueYmd), todayYmd())
-    if (days === 0) return { days, tone: 'warn', label: 'Bugun' }
-    if (days > 0) return { days, tone: days <= 3 ? 'warn' : 'muted', label: `${days} kun qoldi` }
-    return { days, tone: 'danger', label: `${-days} kun o'tdi` }
+    if (days === 0) return { days, tone: 'warn', label: t('Bugun') }
+    if (days > 0) return { days, tone: days <= 3 ? 'warn' : 'muted', label: t('{n} kun qoldi', { n: days }) }
+    return { days, tone: 'danger', label: t("{n} kun o'tdi", { n: -days }) }
 }
 
 // Kun sarlavhasi: "BUGUN · 29.10.2026", "KECHA · ..."
 export const dayTitle = (ymd) => {
     const diff = diffDaysYmd(todayYmd(), toYmd(ymd))
-    const label = diff === 0 ? 'Bugun' : diff === 1 ? 'Kecha' : null
+    const label = diff === 0 ? t('Bugun') : diff === 1 ? t('Kecha') : null
     return label ? `${label} · ${formatDate(ymd)}` : formatDate(ymd)
 }

@@ -7,10 +7,12 @@ import { SessionProvider, useSession } from './app/session'
 import { getToken, getUser } from './lib/session'
 import { initTelegramWebApp } from './utils/telegram'
 import { trackPage } from './lib/metrika'
+import { useLang } from './i18n'
 
 // Kirish va bosh sahifa asosiy bundle'da, qolganlari kerak bo'lganda yuklanadi
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
+import { t } from './i18n'
 
 // Yangi deploydan keyin eski chunk topilmasa sahifani bir marta yangilaymiz
 const lazyPage = (factory) => lazy(() => factory().catch((err) => {
@@ -48,7 +50,7 @@ const MorePage = lazyPage(() => import('./pages/MorePage'))
 
 const Spinner = () => (
     <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="animate-spin text-ink-3" aria-label="Yuklanmoqda" />
+        <Loader2 className="animate-spin text-ink-3" aria-label={t('Yuklanmoqda')} />
     </div>
 )
 
@@ -66,6 +68,8 @@ function Private({ children, onboarding }) {
 
 export default function App() {
     const { pathname, search, hash } = useLocation()
+    // Til almashsa sahifalar qayta chiziladi (modul darajasidagi matnlar ko'rsatishda t() bilan olinadi)
+    const lang = useLang()
 
     // Metrika: har bir sahifa o'tishi alohida ko'rinish (query/hash o'zgarishi — faqat toza URL'ni kutish uchun)
     useEffect(() => {
@@ -85,7 +89,7 @@ export default function App() {
                 position="top-center"
                 toastOptions={{ duration: 4000, style: { borderRadius: '14px', background: '#0F172A', color: '#fff', fontSize: '15px' } }}
             />
-            <Suspense fallback={<Spinner />}>
+            <Suspense key={lang} fallback={<Spinner />}>
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />

@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { authApi } from '../api/auth.api'
-import { settingsApi } from '../api/settings.api'
+import { profileApi, settingsApi } from '../api/settings.api'
 import { subscriptionApi } from '../api/subscription.api'
 import { notificationsApi } from '../api/reports.api'
 import { TRIAL_EXPIRED_EVENT } from '../api/client'
 import { clearDataCache, readCache, writeCache } from '../lib/cache'
 import { clearLocalData, getToken, getUser, setSession, setUser } from '../lib/session'
+import { getLang, isLangPending, setLang } from '../i18n'
 
 // Kirgan foydalanuvchi holati: /auth/me + /settings (huquqlar, eslatmalar) + /subscription/status.
 // Oxirgi javob keshda — sahifa API'ni kutmasdan chiziladi.
@@ -17,6 +18,18 @@ export const applyTheme = (theme) => {
     document.documentElement.classList.toggle('dark', dark)
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0B1220' : '#2563EB')
     try { localStorage.setItem('theme', dark ? 'dark' : 'light') } catch { /* ignore */ }
+}
+
+// Ilova tili: kirish sahifasida tanlangan bo'lsa — serverga yoziladi; aks holda server qiymati
+// (boshqa qurilmada yoki botda o'zgargan bo'lishi mumkin). Til almashsa App qayta chiziladi
+const syncLang = (serverLang) => {
+    if (isLangPending()) {
+        const local = getLang()
+        setLang(local)
+        if (serverLang !== local) profileApi.update({ language: local }).catch(() => {})
+    } else if (serverLang) {
+        setLang(serverLang)
+    }
 }
 
 // Bepul sinov tugagan: oldingi ro'yxatlar keshdan ham ko'rinmasin (sessiya va obuna holati qoladi)
@@ -52,6 +65,7 @@ export function SessionProvider({ children }) {
             writeCache(CACHE_KEY, next)
             return next
         })
+        if (settings.status === 'fulfilled') syncLang(settings.value?.profile?.language)
         setLoading(false)
     }, [])
 

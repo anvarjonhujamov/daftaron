@@ -20,14 +20,15 @@ import { formatDate, formatDateTime } from '../utils/date'
 import { formatMoney, formatNumber, planLabel } from '../utils/format'
 import { formatPhone, isValidPhone, toApiPhone } from '../utils/phone'
 import { telegramInitData } from '../utils/telegram'
+import { LANGS, getLang, setLang, t, tk } from '../i18n'
 
 const SECTIONS = [
-    { key: 'profile', label: "Profil va do'kon", icon: Store },
-    { key: 'account', label: "Ta'rif va balans", icon: Wallet },
-    { key: 'reminders', label: 'Eslatmalar va SMS', icon: BellRing },
-    { key: 'appearance', label: "Ko'rinish va til", icon: Palette },
-    { key: 'security', label: 'Xavfsizlik', icon: Lock },
-    { key: 'documents', label: 'Aloqa va hujjatlar', icon: FileText }
+    { key: 'profile', label: tk("Profil va do'kon"), icon: Store },
+    { key: 'account', label: tk("Ta'rif va balans"), icon: Wallet },
+    { key: 'reminders', label: tk('Eslatmalar va SMS'), icon: BellRing },
+    { key: 'appearance', label: tk("Ko'rinish va til"), icon: Palette },
+    { key: 'security', label: tk('Xavfsizlik'), icon: Lock },
+    { key: 'documents', label: tk('Aloqa va hujjatlar'), icon: FileText }
 ]
 
 const TIMES = Array.from({ length: 16 }, (_, i) => `${String(i + 6).padStart(2, '0')}:00`)
@@ -59,12 +60,12 @@ export default function SettingsPage() {
             <div className="lg:hidden">
                 {current ? (
                     <div className="md:mx-auto md:max-w-2xl">
-                        <PageHeader back="/settings" title={current.label} />
+                        <PageHeader back="/settings" title={t(current.label)} />
                         {content(current.key)}
                     </div>
                 ) : (
                     <div className="md:mx-auto md:max-w-2xl">
-                        <PageHeader title="Sozlamalar" />
+                        <PageHeader title={t('Sozlamalar')} />
                         <MenuList session={session} />
                     </div>
                 )}
@@ -72,25 +73,25 @@ export default function SettingsPage() {
 
             {/* Kompyuter: chapda bo'limlar, o'ngda hammasi */}
             <div className="hidden lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
-                <nav aria-label="Sozlamalar bo'limlari" className="sticky top-8 self-start">
-                    <h1 className="mb-4 text-[26px] font-extrabold">Sozlamalar</h1>
+                <nav aria-label={t("Sozlamalar bo'limlari")} className="sticky top-8 self-start">
+                    <h1 className="mb-4 text-[26px] font-extrabold">{t('Sozlamalar')}</h1>
                     {SECTIONS.map((s) => (
                         <a key={s.key} href={`#${s.key}`} className="flex h-11 items-center gap-3 rounded-xl px-3 font-semibold text-ink-2 hover:bg-soft hover:text-ink">
-                            <s.icon size={18} aria-hidden />{s.label}
+                            <s.icon size={18} aria-hidden />{t(s.label)}
                         </a>
                     ))}
                     <button type="button" onClick={logout} className="mt-2 flex h-11 w-full items-center gap-3 rounded-xl px-3 font-semibold text-debt hover:bg-debt-soft">
-                        <LogOut size={18} aria-hidden />Chiqish
+                        <LogOut size={18} aria-hidden />{t('Chiqish')}
                     </button>
                 </nav>
                 <div className="max-w-3xl space-y-10">
                     {SECTIONS.map((s) => (
                         <section key={s.key} id={s.key} className="scroll-mt-8">
-                            <h2 className="mb-3 text-xl font-extrabold">{s.label}</h2>
+                            <h2 className="mb-3 text-xl font-extrabold">{t(s.label)}</h2>
                             {content(s.key)}
                         </section>
                     ))}
-                    <p className="text-sm text-ink-3">DaftarOn · versiya {__APP_VERSION__}</p>
+                    <p className="text-sm text-ink-3">DaftarOn · {t('versiya')} {__APP_VERSION__}</p>
                 </div>
             </div>
         </div>
@@ -106,29 +107,29 @@ function MenuList({ session }) {
             <List>
                 <Row to="/settings/profile" left={<Avatar name={p?.name || session.user?.name} size={44} />} title={p?.name || session.user?.name}
                     subtitle={`${session.tenant?.name || ''} · ${formatPhone(p?.phone || session.user?.phone)}`} chevron />
-                <Row to="/subscription" left={<Wallet size={22} className="text-brand-strong" aria-hidden />} title={`Ta'rif va balans · ${formatMoney(sub?.balance)}`}
-                    subtitle={`${planLabel(sub?.usage)} · ${formatDate(sub?.trial_info?.trial_ends_at)} gacha · SMS ${formatNumber(sub?.usage?.sms_remaining)}`} chevron />
+                <Row to="/subscription" left={<Wallet size={22} className="text-brand-strong" aria-hidden />} title={`${t("Ta'rif va balans")} · ${formatMoney(sub?.balance)}`}
+                    subtitle={`${planLabel(sub?.usage)} · ${t('{date} gacha', { date: formatDate(sub?.trial_info?.trial_ends_at) })} · SMS ${formatNumber(sub?.usage?.sms_remaining)}`} chevron />
             </List>
             <List>
-                <Row to="/settings/reminders" left={<BellRing size={20} aria-hidden />} title="Eslatmalar va SMS"
-                    subtitle={n.reminder_enabled === false ? "Avtomatik eslatma o'chiq" : `Qaytarish kuni ${n.reminder_time || '09:00'}, keyin har ${n.reminder_interval_days || 3} kunda`} chevron />
-                <Row to="/settings/appearance" left={<Palette size={20} aria-hidden />} title="Ko'rinish va til" chevron />
-                <Row to="/settings/security" left={<Lock size={20} aria-hidden />} title="Xavfsizlik" subtitle={session.settings?.profile?.login_method === 'password' ? 'Parol' : 'Kod bilan kirish'} chevron />
+                <Row to="/settings/reminders" left={<BellRing size={20} aria-hidden />} title={t('Eslatmalar va SMS')}
+                    subtitle={n.reminder_enabled === false ? t("Avtomatik eslatma o'chiq") : t('Qaytarish kuni {time}, keyin har {days} kunda', { time: n.reminder_time || '09:00', days: n.reminder_interval_days || 3 })} chevron />
+                <Row to="/settings/appearance" left={<Palette size={20} aria-hidden />} title={t("Ko'rinish va til")} chevron />
+                <Row to="/settings/security" left={<Lock size={20} aria-hidden />} title={t('Xavfsizlik')} subtitle={session.settings?.profile?.login_method === 'password' ? t('Parol') : t('Kod bilan kirish')} chevron />
             </List>
             <List>
-                <Row to="/shops" left={<Store size={20} aria-hidden />} title="Do'konlar"
-                    subtitle={session.ownsShop === false ? "O'z do'konimni ochish" : undefined}
+                <Row to="/shops" left={<Store size={20} aria-hidden />} title={t("Do'konlar")}
+                    subtitle={session.ownsShop === false ? t("O'z do'konimni ochish") : undefined}
                     right={<span className="text-ink-2">{(session.tenants || []).length}</span>} chevron />
-                {session.isOwner && <Row to="/staff" left={<Users size={20} aria-hidden />} title="Xodimlar" chevron />}
+                {session.isOwner && <Row to="/staff" left={<Users size={20} aria-hidden />} title={t('Xodimlar')} chevron />}
             </List>
             <List>
-                <Row to="/guides" left={<BookOpen size={20} aria-hidden />} title="Foydalanish qo'llanmasi" subtitle="Hujjat, video, havola" chevron />
-                <Row to="/support" left={<Bot size={20} aria-hidden />} title="Aloqa" subtitle="AI yordamchi, Telegram" chevron />
-                <Row to="/settings/documents" left={<FileText size={20} aria-hidden />} title="Hujjatlar" subtitle="Oferta, maxfiylik" chevron />
+                <Row to="/guides" left={<BookOpen size={20} aria-hidden />} title={t("Foydalanish qo'llanmasi")} subtitle={t('Hujjat, video, havola')} chevron />
+                <Row to="/support" left={<Bot size={20} aria-hidden />} title={t('Aloqa')} subtitle={t('AI yordamchi, Telegram')} chevron />
+                <Row to="/settings/documents" left={<FileText size={20} aria-hidden />} title={t('Hujjatlar')} subtitle={t('Oferta, maxfiylik')} chevron />
             </List>
             <AppCard />
-            <List><Row onClick={logout} left={<LogOut size={20} className="text-debt" aria-hidden />} title={<span className="text-debt">Chiqish</span>} /></List>
-            <p className="text-center text-[13px] text-ink-3">Kompyuterda: web.daftaron.uz · v{__APP_VERSION__.split('+')[0]}</p>
+            <List><Row onClick={logout} left={<LogOut size={20} className="text-debt" aria-hidden />} title={<span className="text-debt">{t('Chiqish')}</span>} /></List>
+            <p className="text-center text-[13px] text-ink-3">{t('Kompyuterda:')} web.daftaron.uz · v{__APP_VERSION__.split('+')[0]}</p>
         </div>
     )
 }
@@ -143,15 +144,15 @@ function ProfileSection({ settings, session }) {
     useEffect(() => { if (canShop) locationsApi.categories().then((r) => setCategories(Array.isArray(r) ? r : r?.data || [])).catch(() => {}) }, [canShop])
 
     const save = async () => {
-        if (!name.trim()) return toast.error('Ismni kiriting')
+        if (!name.trim()) return toast.error(t('Ismni kiriting'))
         setBusy(true)
         try {
             await profileApi.update({ name: name.trim() })
             if (canShop && settings.shop) {
-                if (!shop.name.trim()) throw new Error("Do'kon nomini kiriting")
+                if (!shop.name.trim()) throw new Error(t("Do'kon nomini kiriting"))
                 await settingsApi.updateShop({ name: shop.name.trim(), category_id: shop.category_id ? Number(shop.category_id) : null, sms_sender_name: shop.sms_sender_name.trim() || null, address: shop.address.trim() || null })
             }
-            toast.success('Saqlandi')
+            toast.success(t('Saqlandi'))
             session.refresh()
         } catch (err) {
             toast.error(err.response ? errorMessage(err) : err.message)
@@ -162,30 +163,30 @@ function ProfileSection({ settings, session }) {
 
     return (
         <Card className="space-y-4 p-4 md:p-6">
-            <Input label="Ism" value={name} onChange={(e) => setName(e.target.value)} maxLength={255} />
+            <Input label={t('Ism')} value={name} onChange={(e) => setName(e.target.value)} maxLength={255} />
             <div>
-                <p className="mb-2 text-sm font-semibold">Telefon (kirish uchun)</p>
+                <p className="mb-2 text-sm font-semibold">{t('Telefon (kirish uchun)')}</p>
                 <div className="flex items-center gap-3">
                     <span className="flex-1 text-[17px] font-semibold">{formatPhone(settings.profile?.phone)}</span>
-                    <Button variant="secondary" size="sm" icon={Phone} onClick={() => setPhoneSheet(true)}>O'zgartirish</Button>
+                    <Button variant="secondary" size="sm" icon={Phone} onClick={() => setPhoneSheet(true)}>{t("O'zgartirish")}</Button>
                 </div>
             </div>
             {canShop && settings.shop && (
                 <>
                     <div className="h-px bg-line" />
-                    <Input label="Do'kon nomi" value={shop.name} onChange={(e) => setShop({ ...shop, name: e.target.value })} maxLength={255} />
+                    <Input label={t("Do'kon nomi")} value={shop.name} onChange={(e) => setShop({ ...shop, name: e.target.value })} maxLength={255} />
                     {categories.length > 0 && (
                         <div>
-                            <p className="mb-2 text-sm font-semibold">Faoliyat turi</p>
-                            <Chips wrap size="sm" ariaLabel="Faoliyat turi" value={shop.category_id} onChange={(v) => setShop({ ...shop, category_id: v })} options={categories.map((c) => ({ value: c.id, label: c.name }))} />
+                            <p className="mb-2 text-sm font-semibold">{t('Faoliyat turi')}</p>
+                            <Chips wrap size="sm" ariaLabel={t('Faoliyat turi')} value={shop.category_id} onChange={(v) => setShop({ ...shop, category_id: v })} options={categories.map((c) => ({ value: c.id, label: c.name }))} />
                         </div>
                     )}
-                    <Input size="md" label="SMS'dagi nom" value={shop.sms_sender_name} onChange={(e) => setShop({ ...shop, sms_sender_name: e.target.value })} maxLength={40}
-                        hint={`SMS'da: «${shop.sms_sender_name.trim() || shop.name || "Do'kon"}: qarzingiz…»`} />
-                    <Input size="md" label="Manzil" value={shop.address} onChange={(e) => setShop({ ...shop, address: e.target.value })} maxLength={500} />
+                    <Input size="md" label={t("SMS'dagi nom")} value={shop.sms_sender_name} onChange={(e) => setShop({ ...shop, sms_sender_name: e.target.value })} maxLength={40}
+                        hint={t("SMS'da: «{text}»", { text: `${shop.sms_sender_name.trim() || shop.name || t("Do'kon")}: qarzingiz…` })} />
+                    <Input size="md" label={t('Manzil')} value={shop.address} onChange={(e) => setShop({ ...shop, address: e.target.value })} maxLength={500} />
                 </>
             )}
-            <Button size="lg" loading={busy} onClick={save}>O'zgarishlarni saqlash</Button>
+            <Button size="lg" loading={busy} onClick={save}>{t("O'zgarishlarni saqlash")}</Button>
             <PhoneChangeSheet open={phoneSheet} onClose={() => setPhoneSheet(false)} onDone={() => { setPhoneSheet(false); session.refresh() }} />
         </Card>
     )
@@ -200,7 +201,7 @@ function PhoneChangeSheet({ open, onClose, onDone }) {
     useEffect(() => { if (open) { setPhone(''); setSent(false); setCode('') } }, [open])
 
     const request = async () => {
-        if (!isValidPhone(phone)) return toast.error("Raqam to'liq emas")
+        if (!isValidPhone(phone)) return toast.error(t("Raqam to'liq emas"))
         setBusy(true)
         try { await profileApi.phoneRequest(toApiPhone(phone)); setSent(true) } catch (err) { toast.error(errorMessage(err)) } finally { setBusy(false) }
     }
@@ -208,7 +209,7 @@ function PhoneChangeSheet({ open, onClose, onDone }) {
         setBusy(true)
         try {
             await profileApi.phoneVerify(toApiPhone(phone), value)
-            toast.success('Telefon raqam yangilandi')
+            toast.success(t('Telefon raqam yangilandi'))
             onDone()
         } catch (err) {
             toast.error(errorMessage(err))
@@ -218,12 +219,12 @@ function PhoneChangeSheet({ open, onClose, onDone }) {
         }
     }
     return (
-        <Sheet open={open} onClose={onClose} title="Telefonni almashtirish" width={480} onSubmit={() => (sent ? verify() : request())}
-            footer={<Button type="submit" size="lg" block loading={busy}>{sent ? 'Tasdiqlash' : 'Kod yuborish'}</Button>}>
+        <Sheet open={open} onClose={onClose} title={t('Telefonni almashtirish')} width={480} onSubmit={() => (sent ? verify() : request())}
+            footer={<Button type="submit" size="lg" block loading={busy}>{sent ? t('Tasdiqlash') : t('Kod yuborish')}</Button>}>
             {!sent ? (
                 <>
-                    <PhoneInput label="Yangi raqam" value={phone} onChange={setPhone} autoFocus />
-                    <p className="mt-3 text-[13px] text-ink-2">Yangi raqamga kod yuboriladi. Tasdiqlangach boshqa qurilmalardan chiqiladi.</p>
+                    <PhoneInput label={t('Yangi raqam')} value={phone} onChange={setPhone} autoFocus />
+                    <p className="mt-3 text-[13px] text-ink-2">{t('Yangi raqamga kod yuboriladi. Tasdiqlangach boshqa qurilmalardan chiqiladi.')}</p>
                 </>
             ) : <CodeInput value={code} onChange={setCode} onComplete={verify} />}
         </Sheet>
@@ -240,17 +241,17 @@ function AccountSection({ session }) {
             <Card className="p-4 md:p-6">
                 <div className="flex items-start justify-between gap-3">
                     <div>
-                        <div className="text-sm text-ink-2">Joriy balans</div>
+                        <div className="text-sm text-ink-2">{t('Joriy balans')}</div>
                         <div className="text-[28px] font-extrabold">{formatMoney(sub.balance)}</div>
                     </div>
-                    <Link to="/subscription" className="flex items-center gap-1 text-sm font-semibold text-brand-strong">Obuna va to'lovlar <ChevronRight size={16} aria-hidden /></Link>
+                    <Link to="/subscription" className="flex items-center gap-1 text-sm font-semibold text-brand-strong">{t("Obuna va to'lovlar")} <ChevronRight size={16} aria-hidden /></Link>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                    {[['Ta\'rif', planLabel(usage)], ['Muddati', `${formatDate(sub.trial_info?.trial_ends_at)} gacha`],
-                        ['SMS qoldig\'i', formatNumber(usage.sms_remaining)], ['Nasiya qoldig\'i', usage.debt_remaining === null || usage.debt_remaining === undefined ? 'Cheksiz' : formatNumber(usage.debt_remaining)]
+                    {[[t('Ta\'rif'), planLabel(usage)], [t('Muddati'), t('{date} gacha', { date: formatDate(sub.trial_info?.trial_ends_at) })],
+                        [t('SMS qoldig\'i'), formatNumber(usage.sms_remaining)], [t('Nasiya qoldig\'i'), usage.debt_remaining === null || usage.debt_remaining === undefined ? t('Cheksiz') : formatNumber(usage.debt_remaining)]
                     ].map(([k, v]) => <div key={k} className="rounded-xl bg-soft/70 p-3"><div className="text-ink-2">{k}</div><strong>{v}</strong></div>)}
                 </div>
-                <p className="mb-2 mt-5 text-sm font-semibold">Balansni to'ldirish</p>
+                <p className="mb-2 mt-5 text-sm font-semibold">{t("Balansni to'ldirish")}</p>
                 <ProviderButtons onSelect={setProvider} enabled={sub.top_up_providers} />
                 <TopUpSheet open={!!provider} provider={provider} user={session.user} enabled={sub.top_up_providers} onClose={() => setProvider(null)} />
             </Card>
@@ -276,7 +277,7 @@ function RemindersSection({ settings, session }) {
         try {
             await settingsApi.updateNotifications(n)
             session.updateSettings({ notifications: n })
-            toast.success('Saqlandi')
+            toast.success(t('Saqlandi'))
         } catch (err) {
             toast.error(errorMessage(err))
         } finally {
@@ -302,7 +303,7 @@ function RemindersSection({ settings, session }) {
         if (canLinkSelf) {
             try {
                 await telegramApi.linkSelf()
-                toast.success('Telegram ulandi')
+                toast.success(t('Telegram ulandi'))
                 reload()
             } catch (err) {
                 toast.error(errorMessage(err))
@@ -319,7 +320,7 @@ function RemindersSection({ settings, session }) {
             if (!url) throw new Error('no url')
             if (win) win.location.href = url
             else window.location.href = url
-            toast('Botda «Start» ni bosing — do\'kon shu chatga ulanadi')
+            toast(t('Botda «Start» ni bosing — do\'kon shu chatga ulanadi'))
         } catch (err) {
             win?.close()
             toast.error(errorMessage(err))
@@ -330,48 +331,48 @@ function RemindersSection({ settings, session }) {
 
     return (
         <Card className="space-y-4 p-4 md:p-6">
-            {!canEdit && <p className="rounded-xl bg-soft p-3 text-sm text-ink-2">Bu sozlamalarni faqat do'kon egasi o'zgartiradi.</p>}
-            <Toggle disabled={!canEdit} checked={n.sms_on_debt !== false} onChange={(v) => set({ sms_on_debt: v })} label="Nasiya yozilganda mijozga SMS" description="Summa va qaytarish sanasi bilan (nasiya oynasida yoqiq turadi)" />
-            <Toggle disabled={!canEdit} checked={n.sms_on_payment !== false} onChange={(v) => set({ sms_on_payment: v })} label="To'lov qabul qilinganda SMS" description="Qolgan qarz bilan" />
+            {!canEdit && <p className="rounded-xl bg-soft p-3 text-sm text-ink-2">{t("Bu sozlamalarni faqat do'kon egasi o'zgartiradi.")}</p>}
+            <Toggle disabled={!canEdit} checked={n.sms_on_debt !== false} onChange={(v) => set({ sms_on_debt: v })} label={t('Nasiya yozilganda mijozga SMS')} description={t('Summa va qaytarish sanasi bilan (nasiya oynasida yoqiq turadi)')} />
+            <Toggle disabled={!canEdit} checked={n.sms_on_payment !== false} onChange={(v) => set({ sms_on_payment: v })} label={t("To'lov qabul qilinganda SMS")} description={t('Qolgan qarz bilan')} />
             <div className="h-px bg-line" />
-            <Toggle disabled={!canEdit} checked={n.reminder_enabled !== false} onChange={(v) => set({ reminder_enabled: v })} label="Muddat eslatmasi" description="Qaytarish kuni, keyin muddat o'tsa takroriy" />
+            <Toggle disabled={!canEdit} checked={n.reminder_enabled !== false} onChange={(v) => set({ reminder_enabled: v })} label={t('Muddat eslatmasi')} description={t("Qaytarish kuni, keyin muddat o'tsa takroriy")} />
             {n.reminder_enabled !== false && (
                 <div className="grid gap-3 sm:grid-cols-3">
-                    <Select label="Vaqti" disabled={!canEdit} value={n.reminder_time || '09:00'} onChange={(v) => set({ reminder_time: v || '09:00' })} options={TIMES.map((t) => ({ value: t, label: t }))} placeholder="09:00" />
-                    <Select label="Har necha kunda" disabled={!canEdit} value={n.reminder_interval_days ?? 3} onChange={(v) => set({ reminder_interval_days: Number(v) || 3 })}
-                        options={[1, 2, 3, 5, 7, 10, 14, 30].map((d) => ({ value: d, label: `${d} kun` }))} placeholder="3 kun" />
-                    <Select label="Ko'pi bilan" disabled={!canEdit} value={n.reminder_max_count ?? 3} onChange={(v) => set({ reminder_max_count: Number(v) })}
-                        options={[0, 1, 2, 3, 5, 7, 10].map((d) => ({ value: d, label: `${d} marta` }))} placeholder="3 marta" />
+                    <Select label={t('Vaqti')} disabled={!canEdit} value={n.reminder_time || '09:00'} onChange={(v) => set({ reminder_time: v || '09:00' })} options={TIMES.map((t) => ({ value: t, label: t }))} placeholder="09:00" />
+                    <Select label={t('Har necha kunda')} disabled={!canEdit} value={n.reminder_interval_days ?? 3} onChange={(v) => set({ reminder_interval_days: Number(v) || 3 })}
+                        options={[1, 2, 3, 5, 7, 10, 14, 30].map((d) => ({ value: d, label: t('{n} kun', { n: d }) }))} placeholder={t('3 kun')} />
+                    <Select label={t("Ko'pi bilan")} disabled={!canEdit} value={n.reminder_max_count ?? 3} onChange={(v) => set({ reminder_max_count: Number(v) })}
+                        options={[0, 1, 2, 3, 5, 7, 10].map((d) => ({ value: d, label: t('{n} marta', { n: d }) }))} placeholder={t('3 marta')} />
                 </div>
             )}
             <div className="h-px bg-line" />
-            <Toggle disabled={!canEdit} checked={n.digest_enabled !== false} onChange={(v) => set({ digest_enabled: v })} label="Kechki xulosa Telegramga" description="Bugungi nasiya, to'lov, muddati o'tganlar · @daftaron_bot" />
+            <Toggle disabled={!canEdit} checked={n.digest_enabled !== false} onChange={(v) => set({ digest_enabled: v })} label={t('Kechki xulosa Telegramga')} description={t("Bugungi nasiya, to'lov, muddati o'tganlar · @daftaron_bot")} />
             {n.digest_enabled !== false && canEdit && chats.data && list.length === 0 && (
-                <p className="rounded-xl bg-warn-soft p-3 text-sm text-ink">Xulosa kelishi uchun pastda Telegram'ni ulang.</p>
+                <p className="rounded-xl bg-warn-soft p-3 text-sm text-ink">{t("Xulosa kelishi uchun pastda Telegram'ni ulang.")}</p>
             )}
             {n.digest_enabled !== false && (
-                <Select label="Xulosa vaqti" disabled={!canEdit} value={n.digest_time || '20:00'} onChange={(v) => set({ digest_time: v || '20:00' })}
+                <Select label={t('Xulosa vaqti')} disabled={!canEdit} value={n.digest_time || '20:00'} onChange={(v) => set({ digest_time: v || '20:00' })}
                     options={['18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].map((t) => ({ value: t, label: t }))} placeholder="20:00" />
             )}
-            <Toggle disabled={!canEdit} checked={n.owner_inactivity_reminder !== false} onChange={(v) => set({ owner_inactivity_reminder: v })} label="«Bugun nasiya yozilmadi» eslatmasi"
-                description="24 soat nasiya yozilmasa, kunduzi Telegram'ga" />
+            <Toggle disabled={!canEdit} checked={n.owner_inactivity_reminder !== false} onChange={(v) => set({ owner_inactivity_reminder: v })} label={t('«Bugun nasiya yozilmadi» eslatmasi')}
+                description={t("24 soat nasiya yozilmasa, kunduzi Telegram'ga")} />
             {canEdit && (
                 <div className="rounded-ctl bg-soft/70 p-3.5">
-                    <p className="text-sm font-semibold">Ulangan Telegram chatlar</p>
-                    {list.length === 0 && <p className="mt-1 text-sm text-ink-2">Hali ulanmagan.</p>}
+                    <p className="text-sm font-semibold">{t('Ulangan Telegram chatlar')}</p>
+                    {list.length === 0 && <p className="mt-1 text-sm text-ink-2">{t('Hali ulanmagan.')}</p>}
                     <ul className="mt-2 space-y-1.5">
                         {list.map((c) => (
                             <li key={c.id} className="flex items-center justify-between gap-2 text-[15px]">
                                 <span className="flex items-center gap-2"><Send size={16} className="text-brand-strong" aria-hidden />{c.title || c.chat_id}</span>
-                                <Button size="sm" variant="danger-ghost" onClick={() => setUnlink(c)}>Uzish</Button>
+                                <Button size="sm" variant="danger-ghost" onClick={() => setUnlink(c)}>{t('Uzish')}</Button>
                             </li>
                         ))}
                     </ul>
-                    <Button size="sm" variant="secondary" icon={Send} className="mt-3" loading={linking} onClick={linkTelegram}>Telegram'ga ulash</Button>
+                    <Button size="sm" variant="secondary" icon={Send} className="mt-3" loading={linking} onClick={linkTelegram}>{t("Telegram'ga ulash")}</Button>
                 </div>
             )}
-            {canEdit && <Button size="lg" loading={busy} onClick={save}>Saqlash</Button>}
-            <Confirm open={!!unlink} onClose={() => setUnlink(null)} title="Chatni uzish" text="Bu chatga xulosa va eslatmalar boshqa kelmaydi." confirmText="Uzish" danger
+            {canEdit && <Button size="lg" loading={busy} onClick={save}>{t('Saqlash')}</Button>}
+            <Confirm open={!!unlink} onClose={() => setUnlink(null)} title={t('Chatni uzish')} text={t('Bu chatga xulosa va eslatmalar boshqa kelmaydi.')} confirmText={t('Uzish')} danger
                 onConfirm={async () => { try { await telegramApi.removeChat(unlink.id); chats.reload() } catch (err) { toast.error(errorMessage(err)) } setUnlink(null) }} />
         </Card>
     )
@@ -379,19 +380,19 @@ function RemindersSection({ settings, session }) {
 
 function AppearanceSection({ settings, session }) {
     const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
-    const [lang, setLang] = useState(settings.profile?.language || 'uz_latn')
+    const lang = getLang()
     const save = (patch) => profileApi.update({ name: settings.profile?.name, ...patch })
         .then(() => session.updateSettings({ profile: { ...settings.profile, ...patch } }))
         .catch((err) => toast.error(errorMessage(err)))
     return (
         <Card className="space-y-5 p-4 md:p-6">
             <Toggle checked={dark} onChange={(v) => { setDark(v); applyTheme(v ? 'dark' : 'light'); save({ theme: v ? 'dark' : 'light' }) }}
-                label={<span className="flex items-center gap-2"><Moon size={18} aria-hidden />Tungi rejim</span>} />
+                label={<span className="flex items-center gap-2"><Moon size={18} aria-hidden />{t('Tungi rejim')}</span>} />
             <div>
-                <p className="mb-2 text-sm font-semibold">Til</p>
-                <Chips ariaLabel="Til" value={lang} onChange={(v) => { setLang(v); save({ language: v }) }}
-                    options={[{ value: 'uz_latn', label: "O'zbek" }, { value: 'uz_cyrl', label: 'Ўзбек' }, { value: 'ru', label: 'Русский' }]} />
-                {lang !== 'uz_latn' && <p className="mt-2 text-[13px] text-ink-2">Tanlov saqlandi (SMS va bot xabarlari uchun). Ilova matnlari hozircha o'zbek (lotin) tilida.</p>}
+                <p className="mb-2 text-sm font-semibold">{t('Til')}</p>
+                {/* Til darhol almashadi (ilova qayta chiziladi), serverga ham yoziladi — boshqa qurilmada va SMS/botda shu til */}
+                <Chips ariaLabel={t('Til')} value={lang} onChange={(v) => { save({ language: v }); setLang(v) }}
+                    options={LANGS.map(({ value, label }) => ({ value, label }))} />
             </div>
         </Card>
     )
@@ -407,7 +408,7 @@ function SecuritySection({ settings, session }) {
     const [confirmAll, setConfirmAll] = useState(false)
 
     const changeMethod = async (v) => {
-        if (v === 'password' && !profile.has_password) return toast.error("Avval parol o'rnating")
+        if (v === 'password' && !profile.has_password) return toast.error(t("Avval parol o'rnating"))
         try {
             await profileApi.setLoginMethod(v)
             setMethod(v)
@@ -419,13 +420,13 @@ function SecuritySection({ settings, session }) {
 
     const savePassword = async () => {
         const problem = passwordProblem(pw.next)
-        if (profile.has_password && !pw.current) return setPwError('Joriy parolni kiriting')
+        if (profile.has_password && !pw.current) return setPwError(t('Joriy parolni kiriting'))
         if (problem) return setPwError(problem)
-        if (pw.next !== pw.confirm) return setPwError('Parollar mos emas')
+        if (pw.next !== pw.confirm) return setPwError(t('Parollar mos emas'))
         setBusy(true)
         try {
             await profileApi.updatePassword({ current_password: pw.current || undefined, password: pw.next, password_confirmation: pw.confirm })
-            toast.success('Parol saqlandi')
+            toast.success(t('Parol saqlandi'))
             setPw({ current: '', next: '', confirm: '' })
             session.updateSettings({ profile: { ...profile, has_password: true } })
         } catch (err) {
@@ -439,8 +440,8 @@ function SecuritySection({ settings, session }) {
     return (
         <div className="space-y-4">
             <Card className="p-4 md:p-6">
-                <p className="mb-3 section-label">Kirish usuli</p>
-                {[['otp', 'Kod bilan (tavsiya)', 'Parol eslab qolish shart emas'], ['password', 'Parol', 'Telefon raqam + parol']].map(([v, l, d]) => (
+                <p className="mb-3 section-label">{t('Kirish usuli')}</p>
+                {[['otp', t('Kod bilan (tavsiya)'), t('Parol eslab qolish shart emas')], ['password', t('Parol'), t('Telefon raqam + parol')]].map(([v, l, d]) => (
                     <label key={v} className="mb-2 flex cursor-pointer items-start gap-3 rounded-xl border-[1.5px] border-line p-3">
                         <input type="radio" name="login" checked={method === v} onChange={() => changeMethod(v)} className="mt-1 h-5 w-5 accent-[rgb(var(--brand))]" />
                         <span className="text-[15px]"><strong>{l}</strong><br /><span className="text-[13px] text-ink-2">{d}</span></span>
@@ -448,14 +449,14 @@ function SecuritySection({ settings, session }) {
                 ))}
             </Card>
             <Card className="space-y-3 p-4 md:p-6">
-                <p className="section-label">{profile.has_password ? "Parolni o'zgartirish" : "Parol o'rnatish"}</p>
-                {profile.has_password && <Input size="md" type="password" autoComplete="current-password" label="Joriy parol" value={pw.current} onChange={(e) => { setPw({ ...pw, current: e.target.value }); setPwError('') }} />}
-                <Input size="md" type="password" autoComplete="new-password" label="Yangi parol" value={pw.next} onChange={(e) => { setPw({ ...pw, next: e.target.value }); setPwError('') }} hint="Kamida 8 belgi · harf va raqam" />
-                <Input size="md" type="password" autoComplete="new-password" label="Yangi parolni takrorlang" value={pw.confirm} onChange={(e) => { setPw({ ...pw, confirm: e.target.value }); setPwError('') }} error={pwError} />
-                <Button loading={busy} onClick={savePassword}>Parolni saqlash</Button>
+                <p className="section-label">{profile.has_password ? t("Parolni o'zgartirish") : t("Parol o'rnatish")}</p>
+                {profile.has_password && <Input size="md" type="password" autoComplete="current-password" label={t('Joriy parol')} value={pw.current} onChange={(e) => { setPw({ ...pw, current: e.target.value }); setPwError('') }} />}
+                <Input size="md" type="password" autoComplete="new-password" label={t('Yangi parol')} value={pw.next} onChange={(e) => { setPw({ ...pw, next: e.target.value }); setPwError('') }} hint={t('Kamida 8 belgi · harf va raqam')} />
+                <Input size="md" type="password" autoComplete="new-password" label={t('Yangi parolni takrorlang')} value={pw.confirm} onChange={(e) => { setPw({ ...pw, confirm: e.target.value }); setPwError('') }} error={pwError} />
+                <Button loading={busy} onClick={savePassword}>{t('Parolni saqlash')}</Button>
             </Card>
             <Card className="p-4 md:p-6">
-                <p className="mb-2 section-label">Faol qurilmalar</p>
+                <p className="mb-2 section-label">{t('Faol qurilmalar')}</p>
                 {devices.loading && !devices.data ? <Skeleton className="h-16" /> : (
                     <ul className="divide-y divide-line">
                         {list.map((d) => (
@@ -463,21 +464,21 @@ function SecuritySection({ settings, session }) {
                                 <Smartphone size={20} className="shrink-0 text-ink-2" aria-hidden />
                                 <span className="min-w-0 flex-1 text-[15px] leading-snug">
                                     <strong>{d.device || d.name}</strong>
-                                    <span className="block text-[13px] text-ink-3">{d.is_current ? 'Shu qurilma' : [d.city, d.ip_address, formatDateTime(d.last_active_at)].filter(Boolean).join(' · ')}</span>
+                                    <span className="block text-[13px] text-ink-3">{d.is_current ? t('Shu qurilma') : [d.city, d.ip_address, formatDateTime(d.last_active_at)].filter(Boolean).join(' · ')}</span>
                                 </span>
-                                {d.is_current ? <Pill tone="success">Shu</Pill> : (
+                                {d.is_current ? <Pill tone="success">{t('Shu')}</Pill> : (
                                     <Button size="sm" variant="secondary" onClick={async () => {
                                         try { await authApi.revokeDevice(d.id); devices.reload() } catch (err) { toast.error(errorMessage(err)) }
-                                    }}>Chiqarish</Button>
+                                    }}>{t('Chiqarish')}</Button>
                                 )}
                             </li>
                         ))}
                     </ul>
                 )}
-                {list.length > 1 && <Button variant="danger-ghost" className="mt-2" onClick={() => setConfirmAll(true)}>Boshqa barcha qurilmalardan chiqish</Button>}
+                {list.length > 1 && <Button variant="danger-ghost" className="mt-2" onClick={() => setConfirmAll(true)}>{t('Boshqa barcha qurilmalardan chiqish')}</Button>}
             </Card>
-            <Confirm open={confirmAll} onClose={() => setConfirmAll(false)} title="Barcha qurilmalardan chiqish" text="Shu qurilmadan boshqa hamma joyda qayta kirish kerak bo'ladi." confirmText="Chiqish" danger
-                onConfirm={async () => { try { await authApi.logoutAll(); devices.reload(); toast.success('Chiqarildi') } catch (err) { toast.error(errorMessage(err)) } setConfirmAll(false) }} />
+            <Confirm open={confirmAll} onClose={() => setConfirmAll(false)} title={t('Barcha qurilmalardan chiqish')} text={t("Shu qurilmadan boshqa hamma joyda qayta kirish kerak bo'ladi.")} confirmText={t('Chiqish')} danger
+                onConfirm={async () => { try { await authApi.logoutAll(); devices.reload(); toast.success(t('Chiqarildi')) } catch (err) { toast.error(errorMessage(err)) } setConfirmAll(false) }} />
         </div>
     )
 }
@@ -486,11 +487,11 @@ function DocumentsSection({ settings }) {
     const support = settings.support || {}
     const legal = settings.legal || {}
     const links = [
-        ['/guides', BookOpen, "Foydalanish qo'llanmasi", 'Hujjat, video, havola', true],
-        ['/support', Bot, 'AI yordamchi', 'Savolga darhol javob', true],
-        [safeUrl(support.telegram_support_url), Send, "Telegram'dan yozish", 'Qo\'llab-quvvatlash'],
-        [safeUrl(support.telegram_group_url), MessageCircle, 'Muhokama guruhi', "Do'kondorlar jamoasi"],
-        [support.phone && `tel:${support.phone}`, Phone, "Qo'ng'iroq", support.phone]
+        ['/guides', BookOpen, t("Foydalanish qo'llanmasi"), t('Hujjat, video, havola'), true],
+        ['/support', Bot, t('AI yordamchi'), t('Savolga darhol javob'), true],
+        [safeUrl(support.telegram_support_url), Send, t("Telegram'dan yozish"), t('Qo\'llab-quvvatlash')],
+        [safeUrl(support.telegram_group_url), MessageCircle, t('Muhokama guruhi'), t("Do'kondorlar jamoasi")],
+        [support.phone && `tel:${support.phone}`, Phone, t("Qo'ng'iroq"), support.phone]
     ].filter(([href]) => href)
     return (
         <div className="space-y-4">
@@ -506,14 +507,14 @@ function DocumentsSection({ settings }) {
                     ))}
             </List>
             <List>
-                <Row to="/legal/offer" left={<FileText size={20} aria-hidden />} title="Ommaviy oferta" subtitle={legal.offer?.version && `Versiya ${legal.offer.version}`} chevron />
-                <Row to="/legal/privacy" left={<FileText size={20} aria-hidden />} title="Maxfiylik siyosati" subtitle={legal.privacy?.version && `Versiya ${legal.privacy.version}`} chevron />
-                <Row to="/delete-account" left={<Trash2 size={20} className="text-debt" aria-hidden />} title="Akkauntni o'chirish" chevron />
+                <Row to="/legal/offer" left={<FileText size={20} aria-hidden />} title={t('Ommaviy oferta')} subtitle={legal.offer?.version && `${t('Versiya')} ${legal.offer.version}`} chevron />
+                <Row to="/legal/privacy" left={<FileText size={20} aria-hidden />} title={t('Maxfiylik siyosati')} subtitle={legal.privacy?.version && `${t('Versiya')} ${legal.privacy.version}`} chevron />
+                <Row to="/delete-account" left={<Trash2 size={20} className="text-debt" aria-hidden />} title={t("Akkauntni o'chirish")} chevron />
             </List>
             <AppCard />
             <Card className="p-4 text-sm leading-relaxed text-ink-2">
-                <p className="mb-1 font-bold text-ink">Maxfiylik — qisqacha</p>
-                Mijozlaringiz ma'lumoti faqat sizga ko'rinadi. Raqamlar faqat SMS eslatma uchun ishlatiladi. Obuna tugasa ham ma'lumotlar o'chmaydi.
+                <p className="mb-1 font-bold text-ink">{t('Maxfiylik — qisqacha')}</p>
+                {t("Mijozlaringiz ma'lumoti faqat sizga ko'rinadi. Raqamlar faqat SMS eslatma uchun ishlatiladi. Obuna tugasa ham ma'lumotlar o'chmaydi.")}
             </Card>
         </div>
     )
@@ -524,8 +525,8 @@ function AppCard() {
     if (inAndroidApp()) return null
     return (
         <Card className="p-4">
-            <p className="font-bold">Mobil ilova</p>
-            <p className="mb-3 mt-0.5 text-[13px] text-ink-2">Android uchun Google Play'da. iPhone ilovasi tez orada.</p>
+            <p className="font-bold">{t('Mobil ilova')}</p>
+            <p className="mb-3 mt-0.5 text-[13px] text-ink-2">{t("Android uchun Google Play'da. iPhone ilovasi tez orada.")}</p>
             <AppBadges />
         </Card>
     )

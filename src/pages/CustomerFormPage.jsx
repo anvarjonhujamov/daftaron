@@ -12,6 +12,7 @@ import { Card, PageHeader, Skeleton } from '../ui/display'
 import { Button, Input, MoneyInput, PhoneInput, TextArea, cx } from '../ui/controls'
 import { Confirm } from '../ui/Sheet'
 import { isValidPhone, phoneDigits, toApiPhone } from '../utils/phone'
+import { t } from '../i18n'
 
 const EMPTY = { name: '', phone: '', address: '', note: '', credit_limit: 0, region_id: null, district_id: null, street_id: null }
 
@@ -49,8 +50,8 @@ export default function CustomerFormPage() {
 
     const save = async (andDebt) => {
         const errs = {}
-        if (!form.name.trim()) errs.name = 'Ismni kiriting'
-        if (!isValidPhone(form.phone)) errs.phone = "Raqam to'liq emas: 9 ta raqam"
+        if (!form.name.trim()) errs.name = t('Ismni kiriting')
+        if (!isValidPhone(form.phone)) errs.phone = t("Raqam to'liq emas: 9 ta raqam")
         setErrors(errs)
         if (Object.keys(errs).length) return
         setSaving(andDebt ? 'debt' : 'save')
@@ -68,7 +69,7 @@ export default function CustomerFormPage() {
             const res = editing ? await customersApi.update(id, payload) : await customersApi.create(payload)
             const c = res.customer || res.data || res
             emitChange('customers')
-            toast.success(editing ? 'Saqlandi' : "Mijoz qo'shildi")
+            toast.success(editing ? t('Saqlandi') : t("Mijoz qo'shildi"))
             navigate(`/customers/${c.id || id}`, { replace: true })
             if (andDebt) actions.openDebt({ customer: c })
         } catch (err) {
@@ -85,7 +86,7 @@ export default function CustomerFormPage() {
         try {
             await customersApi.remove(id)
             emitChange('customers')
-            toast.success("Mijoz o'chirildi")
+            toast.success(t("Mijoz o'chirildi"))
             navigate('/customers', { replace: true })
         } catch (err) {
             toast.error(errorMessage(err))
@@ -95,48 +96,48 @@ export default function CustomerFormPage() {
 
     return (
         <div className="page md:max-w-2xl">
-            <PageHeader back title={editing ? 'Mijozni tahrirlash' : 'Yangi mijoz'} />
+            <PageHeader back title={editing ? t('Mijozni tahrirlash') : t('Yangi mijoz')} />
             {loading ? <Skeleton className="h-64" /> : (
                 <form noValidate onSubmit={(e) => { e.preventDefault(); save(false) }}>
                     <Card className="space-y-4 p-4 md:p-6">
-                        <Input label="Ismi" required value={form.name} onChange={(e) => set({ name: e.target.value })} error={errors.name} autoFocus={!editing} maxLength={255} />
-                        <PhoneInput label="Telefon" required value={form.phone} onChange={(v) => set({ phone: v })} error={errors.phone} />
+                        <Input label={t('Ismi')} required value={form.name} onChange={(e) => set({ name: e.target.value })} error={errors.name} autoFocus={!editing} maxLength={255} />
+                        <PhoneInput label={t('Telefon')} required value={form.phone} onChange={(v) => set({ phone: v })} error={errors.phone} />
                         {existing && (
                             <div role="alert" className="rounded-ctl bg-warn-soft p-3.5 text-[15px]">
-                                Bu raqam bilan mijoz bor: <strong>{existing.name}</strong>.{' '}
-                                <Link to={`/customers/${existing.id}`} className="font-bold text-brand-strong">Uni ochish</Link>
+                                {t('Bu raqam bilan mijoz bor:')} <strong>{existing.name}</strong>.{' '}
+                                <Link to={`/customers/${existing.id}`} className="font-bold text-brand-strong">{t('Uni ochish')}</Link>
                             </div>
                         )}
                         <button type="button" aria-expanded={more} onClick={() => setMore(!more)}
                             className="flex h-[52px] w-full items-center justify-between rounded-ctl bg-soft px-4 text-left text-[15px] font-semibold">
-                            <span>Batafsil <span className="font-normal text-ink-2">— manzil, limit, izoh (ixtiyoriy)</span></span>
+                            <span>{t('Batafsil')} <span className="font-normal text-ink-2">{t('— manzil, limit, izoh (ixtiyoriy)')}</span></span>
                             <ChevronDown size={20} className={cx('text-ink-2 transition-transform', more && 'rotate-180')} aria-hidden />
                         </button>
                         {more && (
                             <div className="space-y-4">
                                 <LocationFields value={form} onChange={(loc) => set(loc)} errors={errors} />
-                                <Input size="md" label="To'liq manzil" placeholder="Masalan: Yangi bozor, 3-qator" value={form.address} onChange={(e) => set({ address: e.target.value })} error={errors.address_text} maxLength={500} />
-                                <MoneyInput label="Nasiya limiti" placeholder="Cheksiz" value={form.credit_limit} onChange={(v) => set({ credit_limit: v })}
-                                    hint="Bo'sh qoldirilsa — cheksiz. Limitdan oshganda ogohlantiriladi." error={errors.credit_limit} />
-                                <TextArea label="Izoh" value={form.note} onChange={(e) => set({ note: e.target.value })} placeholder="Masalan: har juma to'laydi" maxLength={1000} rows={2} />
+                                <Input size="md" label={t("To'liq manzil")} placeholder={t('Masalan: Yangi bozor, 3-qator')} value={form.address} onChange={(e) => set({ address: e.target.value })} error={errors.address_text} maxLength={500} />
+                                <MoneyInput label={t('Nasiya limiti')} placeholder={t('Cheksiz')} value={form.credit_limit} onChange={(v) => set({ credit_limit: v })}
+                                    hint={t("Bo'sh qoldirilsa — cheksiz. Limitdan oshganda ogohlantiriladi.")} error={errors.credit_limit} />
+                                <TextArea label={t('Izoh')} value={form.note} onChange={(e) => set({ note: e.target.value })} placeholder={t("Masalan: har juma to'laydi")} maxLength={1000} rows={2} />
                             </div>
                         )}
                     </Card>
                     <div className="mt-4 flex flex-col gap-2.5 md:flex-row-reverse">
                         {!editing && session.can('debt.create') && (
-                            <Button size="lg" className="md:flex-1" loading={saving === 'debt'} disabled={!!saving} onClick={() => save(true)}>Saqlash va nasiya yozish</Button>
+                            <Button size="lg" className="md:flex-1" loading={saving === 'debt'} disabled={!!saving} onClick={() => save(true)}>{t('Saqlash va nasiya yozish')}</Button>
                         )}
                         <Button type="submit" size="lg" variant={editing ? 'primary' : 'secondary'} className="md:flex-1" loading={saving === 'save'} disabled={!!saving}>
-                            {editing ? 'Saqlash' : 'Faqat saqlash'}
+                            {editing ? t('Saqlash') : t('Faqat saqlash')}
                         </Button>
                     </div>
                     {editing && session.can('customer.edit') && (
-                        <Button variant="danger-ghost" icon={Trash2} className="mt-6" onClick={() => setConfirmDelete(true)}>Mijozni o'chirish</Button>
+                        <Button variant="danger-ghost" icon={Trash2} className="mt-6" onClick={() => setConfirmDelete(true)}>{t("Mijozni o'chirish")}</Button>
                     )}
                 </form>
             )}
-            <Confirm open={confirmDelete} onClose={() => setConfirmDelete(false)} onConfirm={remove} danger title="Mijozni o'chirish"
-                text="Mijoz va uning barcha nasiya hamda to'lovlari o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi." confirmText="O'chirish" />
+            <Confirm open={confirmDelete} onClose={() => setConfirmDelete(false)} onConfirm={remove} danger title={t("Mijozni o'chirish")}
+                text={t("Mijoz va uning barcha nasiya hamda to'lovlari o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi.")} confirmText={t("O'chirish")} />
         </div>
     )
 }

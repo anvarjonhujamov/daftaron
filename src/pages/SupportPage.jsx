@@ -8,8 +8,9 @@ import { safeUrl } from '../lib/sanitize'
 import { Card, PageHeader } from '../ui/display'
 import { Button, cx } from '../ui/controls'
 import { Confirm } from '../ui/Sheet'
+import { t, tk } from '../i18n'
 
-const QUICK = ['Nasiya qanday yoziladi?', 'SMS ketmayapti', "Qaysi mijozlar eng uzoq to'lamayapti?", 'Bu oy qancha nasiya berdim?']
+const QUICK = [tk('Nasiya qanday yoziladi?'), tk('SMS ketmayapti'), tk("Qaysi mijozlar eng uzoq to'lamayapti?"), tk('Bu oy qancha nasiya berdim?')]
 
 // AI yordamchi (backend tarixni o'zi saqlaydi) va aloqa havolalari
 export default function SupportPage() {
@@ -45,15 +46,15 @@ export default function SupportPage() {
     }
 
     const contacts = [
-        [safeUrl(support.telegram_support_url), Send, 'Operator (Telegram)'],
-        [safeUrl(support.telegram_group_url), MessageCircle, 'Muhokama guruhi'],
-        [support.phone && `tel:${support.phone}`, Phone, "Qo'ng'iroq"]
+        [safeUrl(support.telegram_support_url), Send, t('Operator (Telegram)')],
+        [safeUrl(support.telegram_group_url), MessageCircle, t('Muhokama guruhi')],
+        [support.phone && `tel:${support.phone}`, Phone, t("Qo'ng'iroq")]
     ].filter(([href]) => href)
 
     return (
         <div className="page md:max-w-3xl">
-            <PageHeader back title="Yordam" subtitle="AI yordamchi · o'zbek tilida"
-                actions={messages.length > 0 && <Button size="sm" variant="ghost" icon={Eraser} onClick={() => setClearing(true)}>Tozalash</Button>} />
+            <PageHeader back title={t('Yordam')} subtitle={t("AI yordamchi · o'zbek tilida")}
+                actions={messages.length > 0 && <Button size="sm" variant="ghost" icon={Eraser} onClick={() => setClearing(true)}>{t('Tozalash')}</Button>} />
             {contacts.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-2">
                     {contacts.map(([href, Icon, label]) => (
@@ -69,8 +70,8 @@ export default function SupportPage() {
                     {messages.length === 0 && (
                         <div className="py-6 text-center">
                             <Bot size={36} className="mx-auto text-brand-strong" aria-hidden />
-                            <p className="mt-2 font-bold">Savolingizni yozing</p>
-                            <p className="text-sm text-ink-2">Ilovadan foydalanish, SMS, obuna va hisobotlar haqida.</p>
+                            <p className="mt-2 font-bold">{t('Savolingizni yozing')}</p>
+                            <p className="text-sm text-ink-2">{t('Ilovadan foydalanish, SMS, obuna va hisobotlar haqida.')}</p>
                         </div>
                     )}
                     {messages.map((m) => (
@@ -83,15 +84,15 @@ export default function SupportPage() {
                     <div ref={endRef} />
                 </div>
                 <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto">
-                    {QUICK.map((qq) => <Button key={qq} size="sm" variant="soft" onClick={() => send(qq)}>{qq}</Button>)}
+                    {QUICK.map((qq) => <Button key={qq} size="sm" variant="soft" onClick={() => send(t(qq))}>{t(qq)}</Button>)}
                 </div>
                 <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); send() }}>
-                    <input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder="Savolingizni yozing" aria-label="Savol"
+                    <input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder={t('Savolingizni yozing')} aria-label={t('Savol')}
                         className="h-12 min-w-0 flex-1 rounded-ctl border-[1.5px] border-line-2 bg-card px-4 text-ink outline-none focus:border-brand" />
-                    <Button type="submit" aria-label="Yuborish" className="h-12 w-12 px-0" disabled={!text.trim()} loading={sending}>{!sending && <SendHorizontal size={20} aria-hidden />}</Button>
+                    <Button type="submit" aria-label={t('Yuborish')} className="h-12 w-12 px-0" disabled={!text.trim()} loading={sending}>{!sending && <SendHorizontal size={20} aria-hidden />}</Button>
                 </form>
             </Card>
-            <Confirm open={clearing} onClose={() => setClearing(false)} title="Chatni tozalash" text="Yordamchi bilan yozishmalar o'chiriladi." confirmText="Tozalash"
+            <Confirm open={clearing} onClose={() => setClearing(false)} title={t('Chatni tozalash')} text={t("Yordamchi bilan yozishmalar o'chiriladi.")} confirmText={t('Tozalash')}
                 onConfirm={async () => { try { await supportApi.clear(); setMessages([]) } catch (err) { toast.error(errorMessage(err)) } setClearing(false) }} />
         </div>
     )

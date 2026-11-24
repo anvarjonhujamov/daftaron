@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from 'lucide-react'
 import { cx, Button } from './controls'
 import { avatarClass, formatNumber, initials } from '../utils/format'
+import { t } from '../i18n'
 
 export function Card({ as: Tag = 'div', className, children, ...rest }) {
     return <Tag className={cx('card', className)} {...rest}>{children}</Tag>
@@ -14,7 +15,7 @@ export function Money({ value, tone = 'ink', sign, suffix, className }) {
     const n = formatNumber(value)
     return (
         <span className={cx('whitespace-nowrap font-extrabold tabular-nums', TONES[tone], className)}>
-            {n !== '—' && sign}{n}{suffix && n !== '—' && <span className="ml-1 text-[0.55em] font-semibold text-ink-2">so'm</span>}
+            {n !== '—' && sign}{n}{suffix && n !== '—' && <span className="ml-1 text-[0.55em] font-semibold text-ink-2">{t("so'm")}</span>}
         </span>
     )
 }
@@ -84,7 +85,7 @@ export function PageHeader({ title, subtitle, back, actions, className }) {
             {back && (
                 <button
                     type="button"
-                    aria-label="Orqaga"
+                    aria-label={t('Orqaga')}
                     onClick={() => (typeof back === 'string' ? navigate(back) : window.history.length > 1 ? navigate(-1) : navigate('/'))}
                     className="-ml-2.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-ink hover:bg-soft"
                 >
@@ -148,11 +149,11 @@ export function EmptyState({ icon: Icon, title, text, action, className }) {
     )
 }
 
-export function ErrorState({ text = "Ma'lumotni yuklab bo'lmadi.", onRetry, className }) {
+export function ErrorState({ text = t("Ma'lumotni yuklab bo'lmadi."), onRetry, className }) {
     return (
         <div role="alert" className={cx('flex flex-col items-center px-6 py-10 text-center', className)}>
             <p className="text-[15px] font-semibold text-ink">{text}</p>
-            {onRetry && <Button variant="secondary" icon={RefreshCw} className="mt-4" onClick={onRetry}>Qayta urinish</Button>}
+            {onRetry && <Button variant="secondary" icon={RefreshCw} className="mt-4" onClick={onRetry}>{t('Qayta urinish')}</Button>}
         </div>
     )
 }
@@ -163,7 +164,7 @@ export function Skeleton({ className }) {
 
 export function ListSkeleton({ rows = 5 }) {
     return (
-        <Card className="divide-y divide-line" aria-busy="true" aria-label="Yuklanmoqda">
+        <Card className="divide-y divide-line" aria-busy="true" aria-label={t('Yuklanmoqda')}>
             {Array.from({ length: rows }, (_, i) => (
                 <div key={i} className="flex items-center gap-3 px-3.5 py-3">
                     <Skeleton className="h-10 w-10 rounded-full" />
@@ -178,7 +179,7 @@ export function ListSkeleton({ rows = 5 }) {
 export function OfflineBanner() {
     return (
         <div role="status" className="flex items-center justify-center gap-2 bg-warn-soft px-4 py-2 text-sm font-semibold text-warn">
-            <WifiOff size={16} aria-hidden /> Internet yo'q — oxirgi saqlangan ma'lumot ko'rsatilmoqda
+            <WifiOff size={16} aria-hidden /> {t("Internet yo'q — oxirgi saqlangan ma'lumot ko'rsatilmoqda")}
         </div>
     )
 }

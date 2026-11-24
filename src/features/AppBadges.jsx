@@ -1,4 +1,5 @@
 import { cx } from '../ui/controls'
+import { t } from '../i18n'
 
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=co.median.android.abeaayb'
 
@@ -19,18 +20,18 @@ export default function AppBadges({ className }) {
     const badge = 'flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-line-2 bg-black px-3 text-white'
     return (
         <div className={cx('flex gap-2.5', className)}>
-            <a href={PLAY_URL} target="_blank" rel="noopener noreferrer" aria-label="Google Play'dan yuklab olish" className={cx(badge, 'transition-opacity hover:opacity-85')}>
+            <a href={PLAY_URL} target="_blank" rel="noopener noreferrer" aria-label={t("Google Play'dan yuklab olish")} className={cx(badge, 'transition-opacity hover:opacity-85')}>
                 <img src="/icons/google-play.svg" alt="" className="h-6 w-6 shrink-0" />
                 <span className="min-w-0 leading-tight">
-                    <span className="block text-[10px] uppercase tracking-wide opacity-80">Yuklab oling</span>
-                    <span className="block truncate text-[16px] font-semibold">Google Play</span>
+                    <span className="block text-[10px] uppercase tracking-wide opacity-80">{t('Yuklab oling')}</span>
+                    <span className="block truncate text-[16px] font-semibold">{t('Google Play')}</span>
                 </span>
             </a>
-            <div aria-label="App Store — tez orada" className={cx(badge, 'cursor-default opacity-50')}>
+            <div aria-label={t('App Store — tez orada')} className={cx(badge, 'cursor-default opacity-50')}>
                 <span className="shrink-0"><AppleLogo /></span>
                 <span className="min-w-0 leading-tight">
-                    <span className="block text-[10px] uppercase tracking-wide opacity-80">Tez orada</span>
-                    <span className="block truncate text-[16px] font-semibold">App Store</span>
+                    <span className="block text-[10px] uppercase tracking-wide opacity-80">{t('Tez orada')}</span>
+                    <span className="block truncate text-[16px] font-semibold">{t('App Store')}</span>
                 </span>
             </div>
         </div>

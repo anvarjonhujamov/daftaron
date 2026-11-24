@@ -14,6 +14,7 @@ import { Confirm } from '../ui/Sheet'
 import { addDaysYmd, dueInfo, formatDate, todayYmd, toYmd } from '../utils/date'
 import { formatNumber } from '../utils/format'
 import { formatPhone } from '../utils/phone'
+import { t } from '../i18n'
 
 const DUE_SOON_DAYS = 3
 
@@ -67,7 +68,7 @@ export default function HomePage() {
     const sendReminder = async () => {
         try {
             const res = await overdueApi.bulkSms([remind.customer_id], false)
-            toast.success(res.sent ? 'Eslatma SMS yuborildi' : 'SMS yuborilmadi')
+            toast.success(res.sent ? t('Eslatma SMS yuborildi') : t('SMS yuborilmadi'))
             reload()
         } catch (err) {
             toast.error(errorMessage(err))
@@ -87,12 +88,12 @@ export default function HomePage() {
             <div className="mb-2 flex items-center justify-between md:hidden">
                 <Link to="/shops" className="flex h-11 min-w-0 items-center gap-2 text-lg font-extrabold">
                     <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
-                    <span className="truncate">{session.tenant?.name || 'DaftarOn'}</span>
+                    <span className="truncate">{session.tenant?.name || t('DaftarOn')}</span>
                     <ChevronDown size={18} className="shrink-0 text-ink-2" aria-hidden />
                 </Link>
                 <div className="flex gap-1">
-                    <Link to="/customers" aria-label="Qidirish" className="flex h-11 w-11 items-center justify-center rounded-xl bg-card"><Search size={20} aria-hidden /></Link>
-                    <Link to="/notifications" aria-label="Bildirishnomalar" className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-card">
+                    <Link to="/customers" aria-label={t('Qidirish')} className="flex h-11 w-11 items-center justify-center rounded-xl bg-card"><Search size={20} aria-hidden /></Link>
+                    <Link to="/notifications" aria-label={t('Bildirishnomalar')} className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-card">
                         <Bell size={20} aria-hidden />
                         <CountBadge count={session.unread} className="absolute -right-1 -top-1" />
                     </Link>
@@ -101,58 +102,58 @@ export default function HomePage() {
 
             {/* Kompyuter sarlavhasi */}
             <div className="mb-6 hidden items-center gap-3 md:flex">
-                <h1 className="flex-1 text-[26px] font-extrabold tracking-tight">Bugun, {formatDate(today)}</h1>
+                <h1 className="flex-1 text-[26px] font-extrabold tracking-tight">{t('Bugun, {date}', { date: formatDate(today) })}</h1>
                 <form className="w-full max-w-sm" onSubmit={(e) => { e.preventDefault(); navigate(`/customers?q=${encodeURIComponent(query)}`) }}>
                     <label className="flex h-11 items-center gap-2 rounded-xl border-[1.5px] border-line-2 bg-card px-3 focus-within:border-brand">
                         <Search size={18} className="text-ink-3" aria-hidden />
-                        <input data-search value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Mijozni qidirish — ism yoki telefon" aria-label="Mijozni qidirish"
+                        <input data-search value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Mijozni qidirish — ism yoki telefon')} aria-label={t('Mijozni qidirish')}
                             className="w-full bg-transparent text-[15px] outline-none placeholder:text-ink-3" />
                         <kbd className="rounded border border-line px-1.5 text-xs text-ink-3">/</kbd>
                     </label>
                 </form>
-                <Button variant="dark" icon={Plus} onClick={() => actions.openDebt()}>Nasiya <kbd className="ml-1 rounded bg-white/20 px-1.5 text-xs">N</kbd></Button>
-                <Button variant="pay" icon={Check} onClick={() => actions.openPayment()}>To'lov <kbd className="ml-1 rounded bg-white/20 px-1.5 text-xs">T</kbd></Button>
+                <Button variant="dark" icon={Plus} onClick={() => actions.openDebt()}>{t('Nasiya')} <kbd className="ml-1 rounded bg-white/20 px-1.5 text-xs">N</kbd></Button>
+                <Button variant="pay" icon={Check} onClick={() => actions.openPayment()}>{t("To'lov")} <kbd className="ml-1 rounded bg-white/20 px-1.5 text-xs">T</kbd></Button>
             </div>
 
             {/* Telefon: asosiy karta */}
             <div className="rounded-[20px] bg-brand p-5 text-white md:hidden">
-                <div className="text-sm font-semibold opacity-90">Sizga qarzdorlar</div>
+                <div className="text-sm font-semibold opacity-90">{t('Sizga qarzdorlar')}</div>
                 <div className="mt-1 text-[34px] font-extrabold leading-tight tracking-tight">
-                    {stats.data ? formatNumber(s.remaining_debt) : '—'} <span className="text-lg font-semibold">so'm</span>
+                    {stats.data ? formatNumber(s.remaining_debt) : '—'} <span className="text-lg font-semibold">{t("so'm")}</span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                    <span><strong>{formatNumber(s.total_customers)}</strong> mijoz</span>
+                    <span>{t('{n} mijoz', { n: <strong>{formatNumber(s.total_customers)}</strong>, count: s.total_customers })}</span>
                     {summary?.count > 0 && (
                         <Link to="/overdue" className="underline-offset-2 hover:underline">
-                            Muddati o'tgan: <strong>{summary.count} ta · {formatNumber(summary.total_amount)}</strong>
+                            {t("Muddati o'tgan:")} <strong>{t('{n} ta', { n: summary.count })} · {formatNumber(summary.total_amount)}</strong>
                         </Link>
                     )}
                 </div>
             </div>
             <div className="mt-3.5 grid grid-cols-2 gap-2.5 md:hidden">
-                <Button variant="dark" size="lg" icon={Plus} onClick={() => actions.openDebt()}>Nasiya</Button>
-                <Button variant="secondary" size="lg" icon={Check} className="[&>svg]:text-pay" onClick={() => actions.openPayment()}>To'lov olish</Button>
+                <Button variant="dark" size="lg" icon={Plus} onClick={() => actions.openDebt()}>{t('Nasiya')}</Button>
+                <Button variant="secondary" size="lg" icon={Check} className="[&>svg]:text-pay" onClick={() => actions.openPayment()}>{t("To'lov olish")}</Button>
             </div>
 
             {/* KPI: telefonda «Bugun» 3 ustun, kompyuterda 4 karta */}
-            <SectionTitle className="md:hidden">Bugun</SectionTitle>
+            <SectionTitle className="md:hidden">{t('Bugun')}</SectionTitle>
             <div className="grid grid-cols-3 gap-2 md:grid-cols-4 md:gap-4">
-                <KpiCard className="hidden md:block" label="Sizga qarzdorlar" value={s.remaining_debt} hint={`${formatNumber(s.total_customers)} mijoz`} />
-                <KpiCard className="hidden md:block" label="Muddati o'tgan" value={summary?.total_amount ?? null} tone="debt"
+                <KpiCard className="hidden md:block" label={t('Sizga qarzdorlar')} value={s.remaining_debt} hint={t('{n} mijoz', { n: formatNumber(s.total_customers) })} />
+                <KpiCard className="hidden md:block" label={t("Muddati o'tgan")} value={summary?.total_amount ?? null} tone="debt"
                     hint={summary?.count > 0
-                        ? <>{formatNumber(summary.count)} mijoz · <Link to="/overdue" className="font-semibold text-brand-strong">Hammasini eslatish</Link></>
-                        : 'Qaytarish sanasi o\'tganlar yo\'q'} />
-                <KpiCard label={<><span className="md:hidden">Nasiya</span><span className="hidden md:inline">Bugun nasiya</span></>} value={s.today_debts} tone="debt" icon={ArrowDown} iconTone="bg-debt-soft text-debt md:hidden" />
-                <KpiCard label={<><span className="md:hidden">To'lov</span><span className="hidden md:inline">Bugun to'lov</span></>} value={s.today_payments} tone="pay" icon={ArrowUp} iconTone="bg-pay-soft text-pay md:hidden" />
-                <KpiCard className="md:hidden" label="Ta'minotchiga" value={s.today_supplier_payments} tone="supp" icon={Wallet} iconTone="bg-supp-soft text-supp" />
+                        ? <>{t('{n} mijoz', { n: formatNumber(summary.count) })} · <Link to="/overdue" className="font-semibold text-brand-strong">{t('Hammasini eslatish')}</Link></>
+                        : t('Qaytarish sanasi o\'tganlar yo\'q')} />
+                <KpiCard label={<><span className="md:hidden">{t('Nasiya')}</span><span className="hidden md:inline">{t('Bugun nasiya')}</span></>} value={s.today_debts} tone="debt" icon={ArrowDown} iconTone="bg-debt-soft text-debt md:hidden" />
+                <KpiCard label={<><span className="md:hidden">{t("To'lov")}</span><span className="hidden md:inline">{t("Bugun to'lov")}</span></>} value={s.today_payments} tone="pay" icon={ArrowUp} iconTone="bg-pay-soft text-pay md:hidden" />
+                <KpiCard className="md:hidden" label={t("Ta'minotchiga")} value={s.today_supplier_payments} tone="supp" icon={Wallet} iconTone="bg-supp-soft text-supp" />
             </div>
             {stats.loading && !stats.data && <Skeleton className="mt-2 h-2 w-24" />}
 
-            <SectionTitle action={<Link to="/customers" className="text-sm font-semibold text-brand-strong">Barcha mijozlar</Link>}>
-                Qaytarish muddati yaqin va o'tganlar{rows.length > 0 && ` · ${rows.length}`}
+            <SectionTitle action={<Link to="/customers" className="text-sm font-semibold text-brand-strong">{t('Barcha mijozlar')}</Link>}>
+                {t("Qaytarish muddati yaqin va o'tganlar")}{rows.length > 0 && ` · ${rows.length}`}
             </SectionTitle>
             {loading ? <ListSkeleton rows={3} /> : rows.length === 0 ? (
-                <Card className="p-5 text-[15px] text-ink-2">Yaqin 3 kunda qaytarishi kerak bo'lgan va muddati o'tgan qarz yo'q.</Card>
+                <Card className="p-5 text-[15px] text-ink-2">{t("Yaqin 3 kunda qaytarishi kerak bo'lgan va muddati o'tgan qarz yo'q.")}</Card>
             ) : (
                 <>
                     <List className="md:hidden">
@@ -167,18 +168,18 @@ export default function HomePage() {
                         rows={rows}
                         onRowClick={(r) => navigate(`/customers/${r.customer_id}`)}
                         columns={[
-                            { key: 'name', label: 'Mijoz', render: (r) => <span className="flex items-center gap-3 font-bold"><Avatar name={r.name} size={32} />{r.name}</span> },
-                            { key: 'phone', label: 'Telefon', render: (r) => <span className="text-ink-2">{formatPhone(r.phone)}</span> },
-                            { key: 'amount', label: "Qarz, so'm", align: 'right', render: (r) => <Money value={r.amount} tone="debt" /> },
-                            { key: 'due', label: 'Muddat', render: (r) => <span className="flex items-center gap-2">{statusCell(r)}<span className="text-sm text-ink-2">{formatDate(r.due)}</span></span> },
+                            { key: 'name', label: t('Mijoz'), render: (r) => <span className="flex items-center gap-3 font-bold"><Avatar name={r.name} size={32} />{r.name}</span> },
+                            { key: 'phone', label: t('Telefon'), render: (r) => <span className="text-ink-2">{formatPhone(r.phone)}</span> },
+                            { key: 'amount', label: t("Qarz, so'm"), align: 'right', render: (r) => <Money value={r.amount} tone="debt" /> },
+                            { key: 'due', label: t('Muddat'), render: (r) => <span className="flex items-center gap-2">{statusCell(r)}<span className="text-sm text-ink-2">{formatDate(r.due)}</span></span> },
                             {
-                                key: 'act', label: 'Amal', align: 'right', render: (r) => r.overdue
-                                    ? <Button size="sm" variant="secondary" icon={MessageSquare} onClick={(e) => { e.stopPropagation(); setRemind(r) }}>SMS eslatish</Button>
-                                    : <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); actions.openPayment({ customer: { id: r.customer_id, name: r.name, phone: r.phone } }) }}>To'lov</Button>
+                                key: 'act', label: t('Amal'), align: 'right', render: (r) => r.overdue
+                                    ? <Button size="sm" variant="secondary" icon={MessageSquare} onClick={(e) => { e.stopPropagation(); setRemind(r) }}>{t('SMS eslatish')}</Button>
+                                    : <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); actions.openPayment({ customer: { id: r.customer_id, name: r.name, phone: r.phone } }) }}>{t("To'lov")}</Button>
                             }
                         ]}
                     />
-                    <p className="mt-3 hidden text-[13px] text-ink-3 lg:block">Tezkor tugmalar: N — nasiya, T — to'lov, M — yangi mijoz, / — qidiruv.</p>
+                    <p className="mt-3 hidden text-[13px] text-ink-3 lg:block">{t("Tezkor tugmalar: N — nasiya, T — to'lov, M — yangi mijoz, / — qidiruv.")}</p>
                 </>
             )}
 
@@ -186,9 +187,9 @@ export default function HomePage() {
                 open={!!remind}
                 onClose={() => setRemind(null)}
                 onConfirm={sendReminder}
-                title="Eslatma yuborish"
-                text={remind && `${remind.name}ga muddati o'tgan qarz (${formatNumber(remind.amount)} so'm) haqida SMS ketadi.`}
-                confirmText="Yuborish"
+                title={t('Eslatma yuborish')}
+                text={remind && t("{name}ga muddati o'tgan qarz ({amount} so'm) haqida SMS ketadi.", { name: remind.name, amount: formatNumber(remind.amount) })}
+                confirmText={t('Yuborish')}
             />
         </div>
     )

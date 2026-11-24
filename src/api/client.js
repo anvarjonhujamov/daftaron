@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { clearLocalData, getToken, getUser } from '../lib/session'
+import { getLang } from '../i18n'
 
 // API manzili .env dan (VITE_API_URL). Dev'da mahalliy backend'ni ko'rsating,
 // aks holda dev server ham prod bazaga yozadi va haqiqiy SMS yuboradi.
@@ -17,6 +18,9 @@ api.interceptors.request.use((config) => {
     if (token) config.headers.Authorization = `Bearer ${token}`
     const tenantId = getUser()?.tenant_id
     if (tenantId && !config.headers['X-Tenant-Id']) config.headers['X-Tenant-Id'] = tenantId
+    // Ilova tili (uz_latn | uz_cyrl | ru): backend validatsiya xabarlarini shu tilda qaytaradi.
+    // Accept-Language emas — brauzerning o'z qiymati (masalan ru-RU) bilan adashmasin
+    config.headers['X-Locale'] = getLang()
     return config
 })
 

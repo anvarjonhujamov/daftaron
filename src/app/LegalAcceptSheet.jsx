@@ -6,6 +6,7 @@ import { settingsApi } from '../api/settings.api'
 import { errorMessage } from '../lib/errors'
 import { Sheet } from '../ui/Sheet'
 import { Button } from '../ui/controls'
+import { t } from '../i18n'
 
 // Admin oferta yoki maxfiylik siyosatini yangilasa — foydalanuvchi qayta qabul qiladi (TZ 28.16)
 export default function LegalAcceptSheet() {
@@ -28,12 +29,13 @@ export default function LegalAcceptSheet() {
     }
 
     return (
-        <Sheet open onClose={() => setDismissed(true)} title="Hujjatlar yangilandi" width={480}
-            footer={<Button size="lg" block loading={busy} onClick={accept}>Roziman</Button>}>
+        <Sheet open onClose={() => setDismissed(true)} title={t('Hujjatlar yangilandi')} width={480}
+            footer={<Button size="lg" block loading={busy} onClick={accept}>{t('Roziman')}</Button>}>
             <p className="text-[15px] leading-relaxed text-ink-2">
-                <Link to="/legal/offer" className="font-semibold text-brand-strong" onClick={() => setDismissed(true)}>Ommaviy oferta</Link> va{' '}
-                <Link to="/legal/privacy" className="font-semibold text-brand-strong" onClick={() => setDismissed(true)}>maxfiylik siyosati</Link> yangilandi.
-                Ilovadan foydalanishni davom ettirish uchun ular bilan tanishib, rozilik bildiring.
+                {t('{offer} va {privacy} yangilandi. Ilovadan foydalanishni davom ettirish uchun ular bilan tanishib, rozilik bildiring.', {
+                    offer: <Link to="/legal/offer" className="font-semibold text-brand-strong" onClick={() => setDismissed(true)}>{t('Ommaviy oferta')}</Link>,
+                    privacy: <Link to="/legal/privacy" className="font-semibold text-brand-strong" onClick={() => setDismissed(true)}>{t('maxfiylik siyosati')}</Link>
+                })}
             </p>
         </Sheet>
     )

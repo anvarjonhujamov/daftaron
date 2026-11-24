@@ -3,6 +3,7 @@ import { Button, MoneyInput, TextArea } from '../ui/controls'
 import { Sheet } from '../ui/Sheet'
 import { todayYmd, toYmd } from '../utils/date'
 import { formatNumber } from '../utils/format'
+import { t } from '../i18n'
 
 // Nasiyani tahrirlash: nasiya sahifasi va mijoz kartasidan ochiladi
 export default function EditSheet({ open, debt, paid, onClose, onSave }) {
@@ -27,19 +28,19 @@ export default function EditSheet({ open, debt, paid, onClose, onSave }) {
         setBusy(false)
     }
     return (
-        <Sheet open={open} onClose={onClose} title="Nasiyani tahrirlash" width={560} onSubmit={submit}
-            footer={<Button type="submit" size="lg" block loading={busy} disabled={tooLow || !(amount > 0)}>Saqlash</Button>}>
+        <Sheet open={open} onClose={onClose} title={t('Nasiyani tahrirlash')} width={560} onSubmit={submit}
+            footer={<Button type="submit" size="lg" block loading={busy} disabled={tooLow || !(amount > 0)}>{t('Saqlash')}</Button>}>
             <div className="space-y-4">
-                <MoneyInput label="Summa" value={amount} onChange={setAmount} error={tooLow ? `To'langan qismdan (${formatNumber(paid)}) kam bo'lmaydi` : undefined} />
+                <MoneyInput label={t('Summa')} value={amount} onChange={setAmount} error={tooLow ? t("To'langan qismdan ({amount}) kam bo'lmaydi", { amount: formatNumber(paid) }) : undefined} />
                 <div className="grid grid-cols-2 gap-3">
-                    <label className="text-sm font-semibold">Berilgan
+                    <label className="text-sm font-semibold">{t('Berilgan')}
                         <input type="date" value={given} max={today} onChange={(e) => setGiven(e.target.value)} className="mt-2 h-12 w-full rounded-xl border-[1.5px] border-line-2 bg-card px-3 font-normal text-ink" />
                     </label>
-                    <label className="text-sm font-semibold">Qaytarish
+                    <label className="text-sm font-semibold">{t('Qaytarish')}
                         <input type="date" value={due} min={given} onChange={(e) => setDue(e.target.value)} className="mt-2 h-12 w-full rounded-xl border-[1.5px] border-line-2 bg-card px-3 font-normal text-ink" />
                     </label>
                 </div>
-                <TextArea label="Izoh" value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} />
+                <TextArea label={t('Izoh')} value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={500} />
             </div>
         </Sheet>
     )

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { X, Delete } from 'lucide-react'
 import { Button, MoneyInput, TextArea, cx } from './controls'
 import { formatNumber } from '../utils/format'
+import { t } from '../i18n'
 
 // Modal oyna: telefonda pastdan chiquvchi panel, planshet/kompyuterda markazda (index.css: dialog.sheet).
 // Native <dialog>: Esc yopadi, fokus ichkarida qoladi. onSubmit bo'lsa ichi <form> — Enter saqlaydi.
@@ -44,7 +45,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, onSubm
                             <h2 className="text-[21px] font-extrabold tracking-tight">{title}</h2>
                             {subtitle && <p className="mt-0.5 text-sm text-ink-2">{subtitle}</p>}
                         </div>
-                        <button type="button" aria-label="Yopish" onClick={onClose} className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-soft text-ink hover:bg-line">
+                        <button type="button" aria-label={t('Yopish')} onClick={onClose} className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-soft text-ink hover:bg-line">
                             <X size={20} aria-hidden />
                         </button>
                     </div>
@@ -57,7 +58,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, onSubm
 }
 
 // Tasdiqlash oynasi; reason=true bo'lsa sabab so'raladi (uzaytirish, bekor qilish — audit uchun)
-export function Confirm({ open, onClose, onConfirm, title, text, confirmText = 'Tasdiqlash', danger, reason, reasonRequired, reasonLabel = 'Sabab' }) {
+export function Confirm({ open, onClose, onConfirm, title, text, confirmText = t('Tasdiqlash'), danger, reason, reasonRequired, reasonLabel = t('Sabab') }) {
     const [value, setValue] = useState('')
     const [busy, setBusy] = useState(false)
     useEffect(() => { if (open) setValue('') }, [open])
@@ -81,7 +82,7 @@ export function Confirm({ open, onClose, onConfirm, title, text, confirmText = '
             onSubmit={submit}
             footer={
                 <div className="flex gap-2">
-                    <Button variant="secondary" size="lg" className="flex-1" onClick={onClose}>Bekor qilish</Button>
+                    <Button variant="secondary" size="lg" className="flex-1" onClick={onClose}>{t('Bekor qilish')}</Button>
                     <Button type="submit" variant={danger ? 'danger' : 'primary'} size="lg" className="flex-1" loading={busy} disabled={reasonRequired && !value.trim()}>
                         {confirmText}
                     </Button>
@@ -95,7 +96,7 @@ export function Confirm({ open, onClose, onConfirm, title, text, confirmText = '
 }
 
 // Summa kiritish: telefonda katta raqamli klaviatura, planshet/kompyuterda oddiy maydon
-export function AmountPad({ value, onChange, tone = 'text-debt', hint, label = 'Summa', autoFocus }) {
+export function AmountPad({ value, onChange, tone = 'text-debt', hint, label = t('Summa'), autoFocus }) {
     const press = (key) => {
         const s = String(value || '')
         if (key === 'del') return onChange(parseInt(s.slice(0, -1) || '0', 10))
@@ -108,7 +109,7 @@ export function AmountPad({ value, onChange, tone = 'text-debt', hint, label = '
                 <div className="rounded-2xl bg-soft/70 py-2 text-center" aria-live="polite">
                     <div className="text-[13px] font-semibold text-ink-3">{label}</div>
                     <div className={cx('text-[34px] font-extrabold tracking-tight', tone)}>
-                        {formatNumber(value || 0)} <span className="text-[17px] font-bold text-ink-2">so'm</span>
+                        {formatNumber(value || 0)} <span className="text-[17px] font-bold text-ink-2">{t("so'm")}</span>
                     </div>
                     {hint && <div className="text-[13px] text-ink-2">{hint}</div>}
                 </div>
@@ -116,7 +117,7 @@ export function AmountPad({ value, onChange, tone = 'text-debt', hint, label = '
                     {['1', '2', '3', '4', '5', '6', '7', '8', '9', '000', '0'].map((k) => (
                         <button key={k} type="button" onClick={() => press(k)} className="h-11 rounded-xl bg-soft text-[20px] font-semibold text-ink active:bg-line">{k}</button>
                     ))}
-                    <button type="button" aria-label="O'chirish" onClick={() => press('del')} className="flex h-11 items-center justify-center rounded-xl bg-soft text-ink active:bg-line">
+                    <button type="button" aria-label={t("O'chirish")} onClick={() => press('del')} className="flex h-11 items-center justify-center rounded-xl bg-soft text-ink active:bg-line">
                         <Delete size={22} aria-hidden />
                     </button>
                 </div>

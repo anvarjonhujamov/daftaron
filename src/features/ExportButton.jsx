@@ -5,8 +5,9 @@ import toast from 'react-hot-toast'
 import { useSession } from '../app/session'
 import { errorMessage, errorReason } from '../lib/errors'
 import { Button } from '../ui/controls'
+import { t, tk } from '../i18n'
 
-const LOCKED = "Excel'ga yuklash Oddiy ta'rifda yo'q. Ta'rifni yangilang."
+const LOCKED = tk("Excel'ga yuklash Oddiy ta'rifda yo'q. Ta'rifni yangilang.")
 
 // «Excel'ga yuklash» (Tarix, Hisobot). Ta'rifda eksport bo'lmasa (usage.export_allowed) — qulf va obuna sahifasi
 export default function ExportButton({ onExport }) {
@@ -16,7 +17,7 @@ export default function ExportButton({ onExport }) {
     const locked = !session.canExport
 
     const upgrade = () => {
-        toast(LOCKED, { icon: '🔒' })
+        toast(t(LOCKED), { icon: '🔒' })
         navigate('/subscription')
     }
 
@@ -37,7 +38,7 @@ export default function ExportButton({ onExport }) {
 
     return (
         <Button variant="secondary" icon={locked ? Lock : FileSpreadsheet} loading={loading} onClick={run} title={locked ? LOCKED : undefined}>
-            <span className="hidden sm:inline">Excel'ga yuklash</span><span className="sm:hidden">Excel</span>
+            <span className="hidden sm:inline">{t("Excel'ga yuklash")}</span><span className="sm:hidden">{t('Excel')}</span>
         </Button>
     )
 }
