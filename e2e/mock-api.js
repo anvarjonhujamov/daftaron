@@ -52,6 +52,19 @@ export const fixtures = () => {
                 { id: 7494, customer_id: 31, customer_name: 'Aziz aka', total_amount: 46000, remaining_amount: 32000, total_paid_amount: 14000, debt_date: addDays(t, -10), return_date: addDays(t, 6), status: 'open', state: 'partially_paid', payments: [] }
             ]
         },
+        ai: {
+            usage: { enabled: true, plan: 'pro', limit: 30, used: 3, left: 27, resets_at: `${addDays(t, 1)}T00:00:00+05:00` },
+            conversations: [
+                { id: 12, title: 'Bugungi qarzlar', locale: 'uz', created_at: `${t}T09:00:00+05:00`, updated_at: `${t}T09:05:00+05:00` },
+                { id: 9, title: 'SMS eslatma sozlamasi', locale: 'uz', created_at: `${addDays(t, -2)}T15:00:00+05:00`, updated_at: `${addDays(t, -2)}T15:02:00+05:00` }
+            ],
+            messages: {
+                9: [
+                    { id: 200, role: 'user', text: 'SMS eslatma qachon ketadi?', feedback: null, created_at: `${addDays(t, -2)}T15:00:00+05:00` },
+                    { id: 201, role: 'assistant', text: 'Eslatma qaytarish kuni soat 09:00 da bir marta ketadi. Muddati o\'tganlarga «Muddati o\'tganlar» sahifasidan qo\'lda yuborasiz.', feedback: 'up', created_at: `${addDays(t, -2)}T15:00:05+05:00` }
+                ]
+            }
+        },
         overdue: {
             data: [
                 { customer_id: 32, name: 'Ravshan aka', phone: '+998907774109', overdue_amount: 64000, debts_count: 1, oldest_due_date: addDays(t, -5), days_overdue: 5, reminders_sent: 1, last_sms_at: `${addDays(t, -2)}T09:00:00+05:00`, sms_status: 'sent' },
@@ -63,6 +76,20 @@ export const fixtures = () => {
 }
 
 const json = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+
+// SSE javobi (POST /ai/chat): [['delta', { text }], ...] → "event: delta\ndata: {...}\n\n"
+export const sse = (events) => events.map(([event, data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join('')
+export const sseRoute = (route, events) => route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' }, body: sse(events) })
+
+// Yordamchining namunaviy javobi (oddiy matn: **qalin**, "1." qadamlar)
+export const AI_REPLY = [
+    ['start', { conversation_id: 12, user_message_id: 340 }],
+    ['status', { state: 'looking_up' }],
+    ['delta', { text: 'Bugun **2 ta mijoz** qarzini qaytarishi kerak:\n' }],
+    ['delta', { text: '1. Aziz aka — 22 000 so\'m\n' }],
+    ['delta', { text: '2. Madina — 38 000 so\'m' }],
+    ['done', { conversation_id: 12, message_id: 341, usage_left: 26, title: 'Bugungi qarzlar' }]
+]
 
 // API'ni mock qiladi; calls — yuborilgan so'rovlar (tekshirish uchun)
 export async function mockApi(page, { loggedIn = true, overrides = {} } = {}) {
@@ -88,6 +115,7 @@ export async function mockApi(page, { loggedIn = true, overrides = {} } = {}) {
         if (overrides[key]) return overrides[key](route, { body, url, f })
 
         const c = path.match(/^\/customers\/(\d+)(\/.*)?$/)
+        const ai = path.match(/^\/ai\/conversations\/(\d+)$/)
         switch (true) {
             case key === 'GET /auth/me': return json(route, { user: f.user, active_tenant: f.tenant, available_tenants: [f.tenant] })
             case key === 'GET /settings': return json(route, f.settings)
@@ -134,6 +162,15 @@ export async function mockApi(page, { loggedIn = true, overrides = {} } = {}) {
             case key === 'GET /locations/districts/2': return json(route, [{ id: 21, region_id: 2, name: 'Urgut' }])
             case key === 'GET /locations/categories': return json(route, [{ id: 1, name: 'Oziq-ovqat' }, { id: 2, name: 'Qurilish mollari' }])
             case key === 'GET /onboarding': return json(route, { step: 'done', completed: true })
+            case key === 'GET /ai/usage': return json(route, f.ai.usage)
+            case key === 'POST /ai/chat': return sseRoute(route, AI_REPLY)
+            case key === 'GET /ai/conversations': return json(route, { data: f.ai.conversations, meta: { current_page: 1, per_page: 20, total: f.ai.conversations.length, last_page: 1 } })
+            case !!ai && method === 'GET': {
+                const conv = f.ai.conversations.find((x) => x.id === Number(ai[1]))
+                return conv ? json(route, { conversation: conv, messages: f.ai.messages[conv.id] || [] }) : json(route, { message: 'Topilmadi' }, 404)
+            }
+            case !!ai && method === 'DELETE': return json(route, { message: "Suhbat o'chirildi." })
+            case /^\/ai\/messages\/\d+\/feedback$/.test(path): return json(route, { message: 'Rahmat', rating: body?.rating })
             default: return json(route, {})
         }
     })

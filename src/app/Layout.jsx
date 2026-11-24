@@ -6,6 +6,7 @@ import { logout, useSession } from './session'
 import { MAIN_NAV, SECOND_NAV, bottomNav, visibleNav } from './nav'
 import { ActionsProvider, useActions } from './actions'
 import LegalAcceptSheet from './LegalAcceptSheet'
+import AiAssistant from '../features/ai/AiAssistant'
 import { CountBadge, OfflineBanner } from '../ui/display'
 import { cx } from '../ui/controls'
 import { useOnChange, useOnline } from '../lib/hooks'
@@ -165,6 +166,7 @@ function LockedLayout({ session, online }) {
                 </Suspense>
             </main>
             <LegalAcceptSheet />
+            <AiAssistant />
         </div>
     )
 }
@@ -208,6 +210,7 @@ export default function Layout() {
                 <BottomNav session={session} badges={badges} />
                 <Shortcuts />
                 <LegalAcceptSheet />
+                <AiAssistant />
             </div>
         </ActionsProvider>
     )

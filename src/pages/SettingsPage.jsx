@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { BookOpen, Bot, ChevronRight, FileText, Lock, LogOut, MessageCircle, Moon, Palette, Phone, Send, Smartphone, Store, Trash2, Users, Wallet, BellRing } from 'lucide-react'
+import { BookOpen, Bot, ChevronRight, Sparkles, FileText, Lock, LogOut, MessageCircle, Moon, Palette, Phone, Send, Smartphone, Store, Trash2, Users, Wallet, BellRing } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { applyTheme, logout, useSession } from '../app/session'
 import { authApi } from '../api/auth.api'
@@ -8,6 +8,7 @@ import { locationsApi, profileApi, settingsApi, telegramApi } from '../api/setti
 import { useResource } from '../lib/hooks'
 import { errorMessage } from '../lib/errors'
 import { safeUrl } from '../lib/sanitize'
+import { openAiAssistant } from '../features/ai/events'
 import { passwordProblem } from './ForgotPasswordPage'
 import { CodeInput } from './LoginPage'
 import TopUpSheet, { ProviderButtons } from '../features/TopUpSheet'
@@ -488,7 +489,7 @@ function DocumentsSection({ settings }) {
     const legal = settings.legal || {}
     const links = [
         ['/guides', BookOpen, t("Foydalanish qo'llanmasi"), t('Hujjat, video, havola'), true],
-        ['/support', Bot, t('AI yordamchi'), t('Savolga darhol javob'), true],
+        [openAiAssistant, Sparkles, t('AI yordamchi'), t('Savolga darhol javob'), 'action'],
         [safeUrl(support.telegram_support_url), Send, t("Telegram'dan yozish"), t('Qo\'llab-quvvatlash')],
         [safeUrl(support.telegram_group_url), MessageCircle, t('Muhokama guruhi'), t("Do'kondorlar jamoasi")],
         [support.phone && `tel:${support.phone}`, Phone, t("Qo'ng'iroq"), support.phone]
@@ -496,7 +497,9 @@ function DocumentsSection({ settings }) {
     return (
         <div className="space-y-4">
             <List>
-                {links.map(([href, Icon, title, sub, internal]) => internal
+                {links.map(([href, Icon, title, sub, internal]) => internal === 'action'
+                    ? <Row key={title} onClick={href} left={<Icon size={20} className="text-brand-strong" aria-hidden />} title={title} subtitle={sub} chevron />
+                    : internal
                     ? <Row key={title} to={href} left={<Icon size={20} className="text-brand-strong" aria-hidden />} title={title} subtitle={sub} chevron />
                     : (
                         <a key={title} href={href} target={href.startsWith('tel:') ? undefined : '_blank'} rel="noopener noreferrer" className="flex items-center gap-3 px-3.5 py-3 hover:bg-soft/60">

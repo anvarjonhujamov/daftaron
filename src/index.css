@@ -165,3 +165,63 @@ dialog.sheet::backdrop {
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }
+
+/* AI yordamchi tugmasi: telefonda pastki menyu ustida, kompyuterda o'ng pastki burchakda (24px).
+   --fab-avoid — tugma ostida qolgan pastki panel balandligi (AiAssistant hisoblaydi) */
+.ai-fab {
+    right: 16px;
+    bottom: max(calc(env(safe-area-inset-bottom) + 80px), var(--fab-avoid, 0px));
+}
+
+@media (min-width: 768px) {
+    .ai-fab {
+        right: 24px;
+        bottom: max(24px, var(--fab-avoid, 0px));
+    }
+}
+
+/* AI yordamchi oynasi (telefon): pastdan chiquvchi to'liq balandlikdagi panel.
+   --ai-vh / --ai-kb — klaviatura ochiq bo'lganda ko'rinadigan balandlik (visualViewport) */
+dialog.ai-sheet {
+    margin: auto 0 var(--ai-kb, 0px);
+    width: 100%;
+    max-width: none;
+    height: calc(var(--ai-vh, 100dvh) - env(safe-area-inset-top) - 8px);
+    max-height: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgb(var(--ink));
+}
+
+dialog.ai-sheet::backdrop {
+    background: rgb(15 23 42 / 0.55);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    dialog.ai-sheet[open] > div {
+        animation: sheet-in 0.2s ease-out;
+    }
+
+    .ai-panel {
+        animation: ai-panel-in 0.18s ease-out;
+    }
+}
+
+/* Kompyuter paneli ochiq: keng ekranda sahifa o'ngdan 400px torayadi (panel ustiga tushmaydi) */
+@media (min-width: 1280px) {
+    html.ai-open body {
+        padding-right: 400px;
+    }
+}
+
+@keyframes ai-panel-in {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}

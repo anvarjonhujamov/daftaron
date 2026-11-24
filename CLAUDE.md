@@ -123,6 +123,16 @@ Eski manzillar (`/register`, `/terms`, `/privacy-policy`, `/debts`, `/payments`,
 - API'ga `X-Locale: uz_latn|uz_cyrl|ru` ketadi (`client.js`) — backend validatsiya xabarlarini shu tilda qaytaradi.
 - Yangi matn qo'shgach: `npm run i18n:check` (ru.js'da yo'q kalitlar, `{o'zgaruvchi}` mosligi) va `e2e/i18n.spec.js`.
 
+## AI yordamchi (`src/features/ai/`)
+
+- `AiAssistant` — `Layout`da bir marta (oddiy va qulf rejimida): o'ng pastdagi tugma va bir martalik maslahat (`ai_tip_seen`).
+  Panel (`AiPanel`) lazy chunk; birinchi ochilgach o'chmaydi — suhbat sahifalar orasida saqlanadi. Boshqa joydan ochish: `openAiAssistant()` (`features/ai/events.js`).
+- Tugma `<dialog open>` bor paytda va telefon klaviaturasi ochiqda yashirinadi. Sahifaning pastki fixed paneli tugmani to'smasin — unga `data-fab-avoid` qo'ying.
+- API — `api/ai.api.js`. `POST /ai/chat` — SSE: axios emas, `fetch` + `ReadableStream` (`streamChat`); token, `X-Tenant-Id`, `X-Locale` qo'lda,
+  401 va `trial_expired` — `client.js` bilan bir xil. Hodisalar: `start`, `status`, `delta`, `done`, `error`. Kontrakt — backend TZ 15-bo'lim va openapi (`/ai/*`).
+- Javob matni — `AiText` (oddiy Markdown → React elementlari, `innerHTML` yo'q).
+- Tezkor savollar va `context.screen` — `features/ai/screens.js`: yangi sahifa qo'shsangiz, shu yerga ham.
+
 ## Ochiq vazifalar
 
 1. Backend'da yo'q: Uzum to'lovi (tugma «tez orada»), qurilma shahri (`city: null`). Backend'ning o'z matnlari (`message`, bildirishnomalar, ruxsatlar katalogi, oferta) hozircha faqat o'zbekcha.

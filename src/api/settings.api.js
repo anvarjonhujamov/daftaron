@@ -34,9 +34,3 @@ export const locationsApi = {
     streets: (districtId) => data(api.get(`/locations/streets/${districtId}`)),
     categories: () => data(api.get('/locations/categories'))
 }
-
-export const supportApi = {
-    send: (message) => data(api.post('/support/chat', { message })),
-    history: () => data(api.get('/support/history')),
-    clear: () => data(api.delete('/support/history'))
-}

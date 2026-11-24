@@ -3,9 +3,10 @@
 // keyingi odam oldingi do'kon mijozlarini ko'rmasin.
 
 // theme, lang — qurilma sozlamasi (lang_pending — kirish sahifasida tanlangan til, kirgach serverga yoziladi);
+// ai_tip_seen — AI tugmasi maslahati bir marta ko'rsatilgan;
 // supplier_* — eski versiyadan qolgan, hali serverga yuborilmagan ta'minotchi yozuvlari
 // (suppliers.api.js migratsiyasi) — o'chsa qayta tiklab bo'lmaydi
-const keep = (key) => ['theme', 'lang', 'lang_pending'].includes(key) || /^supplier_(\d+_(purchases|payments)|unsynced_v1)$/.test(key)
+const keep = (key) => ['theme', 'lang', 'lang_pending', 'ai_tip_seen'].includes(key) || /^supplier_(\d+_(purchases|payments)|unsynced_v1)$/.test(key)
 
 export const getToken = () => {
     try { return localStorage.getItem('token') } catch { return null }

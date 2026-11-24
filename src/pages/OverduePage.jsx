@@ -146,7 +146,7 @@ export default function OverduePage() {
 
             {selected.size > 0 && (
                 <div className="fixed inset-x-0 bottom-[68px] z-20 px-4 md:bottom-4 md:left-24 lg:left-[248px]">
-                    <div className="mx-auto flex max-w-3xl flex-col gap-2 rounded-[18px] bg-ink p-3 text-card shadow-xl sm:flex-row sm:items-center">
+                    <div data-fab-avoid="" className="mx-auto flex max-w-3xl flex-col gap-2 rounded-[18px] bg-ink p-3 text-card shadow-xl sm:flex-row sm:items-center">
                         <p className="flex-1 px-1 text-sm">
                             <strong>{t('{n} ta tanlandi.', { n: selected.size })}</strong> {estimate ? estimateText : t('Hisoblanmoqda…')}
                             {estimate?.insufficient_balance && <span className="mt-1 inline-block rounded-lg bg-debt-soft px-2 py-0.5 font-semibold text-debt">{t('Balans yetmaydi —')} <Link to="/subscription" className="underline">{t("to'ldirish")}</Link></span>}
