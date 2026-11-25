@@ -7,6 +7,7 @@ import { deviceName, getToken } from '../lib/session'
 import { errorMessage } from '../lib/errors'
 import { AuthShell, Logo } from './LoginPage'
 import { t } from '../i18n'
+import LangSwitch from '../features/LangSwitch'
 
 // @daftaron_bot yuborgan bir martalik «Kirish» havolasi: ?phone=&ts=&sig= (bot imzosi, 10 daqiqa).
 // Faqat imzo bilan kiriladi — yalang'och telefon raqami qabul qilinmaydi (backend TZ 23.1)
@@ -39,7 +40,7 @@ export default function TelegramLoginPage() {
 
     return (
         <AuthShell>
-            <div className="mt-6"><Logo /></div>
+            <div className="mt-6 flex items-center justify-between gap-3"><Logo /><LangSwitch /></div>
             <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
                 {error ? (
                     <>

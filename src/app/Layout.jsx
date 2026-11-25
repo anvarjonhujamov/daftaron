@@ -7,6 +7,7 @@ import { MAIN_NAV, SECOND_NAV, bottomNav, visibleNav } from './nav'
 import { ActionsProvider, useActions } from './actions'
 import LegalAcceptSheet from './LegalAcceptSheet'
 import AiAssistant from '../features/ai/AiAssistant'
+import LangSwitch from '../features/LangSwitch'
 import { CountBadge, OfflineBanner } from '../ui/display'
 import { cx } from '../ui/controls'
 import { useOnChange, useOnline } from '../lib/hooks'
@@ -155,9 +156,12 @@ function LockedLayout({ session, online }) {
                     <img src="/logo.png" alt={t('DaftarOn')} className="h-9 w-9 shrink-0 object-contain" />
                     <strong className="truncate text-[15px]">{session.tenant?.name || t('DaftarOn')}</strong>
                 </span>
-                <button type="button" onClick={logout} className="flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 font-semibold text-debt hover:bg-debt-soft">
-                    <LogOut size={18} aria-hidden /> {t('Chiqish')}
-                </button>
+                <span className="flex shrink-0 items-center gap-2">
+                    <LangSwitch />
+                    <button type="button" onClick={logout} className="flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 font-semibold text-debt hover:bg-debt-soft">
+                        <LogOut size={18} aria-hidden /> {t('Chiqish')}
+                    </button>
+                </span>
             </header>
             {!online && <OfflineBanner />}
             <main>

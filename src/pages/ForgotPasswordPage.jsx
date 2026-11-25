@@ -7,6 +7,7 @@ import { Button, Input, PhoneInput } from '../ui/controls'
 import { isValidPhone, toApiPhone } from '../utils/phone'
 import { AuthShell, CodeInput } from './LoginPage'
 import { t } from '../i18n'
+import LangSwitch from '../features/LangSwitch'
 
 export const passwordProblem = (p) => {
     if (p.length < 8) return t('Kamida 8 belgi')
@@ -54,7 +55,10 @@ export default function ForgotPasswordPage() {
 
     return (
         <AuthShell onBack={() => (step > 1 ? setStep(step - 1) : navigate('/login'))}>
-            <p className="mt-6 text-sm font-semibold text-ink-2">{step}/3</p>
+            <div className="mt-6 flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-ink-2">{step}/3</p>
+                <LangSwitch />
+            </div>
             <h1 className="mb-8 mt-1 text-[28px] font-extrabold tracking-tight">
                 {step === 1 ? t('Parolni tiklash') : step === 2 ? t('SMS-kod') : t('Yangi parol')}
             </h1>

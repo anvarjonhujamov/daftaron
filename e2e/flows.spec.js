@@ -488,4 +488,9 @@ test("Bepul sinov tugagan: ma'lumotlar ko'rinmaydi — faqat «Ta'rif va balans�
     await expect(page).toHaveURL(/\/subscription$/)
     await expect(page.getByText('Bepul sinov muddati tugadi', { exact: true })).toBeVisible()
     expect(dataCalls()).toBe(before)
+
+    // Sinov tugagan ekranda ham tilni almashtirish mumkin — tanlov serverga yoziladi (PUT /profile obuna tekshiruvisiz)
+    await page.getByRole('radio', { name: 'Русский' }).click()
+    await expect(page.getByRole('button', { name: /Выйти/ })).toBeVisible()
+    await expect.poll(() => calls.find((c) => c.method === 'PUT' && c.path === '/profile')?.body?.language).toBe('ru')
 })

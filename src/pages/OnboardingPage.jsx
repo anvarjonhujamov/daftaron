@@ -18,6 +18,7 @@ import { formatPhone } from '../utils/phone'
 import { AuthShell } from './LoginPage'
 import TrialFeatures from '../features/TrialFeatures'
 import { t } from '../i18n'
+import LangSwitch from '../features/LangSwitch'
 
 const STEPS = ['shop', 'customer', 'debt']
 
@@ -53,7 +54,10 @@ export default function OnboardingPage() {
     return (
         <AuthShell>
             <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-ink-2">{t('{n}-qadam / 3', { n: index + 1 })}</span>
+                <span className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-ink-2">{t('{n}-qadam / 3', { n: index + 1 })}</span>
+                    <LangSwitch />
+                </span>
                 {step !== 'shop' && <button type="button" onClick={skip} className="text-sm font-semibold text-ink-2">{t('Keyinroq')}</button>}
                 {step === 'shop' && openOwn && <button type="button" onClick={() => navigate('/shops', { replace: true })} className="text-sm font-semibold text-ink-2">{t('Bekor qilish')}</button>}
             </div>
