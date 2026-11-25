@@ -128,8 +128,8 @@ export default function PaymentSheet({ open, onClose, customer: initialCustomer,
                     {closed > 0 && <p className="text-[15px] text-ink-2">{t('{n} ta nasiya yopildi', { n: closed })}</p>}
                     {result.to_balance > 0 && <p className="text-[15px] text-pay">{t('Balansga yozildi:')} {formatMoney(result.to_balance)}</p>}
                     {result.sms && result.sms.status !== 'skipped' && (
-                        <p className={cx('mt-3 rounded-xl px-3 py-2 text-sm font-semibold', result.sms.status === 'sent' ? 'bg-pay-soft text-pay' : 'bg-warn-soft text-warn')}>
-                            {result.sms.status === 'sent' ? t('Mijozga SMS yuborildi') : t('SMS yuborilmadi')}
+                        <p className={cx('mt-3 rounded-xl px-3 py-2 text-sm font-semibold', result.sms.status === 'sent' ? 'bg-pay-soft text-pay' : result.sms.status === 'queued' ? 'bg-soft text-ink-2' : 'bg-warn-soft text-warn')}>
+                            {result.sms.status === 'sent' ? t('Mijozga SMS yuborildi') : result.sms.status === 'queued' ? t('SMS keyinroq yuboriladi') : t('SMS yuborilmadi')}
                         </p>
                     )}
                 </div>

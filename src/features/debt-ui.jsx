@@ -21,6 +21,7 @@ export const debtState = (d) => {
 export const reminderStatus = (status) => ({
     sent: { tone: 'success', label: t('SMS yuborildi') },
     failed: { tone: 'danger', label: t('SMS xato · qayta urinadi') },
+    queued: { tone: 'muted', label: t('SMS navbatda') },
     skipped_limit: { tone: 'warn', label: t('SMS limiti tugagan') },
     skipped_no_phone: { tone: 'warn', label: t("Raqam yo'q") },
     pending: { tone: 'muted', label: t('SMS rejalashtirilgan') }

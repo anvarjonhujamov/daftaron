@@ -617,6 +617,8 @@ export default {
     "SMS qayta yuborildi": "SMS отправлено повторно",
     "SMS qoldig'i": "Остаток SMS",
     "SMS rejalashtirilgan": "SMS запланировано",
+    "SMS keyinroq yuboriladi": "SMS будет отправлено позже",
+    "SMS navbatda": "SMS в очереди",
     "SMS tarixi": "История SMS",
     "SMS xato": "Ошибка SMS",
     "SMS xato · qayta urinadi": "Ошибка SMS · будет повтор",

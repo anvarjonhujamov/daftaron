@@ -21,6 +21,7 @@ const GIVEN_MAX_DAYS_BACK = 30 // backend: berilgan sana bugundan 30 kundan oldi
 const smsText = (sms) => {
     if (!sms) return null
     if (sms.status === 'sent') return t('Mijozga SMS yuborildi')
+    if (sms.status === 'queued') return t('SMS keyinroq yuboriladi')
     if (sms.skipped_reason === 'disabled' || sms.skipped_reason === 'not_applicable') return t('SMS yuborilmadi (o\'chirilgan)')
     if (sms.skipped_reason === 'quota_exhausted') return t("SMS ketmadi: SMS limiti tugagan va balans yetmaydi")
     if (sms.skipped_reason === 'no_phone') return t("SMS ketmadi: mijozning raqami yo'q")
@@ -147,7 +148,7 @@ export default function DebtSheet({ open, onClose, customer: lockedCustomer }) {
                         <p className="mt-1 text-[15px] text-pay">{t('Balansdan yechildi:')} {formatMoney(result.applied_from_balance)}</p>
                     )}
                     {result.sms && (
-                        <p className={cx('mt-3 rounded-xl px-3 py-2 text-sm font-semibold', result.sms.status === 'sent' ? 'bg-pay-soft text-pay' : 'bg-warn-soft text-warn')}>
+                        <p className={cx('mt-3 rounded-xl px-3 py-2 text-sm font-semibold', result.sms.status === 'sent' ? 'bg-pay-soft text-pay' : result.sms.status === 'queued' ? 'bg-soft text-ink-2' : 'bg-warn-soft text-warn')}>
                             {smsText(result.sms)}
                         </p>
                     )}
